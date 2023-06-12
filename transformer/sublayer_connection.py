@@ -1,5 +1,8 @@
 import torch.nn as nn
 
+from transformer.multi_head_attention import MultiHeadAttention
+from transformer.position_wise_feed_forward_network import PositionWiseFeedForward
+
 
 class SublayerConnection(nn.Module):
     '''
@@ -17,9 +20,9 @@ class SublayerConnection(nn.Module):
         '''
         super(SublayerConnection, self).__init__()
         self.norm = nn.LayerNorm(d_model)
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout) 
 
-    def forward(self, x, sublayer):
+    def forward(self, x, sublayer_type, sublayer):
         '''
         Apply residual connection to any sublayer with the same size.
         Applies pre layer-norm (opposed to post-layer norm). More about this in:
@@ -29,6 +32,9 @@ class SublayerConnection(nn.Module):
         Args:
             x: The input before normalization. 
                Shape: `(batch_size, seq_length, d_model)`
+            sublayer_type (string): The type of the sublayer.
+                                    Can only be one of the following:
+                                    ("MultiHeadAttention", "PositionWiseFeedForward")
             sublayer: The layer to be applied to input after the normalization.
                 It's an anonymous function that receives the input and returns it
                 after passing through the sublayer.
@@ -38,5 +44,14 @@ class SublayerConnection(nn.Module):
         Returns:
             The input normalized, after passing through the sublayer.
             Shape: `(batch_size, seq_length, d_model)`
+
+            If the sublayer type is `MultiHeadAttention`, it also returns
+            the attention scores. Shape: `(batch_size, num_heads, query_len, key_len)`
         '''
-        return x + self.dropout(sublayer(self.norm(x)))
+        if sublayer_type == "MultiHeadAttention":
+            attn_output, attn_scores = sublayer(self.norm(x))
+            return x + self.dropout(attn_output), attn_scores
+        elif sublayer_type == "PositionWiseFeedForward":
+            return x + self.dropout(sublayer(self.norm(x)))
+        else:
+            raise ValueError("Unrecognized sublayer in sublayer connection")

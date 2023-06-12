@@ -49,8 +49,10 @@ class DecoderLayer(nn.Module):
         `tgt_seq_length` represents the length of the decoder input
 
         Returns:
-            The result of decoding the input. Shape: `(batch_size, tgt_seq_length, d_model)`
+            The result of decoding the input. Shape: `(batch_size, tgt_seq_length, d_model)`.
+            self_attn_probs: The attention scores between the decoder input.
+            cross_attn_probs: The attention scores between the decoder input and the encoder output.
         '''
-        x = self.norm1(x, lambda x: self.self_attn(x, x, x, tgt_mask))
-        x = self.norm2(x, lambda x: self.cross_attn(x, enc_output, enc_output, src_mask))
-        return self.norm3(x, lambda x: self.feed_forward(x))
+        x, self_attn_probs = self.norm1(x, "MultiHeadAttention", lambda x: self.self_attn(x, x, x, tgt_mask))
+        x, cross_attn_probs = self.norm2(x, "MultiHeadAttention", lambda x: self.cross_attn(x, enc_output, enc_output, src_mask))
+        return self.norm3(x, "PositionWiseFeedForward", lambda x: self.feed_forward(x)), self_attn_probs, cross_attn_probs

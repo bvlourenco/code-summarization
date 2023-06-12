@@ -1,6 +1,8 @@
+import math
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from evaluation import create_loss_plot
 from transformer.transformer_model import Transformer
 
 
@@ -10,7 +12,7 @@ d_model = 512
 num_heads = 8
 num_layers = 6
 d_ff = 2048
-max_seq_length = 100
+max_seq_length = 10
 dropout = 0.1
 
 if __name__ == '__main__':
@@ -35,6 +37,7 @@ if __name__ == '__main__':
 
     transformer.train()
 
+    epoch_loss = []
     for epoch in range(100):
 
         # Zeroing the gradients of transformer parameters
@@ -55,8 +58,13 @@ if __name__ == '__main__':
         # Update the model's parameters based on the computed gradients
         optimizer.step()
         
-        print(f"Epoch: {epoch+1}, Loss: {loss.item()}")
+        print(f"Epoch: {epoch+1}")
+        print(f'\tTrain Loss: {loss.item():.3f} | Train Perplexity: {math.exp(loss.item()):7.3f}')
+
+        epoch_loss.append(loss.item())
     
+    create_loss_plot(epoch_loss)
+
     '''
     TODO: For model training, check:
     https://nlp.seas.harvard.edu/annotated-transformer/

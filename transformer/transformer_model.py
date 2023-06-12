@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from evaluation import display_attention
 
 from transformer.embeddings import Embeddings
 from transformer.positional_encoding import PositionalEncoding
@@ -81,11 +82,14 @@ class Transformer(nn.Module):
         tgt_mask = tgt_mask & nopeak_mask
         return src_mask, tgt_mask
 
-    def forward(self, src, tgt):
+    def forward(self, src, tgt, display_attn = False):
         '''
         Args:
             src: The encoder input. Shape: `(batch_size, src_len)`
             tgt: The decoder input. Shape: `(batch_size, tgt_len)`
+            display_attn (bool): Tells whether we want to save the attention of
+                                 the last layer encoder and decoder 
+                                 multi-head attentions.
 
         Returns:
             output: The output of the Transformer model. 
@@ -97,15 +101,26 @@ class Transformer(nn.Module):
 
         enc_output = src_embedded
         for enc_layer in self.encoder_layers:
-            enc_output = enc_layer(enc_output, src_mask)
+            enc_output, enc_attn_score = enc_layer(enc_output, src_mask)
         # Final encoder layer normalization according to Pre-LN
         enc_output = self.norm1(enc_output)
 
+        if display_attn:
+            # Displaying attention scores of the last encoder layer for the first
+            # example passed as input
+            display_attention(src[0], src[0], enc_attn_score[0], "encoder_self_attn")
+
         dec_output = tgt_embedded
         for dec_layer in self.decoder_layers:
-            dec_output = dec_layer(dec_output, enc_output, src_mask, tgt_mask)
+            dec_output, dec_self_attn_score, dec_cross_attn_score = dec_layer(dec_output, enc_output, src_mask, tgt_mask)
         # Final decoder layer normalization according to Pre-LN
         dec_output = self.norm2(dec_output)
+
+        if display_attn:
+            # Displaying self and cross attention scores of the last decoder layer 
+            # for the first example passed as input
+            display_attention(tgt[0], tgt[0], dec_self_attn_score[0], "decoder_self_attn")
+            display_attention(src[0], tgt[0], dec_cross_attn_score[0], "decoder_cross_attn")
 
         output = self.fc(dec_output)
         return output

@@ -52,6 +52,12 @@ class MultiHeadAttention(nn.Module):
 
         `query_len`/`key_len` are the number of queries and keys/values
         for which attention is computed.
+
+        Returns:
+            output: The result of adding attention scores to the input.
+                    Shape: `(batch_size, num_heads, query_len, d_k)`
+            attn_probs: The attention scores.
+                        Shape: `(batch_size, num_heads, query_len, key_len)`
         '''
         attn_scores = torch.matmul(
             Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
@@ -64,7 +70,9 @@ class MultiHeadAttention(nn.Module):
         # attn_scores has shape `(batch_size, num_heads, query_len, key_len)`
         attn_probs = torch.softmax(attn_scores, dim=-1)
         output = torch.matmul(self.dropout(attn_probs), V)
-        return output
+
+        # attn_probs is returned to visualize the attention scores
+        return output, attn_probs
 
     def split_heads(self, x):
         '''
@@ -126,11 +134,13 @@ class MultiHeadAttention(nn.Module):
 
         Returns:
             output: The attended output. Shape: `(batch_size, query_len, d_v)`
+            attn_probs: The attention scores.
+                        Shape: `(batch_size, num_heads, query_len, key_len)`
         '''
         Q = self.split_heads(self.W_q(Q))
         K = self.split_heads(self.W_k(K))
         V = self.split_heads(self.W_v(V))
 
-        attn_output = self.scaled_dot_product_attention(Q, K, V, mask)
+        attn_output, attn_probs = self.scaled_dot_product_attention(Q, K, V, mask)
         output = self.W_o(self.combine_heads(attn_output))
-        return output
+        return output, attn_probs

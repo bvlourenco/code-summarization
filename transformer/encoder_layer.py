@@ -42,7 +42,9 @@ class EncoderLayer(nn.Module):
 
         Returns:
             The input tensor encoded. Shape: `(batch_size, seq_length, d_model)`
+            attn_probs: The attention scores.
+                        Shape: `(batch_size, num_heads, query_len, key_len)`
         '''
-        x = self.norm1(x, lambda x: self.self_attn(x, x, x, mask))
-        return self.norm2(x, lambda x: self.feed_forward(x))
+        x, attn_probs = self.norm1(x, "MultiHeadAttention", lambda x: self.self_attn(x, x, x, mask))
+        return self.norm2(x, "PositionWiseFeedForward", lambda x: self.feed_forward(x)), attn_probs
     
