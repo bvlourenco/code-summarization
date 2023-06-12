@@ -16,7 +16,7 @@ class Transformer(nn.Module):
             https://nlp.seas.harvard.edu/annotated-transformer/
     '''
 
-    def __init__(self, src_vocab_size, tgt_vocab_size, d_model, num_heads, num_layers, d_ff, max_seq_length, dropout):
+    def __init__(self, src_vocab_size, tgt_vocab_size, d_model, num_heads, num_layers, d_ff, max_seq_length, dropout, device):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -28,6 +28,7 @@ class Transformer(nn.Module):
                         Forward Network (in encoder and decoder).
             max_seq_length (int): maximum length of the input.
             dropout (int): dropout probability (between 0 and 1).
+            device: The device where the model and tensors are inserted (GPU or CPU).
 
         Note: The log-softmax function is not applied here due to the later use 
               of CrossEntropyLoss, which requires the inputs to be unnormalized 
@@ -48,6 +49,30 @@ class Transformer(nn.Module):
 
         # Produce a probability distribution over output words,
         self.fc = nn.Linear(d_model, tgt_vocab_size)
+
+        self.device = device
+
+        self.init_weights()
+    
+    def init_weights(self):
+        '''
+        Initialize parameters in the transformer model.
+
+        Source: https://nlp.seas.harvard.edu/annotated-transformer/
+        '''
+        for p in self.parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+    
+    def count_parameters(self):
+        '''
+        Count the number of parameters of the transformer model.
+
+        numel() returns the total number of elements in the tensor.
+
+        Source: https://medium.com/@hunter-j-phillips/putting-it-all-together-the-implemented-transformer-bfb11ac1ddfe
+        '''
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
     def generate_mask(self, src, tgt):
         '''
@@ -78,22 +103,22 @@ class Transformer(nn.Module):
         # Creating an lower triangular part of the matrix to mask padding and
         # future words in decoding
         nopeak_mask = (
-            1 - torch.triu(torch.ones(1, seq_length, seq_length), diagonal=1)).bool()
+            1 - torch.triu(torch.ones(1, seq_length, seq_length), diagonal=1)).bool().to(self.device)
         tgt_mask = tgt_mask & nopeak_mask
         return src_mask, tgt_mask
 
     def forward(self, src, tgt, display_attn = False):
         '''
         Args:
-            src: The encoder input. Shape: `(batch_size, src_len)`
-            tgt: The decoder input. Shape: `(batch_size, tgt_len)`
+            src: The encoder input. Shape: `(batch_size, max_src_len)`
+            tgt: The decoder input. Shape: `(batch_size, max_tgt_len)`
             display_attn (bool): Tells whether we want to save the attention of
                                  the last layer encoder and decoder 
                                  multi-head attentions.
 
         Returns:
             output: The output of the Transformer model. 
-                    Shape: `(batch_size, tgt_len, tgt_vocab_size)`
+                    Shape: `(batch_size, max_tgt_len, tgt_vocab_size)`
         '''
         src_mask, tgt_mask = self.generate_mask(src, tgt)
         src_embedded = self.positional_encoding(self.encoder_embedding(src))

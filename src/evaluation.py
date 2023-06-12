@@ -1,6 +1,5 @@
 from datetime import datetime
 import matplotlib.pyplot as plt
-from numpy import arange
 
 def display_attention(input, output, attention, label, n_heads = 8, n_rows = 4, n_cols = 2):
     '''
@@ -58,26 +57,29 @@ def display_attention(input, output, attention, label, n_heads = 8, n_rows = 4, 
             ax.set_xticklabels(input, rotation=45)
             ax.set_yticklabels(output)
 
-    plt.savefig('results/' + label + "_" + str(datetime.now()) + '.png')
+    plt.savefig('../results/' + label + "_" + str(datetime.now()) + '.png')
 
 
-def create_loss_plot(epoch_loss):
+def create_loss_plot(train_epoch_loss, val_epoch_loss):
     '''
-    Plots the training loss.
+    Plots the training and validation loss.
 
     Args:
-        epoch_loss (list): The training loss for each epoch.
-                           Size: number of epochs.
+        train_epoch_loss (list): The training loss for each epoch.
+                                 Size: number of epochs.
+        val_epoch_loss (list): The validation loss for each epoch.
+                               Size: number of epochs.
     
     Source: https://machinelearningmastery.com/plotting-the-training-and-validation-loss-curves-for-the-transformer-model/
     '''
-    epochs = range(1, len(epoch_loss) + 1)
+    epochs = range(1, len(train_epoch_loss) + 1)
     
     # Plot and label the training loss values
-    plt.plot(epochs, epoch_loss, label='Training Loss')
+    plt.plot(epochs, train_epoch_loss, label='Training Loss')
+    plt.plot(epochs, val_epoch_loss, label='Validation Loss')
 
     # Add in a title and axes labels
-    plt.title('Training Loss')
+    plt.title('Training and Validation Loss')
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
 
@@ -88,4 +90,4 @@ def create_loss_plot(epoch_loss):
     # Add the legend of line in plot
     plt.legend(loc='best')
 
-    plt.savefig("results/" + "training_loss" + "_" + str(datetime.now()) + '.png')
+    plt.savefig("../results/" + "train_val_loss" + "_" + str(datetime.now()) + '.png')
