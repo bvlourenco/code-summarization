@@ -1,3 +1,6 @@
+from tqdm import tqdm
+
+
 class Vocabulary:
     '''
     Creates the word to index and index to token mapping. Numericalize the 
@@ -39,26 +42,30 @@ class Vocabulary:
 
         Args:
             text(string): The code snippet/summary to be tokenized
-        
+
         Returns:
             A list of tokens of the code snippet/summary
         '''
         return [tok.lower().strip() for tok in text.split(' ')]
 
-    def build_vocabulary(self, sentence_list):
+    def build_vocabulary(self, sentence_list, type):
         '''
         build the vocab: create a dictionary mapping of index to string (itos) and string to index (stoi)
         output ex. for stoi -> {'the':5, 'a':6, 'an':7}
 
         Args:
             sentence_list: List of code snippets/summaries
+            type (string): Indicates whether we are building the vocabulary
+                           for code snippets or for summaries.
+                           Can be one of the following: "code", "summary"
         '''
         # calculate the frequencies of each word first to remove the words with freq < freq_threshold
         frequencies = {}
         idx = 4  # index from which we want our dict to start. We already used 4 indexes for pad, start, end, unk
 
         # calculate freq of words
-        for sentence in sentence_list:
+        for sentence in tqdm(sentence_list, total=len(sentence_list), 
+                             desc="Building " + type + " word frequency"):
             for word in self.tokenizer(sentence):
                 if word not in frequencies.keys():
                     frequencies[word] = 1
@@ -75,28 +82,29 @@ class Vocabulary:
             sorted(frequencies.items(), key=lambda x: -x[1])[:self.max_size-idx])
 
         # create vocab
-        for word in frequencies.keys():
+        for word in tqdm(frequencies.keys(), total=len(frequencies), 
+                         desc="Building " + type + " vocabulary"):
             self.token_to_idx[word] = idx
             self.idx_to_token[idx] = word
             idx += 1
-    
+
     def numericalize(self, text):
         '''
         convert the list of words to a list of corresponding indexes
-        
+
         Args:
             text: The code snippet/summary text
-        
+
         Returns:
             A list with numbers, where each number is the corresponding token index
-        '''   
-        #tokenize text
+        '''
+        # tokenize text
         tokenized_text = self.tokenizer(text)
         numericalized_text = []
         for token in tokenized_text:
             if token in self.token_to_idx.keys():
                 numericalized_text.append(self.token_to_idx[token])
-            else: #out-of-vocab words are represented by UNK token index
+            else:  # out-of-vocab words are represented by UNK token index
                 numericalized_text.append(self.token_to_idx['<UNK>'])
-                
+
         return numericalized_text

@@ -1,9 +1,5 @@
-import os
 import torch
 from torch.utils.data import Dataset
-from tqdm import tqdm
-
-from dataset.vocabulary import Vocabulary
 
 
 class TrainDataset(Dataset):
@@ -13,42 +9,24 @@ class TrainDataset(Dataset):
     Source: https://towardsdatascience.com/custom-datasets-in-pytorch-part-2-text-machine-translation-71c41a3e994e
     '''
 
-    def __init__(self, code_filename, summary_filename, freq_threshold, src_vocabulary_size, tgt_vocabulary_size):
+    def __init__(self, source_code_texts, summary_texts, source_vocab, target_vocab):
         '''
         Args:
-            code_filename (string): The name of the file where the code snippets are
-            summary_filename (string): The name of the file where the summaries are
-            freq_threshold (int): the minimum times a word must occur in corpus to be treated in vocab
-            src_vocabulary_size: max source vocabulary size
-            tgt_vocabulary_size: max target vocabulary size
+            source_code_texts: A list with size of training set containing code snippets.
+            summary_texts: A list with the summaries of the training set.
+            source_vocab: The vocabulary built from the code snippets in training set.
+            target_vocab: The vocabulary built from the summaries in training set.
         '''
         super(TrainDataset, self).__init__()
 
-        if (not os.path.exists(code_filename)):
-            raise ValueError("code snippet filename does not exist")
-        
-        if (not os.path.exists(summary_filename)):
-            raise ValueError("summary filename does not exist")
-        
-        with open(code_filename) as code_file:
-            num_code_lines = sum(1 for _ in open(code_filename, 'r'))
-            self.source_code_texts = [line.strip() for line in tqdm(
-                code_file, total=num_code_lines, desc="Reading train code snippets")]
+        self.source_code_texts = source_code_texts
+        self.summary_texts = summary_texts
 
-        with open(summary_filename) as summary_file:
-            num_summary_lines = sum(1 for _ in open(summary_filename, 'r'))
-            self.summary_texts = [line.strip() for line in tqdm(
-                summary_file, total=num_summary_lines, desc="Reading train summaries")]
-        
-        assert num_code_lines == num_summary_lines
-        self.dataset_size = num_code_lines
+        assert len(source_code_texts) == len(summary_texts)
+        self.dataset_size = len(source_code_texts)
 
-        # Initialize source vocab object and build vocabulary
-        self.source_vocab = Vocabulary(freq_threshold, src_vocabulary_size)
-        self.source_vocab.build_vocabulary(self.source_code_texts)
-        # Initialize target vocab object and build vocabulary
-        self.target_vocab = Vocabulary(freq_threshold, tgt_vocabulary_size)
-        self.target_vocab.build_vocabulary(self.summary_texts)
+        self.source_vocab = source_vocab
+        self.target_vocab = target_vocab
 
     def __len__(self):
         '''
@@ -64,7 +42,7 @@ class TrainDataset(Dataset):
 
         Args:
             index (int): index of the example we want to numericalize
-        
+
         Returns:
             Two tensors with the source code and summary translated to numbers
         '''

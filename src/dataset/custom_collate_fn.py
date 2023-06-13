@@ -52,20 +52,12 @@ class MyCollate:
 
         # for each code snippet
         for (source_code, summary) in batch:
-            # add <bos> and <eos> indices before and after the sentence
-            # <bos> - begin of sentence; <eos> - end of sentence
-            # They indicate the beggining and end of source code/summary
-            source_code_temp = torch.cat(
-                [torch.tensor([self.bos_idx]), source_code, torch.tensor([self.eos_idx])], dim=0).to(self.device)
-            summary_temp = torch.cat(
-                [torch.tensor([self.bos_idx]), summary, torch.tensor([self.eos_idx])], dim=0).to(self.device)
-
             # add padding
             code_batch.append(
-                pad(source_code_temp, (0, self.max_seq_length - len(source_code_temp)), value=self.pad_idx))
+                pad(source_code, (0, self.max_seq_length - len(source_code)), value=self.pad_idx))
 
             # add padding
             summary_batch.append(
-                pad(summary_temp, (0, self.max_seq_length - len(summary_temp)), value=self.pad_idx))
+                pad(summary, (0, self.max_seq_length - len(summary)), value=self.pad_idx))
 
         return torch.stack(code_batch), torch.stack(summary_batch)
