@@ -205,3 +205,67 @@ class Model:
                     losses += loss.item()
 
         return losses / len(list(val_dataloader))
+
+    def save(self):
+        '''
+        Stores the model learned parameters (weights) in a file.
+        '''
+        try:
+            torch.save(self.model.state_dict(), '../results/model_weights.pth')
+        except Exception:
+            print("It was not possible to save the model weights. Continuing...")
+
+    def save_checkpoint(self, epoch, training_losses, validation_losses):
+        '''
+        Stores a checkpoint of the model, the optimizer state, current epoch and
+        training and validation losses from first epoch to current one.
+
+        Args:
+            epoch (int): Current epoch
+            training_losses: List of training losses
+            validation_losses: List of validation losses
+        '''
+        try:
+            params = {
+                'epoch': epoch,
+                'model_state_dict': self.model.state_dict(),
+                'optimizer_state_dict': self.optimizer.state_dict(),
+                'training_losses': training_losses,
+                'validation_losses': validation_losses
+            }
+            torch.save(params, '../results/model_weights_checkpoint.pth')
+        except Exception:
+            print("It was not possible to save a model checkpoint. Continuing...")
+
+    def load(self):
+        '''
+        Loads the model learned parameters from a saved file.
+        '''
+        try:
+            self.model.load_state_dict(torch.load('../results/model_weights.pth'))
+        except Exception:
+            print("It was not possible to load the model weights from the \
+                  specified filename. Continuing...")
+
+    def load_checkpoint(self):
+        '''
+        Loads the last model checkpoint.
+
+        Returns:
+            epoch (int): Epoch of the checkpoint
+            training_losses: List with the losses during training from first epoch
+                             to epoch of the checkpoint
+            validation_losses: List with the losses during validation from first epoch
+                               to epoch of the checkpoint
+        '''
+        try:
+            checkpoint = torch.load('../results/model_weights_checkpoint.pth')
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            training_losses = checkpoint['training_losses']
+            validation_losses = checkpoint['validation_losses']
+            epoch = checkpoint['epoch']
+            return epoch, training_losses, validation_losses
+        except Exception:
+            print("It was not possible to load the model from the \
+                   checkpoint. Continuing...")

@@ -1,6 +1,23 @@
 import argparse
 
 
+def str2bool(value):
+    '''
+    Parses a given value to a boolean. Used to parse booleans in argument parser.
+
+    Args:
+        value: The value to be parsed to a boolean.
+    '''
+    if isinstance(value, bool):
+        return value
+    if value.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif value.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 def parse_arguments():
     '''
     Parses the arguments given as input to the program.
@@ -55,5 +72,8 @@ def parse_arguments():
                         choices=['translation', 'loss'],
                         help="Tells if we want to compute only validation loss or \
                               validation loss and translation of the validation set")
+
+    parser.add_argument("--checkpoint", type=str2bool, required=True,
+                        help="Save model + optimizer state after each epoch")
 
     return parser.parse_args()

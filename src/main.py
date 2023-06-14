@@ -69,7 +69,8 @@ def main():
                          args.mode,
                          source_vocab,
                          target_vocab,
-                         args.max_seq_length)
+                         args.max_seq_length,
+                         args.checkpoint)
 
 
 if __name__ == '__main__':

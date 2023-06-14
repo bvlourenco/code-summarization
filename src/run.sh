@@ -27,4 +27,5 @@ CUDA_VISIBLE_DEVICES=$GPUS python3 main.py \
 --train_summary_filename ../data/train_summary.txt \
 --validation_code_filename ../data/validation_code.txt \
 --validation_summary_filename ../data/validation_summary.txt \
---mode loss
+--mode loss \
+--checkpoint True

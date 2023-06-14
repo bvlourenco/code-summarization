@@ -8,9 +8,8 @@
     --  For evaluation, check:
         https://github.com/DeepSoftwareAnalytics/CodeSumEvaluation
         https://arxiv.org/pdf/2107.07112.pdf
-    - Save and load model: https://pytorch.org/tutorials/beginner/basics/saveloadrun_tutorial.html
-    -- Only save model in a given epoch if metrics are better than previous epochs!!!
-    - Test the model with the testing set (after save/load model)
+    - Test the model with the testing set (after save/load model) --> TESTAR O LOAD DO MODEL
+    -- Secalhar fazer num novo ficheiro???
     - Training Transformer models in multiple GPUs: https://pytorch.org/tutorials/advanced/ddp_pipeline.html?highlight=transformer
     - Deploying Pytorch in python via a REST API with Flask: https://pytorch.org/tutorials/intermediate/flask_rest_api_tutorial.html?highlight=transformer
     - DO not load all dataset into a list (will get out of memory error with CodeSearchNet)

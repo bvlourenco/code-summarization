@@ -1,4 +1,5 @@
 import math
+import os
 from timeit import default_timer as timer
 from evaluation.graphs import create_loss_plot
 
@@ -12,7 +13,8 @@ def train_validate_model(model,
                          mode,
                          source_vocab,
                          target_vocab,
-                         max_seq_length):
+                         max_seq_length,
+                         checkpoint):
     '''
     Performs the model training. In each epoch, it is done an evaluation using the
     validation set. In the end, it plots a graph with the training and validation loss.
@@ -30,11 +32,23 @@ def train_validate_model(model,
         source_vocab: The vocabulary built from the code snippets in training set.
         target_vocab: The vocabulary built from the summaries in training set.
         max_seq_length (int): Maximum length of the source code and summary.
+        checkpoint (bool): Flag that tells whether we want to save a checkpoint of the model
+                           at the end of each epoch or not.
 
     Source: https://pytorch.org/tutorials/beginner/translation_transformer.html?highlight=transformer
     '''
-    train_epoch_loss, val_epoch_loss = [], []
-    for epoch in range(1, num_epochs + 1):
+    
+    # Load model checkpoint (loading model parameters and optimizer state) 
+    # if the checkpoint exists
+    if os.path.isfile('../results/model_weights_checkpoint.pth'):
+        start_epoch, train_epoch_loss, val_epoch_loss = model.load_checkpoint()
+        start_epoch += 1
+    else:
+        train_epoch_loss, val_epoch_loss = [], []
+        start_epoch = 1
+
+    best_val_loss = float('inf')
+    for epoch in range(start_epoch, num_epochs + 1):
         start_time = timer()
         train_loss = model.train_epoch(train_dataloader,
                                        tgt_vocab_size,
@@ -55,5 +69,12 @@ def train_validate_model(model,
 
         train_epoch_loss.append(train_loss)
         val_epoch_loss.append(val_loss)
+
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            model.save()
+
+        if checkpoint:
+            model.save_checkpoint(epoch, train_epoch_loss, val_epoch_loss)
 
     create_loss_plot(train_epoch_loss, val_epoch_loss)
