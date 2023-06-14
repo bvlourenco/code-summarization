@@ -1,11 +1,12 @@
-from dataset.domain.custom_collate_fn import MyCollate
+from dataset.domain.training_collate_fn import TrainCollate
+from dataset.domain.validation_collate_fn import ValidationCollate
 from dataset.load_dataset import load_dataset_file
 from dataset.domain.training_dataset import TrainDataset
 from dataset.domain.validation_dataset import ValidationDataset
 from torch.utils.data import DataLoader
 
 
-def get_dataloader(dataset, source_vocab, batch_size, num_workers, device, max_seq_length):
+def get_dataloader(dataset, source_vocab, batch_size, num_workers, device, max_seq_length, type):
     '''
     Get a dataloader given a dataset.
 
@@ -17,6 +18,9 @@ def get_dataloader(dataset, source_vocab, batch_size, num_workers, device, max_s
         num_workers (int): how many subprocesses to use for data loading.
         device: The device where the model and tensors are inserted (GPU or CPU).
         max_seq_length (int): Maximum length of the source code and summary.
+        type (string): Indicates whether we are loading the training set or the
+                       validation set.
+                       Can be one of the following: "train", "validation"
 
     Returns:
         A new dataloader.
@@ -27,13 +31,19 @@ def get_dataloader(dataset, source_vocab, batch_size, num_workers, device, max_s
     pad_idx = source_vocab.token_to_idx['<PAD>']
     bos_idx = source_vocab.token_to_idx['<BOS>']
     eos_idx = source_vocab.token_to_idx['<EOS>']
+
+    if type == 'train':
+        collate = TrainCollate(pad_idx, bos_idx, eos_idx, device, max_seq_length)
+    elif type == 'validation':
+        collate = ValidationCollate(pad_idx, bos_idx, eos_idx, device, max_seq_length)
+
     return DataLoader(dataset,
                       batch_size=batch_size,
                       num_workers=num_workers,
                       shuffle=True,
                       drop_last=True,
                       pin_memory=False,
-                      collate_fn=MyCollate(pad_idx, bos_idx, eos_idx, device, max_seq_length))
+                      collate_fn=collate)
 
 
 def create_dataloaders(source_code_texts,
@@ -77,7 +87,8 @@ def create_dataloaders(source_code_texts,
                                       batch_size,
                                       num_workers,
                                       device,
-                                      max_seq_length)
+                                      max_seq_length,
+                                      'train')
 
     # Loading the validation set
     val_code_texts, val_summary_texts = load_dataset_file(val_code_filename,
@@ -92,5 +103,6 @@ def create_dataloaders(source_code_texts,
                                     batch_size,
                                     num_workers,
                                     device,
-                                    max_seq_length)
+                                    max_seq_length,
+                                    'validation')
     return train_dataloader, val_dataloader

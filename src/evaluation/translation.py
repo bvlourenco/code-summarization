@@ -56,7 +56,9 @@ def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_seq_
     # Will be further expland to include the predicted tokens
     tgt = torch.ones(1, 1).fill_(start_symbol_idx).type(torch.long).to(device)
 
-    for _ in range(max_seq_length - 1):
+    # TODO: Add as argument in parse args
+    max_tgt_len = 50
+    for _ in range(max_tgt_len - 1):
         enc_output = enc_output.to(device)
 
         # Generate probabilities for the next token

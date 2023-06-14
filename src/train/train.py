@@ -11,7 +11,6 @@ def train_validate_model(model,
                          tgt_vocab_size,
                          gradient_clipping,
                          mode,
-                         source_vocab,
                          target_vocab,
                          max_seq_length,
                          checkpoint):
@@ -55,7 +54,6 @@ def train_validate_model(model,
                                        gradient_clipping)
         val_loss = model.evaluate(val_dataloader,
                                   mode,
-                                  source_vocab,
                                   target_vocab,
                                   tgt_vocab_size,
                                   max_seq_length)

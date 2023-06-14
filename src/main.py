@@ -67,7 +67,6 @@ def main():
                          args.tgt_vocab_size,
                          args.gradient_clipping,
                          args.mode,
-                         source_vocab,
                          target_vocab,
                          args.max_seq_length,
                          args.checkpoint)

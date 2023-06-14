@@ -4,7 +4,6 @@
     https://medium.com/@hunter-j-phillips/putting-it-all-together-the-implemented-transformer-bfb11ac1ddfe
 
     TODO: Check the following points:
-    - BLEU, METEOR and ROUGE-L
     --  For evaluation, check:
         https://github.com/DeepSoftwareAnalytics/CodeSumEvaluation
         https://arxiv.org/pdf/2107.07112.pdf

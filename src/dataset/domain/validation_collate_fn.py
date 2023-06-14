@@ -2,7 +2,7 @@ import torch
 from torch.nn.functional import pad
 
 
-class MyCollate:
+class ValidationCollate:
     '''
     Class to add padding to the batches.
     It also adds <BOS> to the beggining and <EOS> to the end of each example.
@@ -39,25 +39,33 @@ class MyCollate:
         Then if obj(batch) is called -> __call__ runs by default
 
         Args:
-            batch: Source Code - Summary pairs
+            batch: Contains source code, summaries, source code numericalized and
+                   summaries numericalized.
 
         Returns:
-            A Source Code Batch and a Summary Batch. 
+            A Source Code Batch, a Summary Batch, a source code batch numericalized
+            and a summary batch numericalized. 
             Shapes: `(batch_size, max_src_len)`
+                    `(batch_size, max_tgt_len)`
+                    `(batch_size, max_src_len)`
                     `(batch_size, max_tgt_len)`
 
         Source: https://medium.com/@hunter-j-phillips/putting-it-all-together-the-implemented-transformer-bfb11ac1ddfe
         '''
-        code_batch, summary_batch = [], []
+        code_batch, summary_batch, code_idxs_batch, summary_idxs_batch = [], [], [], []
 
         # for each code snippet
-        for (source_code, summary) in batch:
-            # add padding
-            code_batch.append(
-                pad(source_code, (0, self.max_seq_length - len(source_code)), value=self.pad_idx))
+        for (source_code, summary, code_idxs, summary_idxs) in batch:
+            code_batch.append(source_code)
+            summary_batch.append(summary)
 
             # add padding
-            summary_batch.append(
-                pad(summary, (0, self.max_seq_length - len(summary)), value=self.pad_idx))
+            code_idxs_batch.append(
+                pad(code_idxs, (0, self.max_seq_length - len(code_idxs)), value=self.pad_idx))
 
-        return torch.stack(code_batch), torch.stack(summary_batch)
+            # add padding
+            summary_idxs_batch.append(
+                pad(summary_idxs, (0, self.max_seq_length - len(summary_idxs)), value=self.pad_idx))
+
+        return code_batch, summary_batch, torch.stack(code_idxs_batch), \
+               torch.stack(summary_idxs_batch)

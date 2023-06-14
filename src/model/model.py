@@ -1,5 +1,8 @@
 from datetime import datetime
 import json
+from nltk.metrics.scores import precision, recall, f_measure
+from nltk.translate.bleu_score import sentence_bleu
+from nltk.translate.meteor_score import single_meteor_score
 import torch
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
@@ -7,6 +10,7 @@ import torch.optim as optim
 from tqdm import tqdm
 from evaluation.translation import greedy_decode, translate_tokens
 from model.transformer.transformer_model import Transformer
+from rouge_score import rouge_scorer
 
 
 class Model:
@@ -122,7 +126,6 @@ class Model:
     def evaluate(self,
                  val_dataloader,
                  mode,
-                 source_vocab,
                  target_vocab,
                  tgt_vocab_size,
                  max_seq_length):
@@ -135,7 +138,6 @@ class Model:
             mode (string): Indicates whether we only want to compute validation loss or if we also
                            want to translate the source sentences in the validation set.
                            Can be one of the following: "loss", "translation"
-            source_vocab: The vocabulary built from the code snippets in training set.
             target_vocab: The vocabulary built from the summaries in training set.
             tgt_vocab_size (int): size of the target vocabulary.
             max_seq_length (int): The maximum length of the summaries.
@@ -148,12 +150,15 @@ class Model:
         # Set the model to evaluation mode
         self.model.eval()
         losses = 0
+        
+        # Used to compute the ROUGE-L score
+        scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
 
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
             with open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.json', 'w') as log:
-                for src, tgt in tqdm(val_dataloader, desc="Validating"):
+                for code, summary, src, tgt in tqdm(val_dataloader, desc="Validating"):
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)
 
@@ -176,17 +181,38 @@ class Model:
                             # Passing the tensor to 1 dimension
                             tgt_preds_idx.flatten()
 
-                            # Translating the indexes of tokens to the textual representation of tokens
-                            # Replacing <BOS> and <EOS> with empty string
+                            # Translating the indexes of tokens to the textual
+                            # representation of tokens Replacing <BOS> and <EOS>
+                            # with empty string
                             tgt_pred_tokens = translate_tokens(tgt_preds_idx,
                                                                target_vocab)
 
+                            # Getting tokens of the reference and prediction to
+                            # compute METEOR
+                            reference = summary[i].split()
+                            prediction = tgt_pred_tokens.split()
+
+                            # Creating sets to compute traditional metrics:
+                            # precision, recall and F1 score (required by NLTK package)
+                            reference_set = set(reference)
+                            prediction_set = set(prediction)
+
                             example = {}
                             example["prediction"] = tgt_pred_tokens
-                            example["reference"] = translate_tokens(tgt[i],
-                                                                    target_vocab)
-                            example["code"] = translate_tokens(src[i],
-                                                               source_vocab)
+                            example["reference"] = summary[i]
+                            example["code"] = code[i]
+                            # Sentence BLEU requires a list(list(str)) for the references
+                            example["BLEU"] = sentence_bleu(
+                                [reference], prediction)
+                            example["METEOR"] = single_meteor_score(
+                                reference, prediction)
+                            example["ROUGE-L"] = scorer.score(summary[i], tgt_pred_tokens)
+                            example["Precision"] = precision(
+                                reference_set, prediction_set)
+                            example["Recall"] = recall(
+                                reference_set, prediction_set)
+                            example["F1"] = f_measure(
+                                reference_set, prediction_set)
 
                             log.write(json.dumps(example, indent=4) + ',\n')
 
@@ -242,7 +268,8 @@ class Model:
         Loads the model learned parameters from a saved file.
         '''
         try:
-            self.model.load_state_dict(torch.load('../results/model_weights.pth'))
+            self.model.load_state_dict(
+                torch.load('../results/model_weights.pth'))
         except Exception:
             print("It was not possible to load the model weights from the \
                   specified filename. Continuing...")

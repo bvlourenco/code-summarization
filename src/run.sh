@@ -21,11 +21,12 @@ CUDA_VISIBLE_DEVICES=$GPUS python3 main.py \
 --learning_rate 0.0001 \
 --batch_size 32 \
 --num_workers 0 \
---num_epochs 2 \
+--num_epochs 1 \
 --gradient_clipping 1 \
 --train_code_filename ../data/train_code.txt \
 --train_summary_filename ../data/train_summary.txt \
 --validation_code_filename ../data/validation_code.txt \
 --validation_summary_filename ../data/validation_summary.txt \
---mode loss \
---checkpoint True
+--mode translation \
+--checkpoint True \
+--debug_max_lines 32

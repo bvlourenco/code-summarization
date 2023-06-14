@@ -47,12 +47,12 @@ class ValidationDataset:
         target_text = self.summary_texts[index]
 
         # numericalize texts ['<BOS>','cat', 'in', 'a', 'bag','<EOS>'] -> [1,12,2,9,24,2]
-        numerialized_source = [self.source_vocab.token_to_idx["<BOS>"]]
-        numerialized_source += self.source_vocab.numericalize(source_text)
-        numerialized_source.append(self.source_vocab.token_to_idx["<EOS>"])
+        numericalized_source = [self.source_vocab.token_to_idx["<BOS>"]]
+        numericalized_source += self.source_vocab.numericalize(source_text)
+        numericalized_source.append(self.source_vocab.token_to_idx["<EOS>"])
 
-        numerialized_target = [self.target_vocab.token_to_idx["<BOS>"]]
-        numerialized_target += self.target_vocab.numericalize(target_text)
-        numerialized_target.append(self.target_vocab.token_to_idx["<EOS>"])
+        numericalized_target = [self.target_vocab.token_to_idx["<BOS>"]]
+        numericalized_target += self.target_vocab.numericalize(target_text)
+        numericalized_target.append(self.target_vocab.token_to_idx["<EOS>"])
 
-        return torch.tensor(numerialized_source), torch.tensor(numerialized_target)
+        return source_text, target_text, torch.tensor(numericalized_source), torch.tensor(numericalized_target)
