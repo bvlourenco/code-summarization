@@ -1,7 +1,8 @@
 from datetime import datetime
 import matplotlib.pyplot as plt
 
-def display_attention(input, output, attention, label, n_heads = 8, n_rows = 4, n_cols = 2):
+
+def display_attention(input, output, attention, label, n_heads=8, n_rows=4, n_cols=2):
     '''
     Display the attention matrix for each head of a sequence.
 
@@ -57,7 +58,7 @@ def display_attention(input, output, attention, label, n_heads = 8, n_rows = 4, 
             ax.set_xticklabels(input, rotation=45)
             ax.set_yticklabels(output)
 
-    plt.savefig('../results/' + label + "_" + str(datetime.now()) + '.png')
+    plt.savefig('../results/' + label + "_" + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.png')
 
 
 def create_loss_plot(train_epoch_loss, val_epoch_loss):
@@ -69,11 +70,11 @@ def create_loss_plot(train_epoch_loss, val_epoch_loss):
                                  Size: number of epochs.
         val_epoch_loss (list): The validation loss for each epoch.
                                Size: number of epochs.
-    
+
     Source: https://machinelearningmastery.com/plotting-the-training-and-validation-loss-curves-for-the-transformer-model/
     '''
     epochs = range(1, len(train_epoch_loss) + 1)
-    
+
     # Plot and label the training loss values
     plt.plot(epochs, train_epoch_loss, label='Training Loss')
     plt.plot(epochs, val_epoch_loss, label='Validation Loss')
@@ -90,4 +91,4 @@ def create_loss_plot(train_epoch_loss, val_epoch_loss):
     # Add the legend of line in plot
     plt.legend(loc='best')
 
-    plt.savefig("../results/" + "train_val_loss" + "_" + str(datetime.now()) + '.png')
+    plt.savefig("../results/" + "train_val_loss" + "_" + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.png')

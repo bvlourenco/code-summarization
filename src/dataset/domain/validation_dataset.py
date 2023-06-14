@@ -1,6 +1,4 @@
-import os
 import torch
-from tqdm import tqdm
 
 
 class ValidationDataset:
@@ -41,7 +39,7 @@ class ValidationDataset:
 
         Args:
             index (int): index of the example we want to numericalize
-        
+
         Returns:
             Two tensors with the source code and summary translated to numbers
         '''
@@ -56,5 +54,5 @@ class ValidationDataset:
         numerialized_target = [self.target_vocab.token_to_idx["<BOS>"]]
         numerialized_target += self.target_vocab.numericalize(target_text)
         numerialized_target.append(self.target_vocab.token_to_idx["<EOS>"])
-        
+
         return torch.tensor(numerialized_source), torch.tensor(numerialized_target)

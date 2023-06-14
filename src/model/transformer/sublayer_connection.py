@@ -1,7 +1,7 @@
 import torch.nn as nn
 
-from transformer.multi_head_attention import MultiHeadAttention
-from transformer.position_wise_feed_forward_network import PositionWiseFeedForward
+from model.transformer.multi_head_attention import MultiHeadAttention
+from model.transformer.position_wise_feed_forward_network import PositionWiseFeedForward
 
 
 class SublayerConnection(nn.Module):

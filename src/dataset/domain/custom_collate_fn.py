@@ -45,7 +45,7 @@ class MyCollate:
             A Source Code Batch and a Summary Batch. 
             Shapes: `(batch_size, max_src_len)`
                     `(batch_size, max_tgt_len)`
-        
+
         Source: https://medium.com/@hunter-j-phillips/putting-it-all-together-the-implemented-transformer-bfb11ac1ddfe
         '''
         code_batch, summary_batch = [], []

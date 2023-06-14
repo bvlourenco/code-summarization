@@ -50,8 +50,9 @@ class Vocabulary:
 
     def build_vocabulary(self, sentence_list, type):
         '''
-        build the vocab: create a dictionary mapping of index to string (itos) and string to index (stoi)
-        output ex. for stoi -> {'the':5, 'a':6, 'an':7}
+        build the vocab: create a dictionary mapping of index to string (idx_to_token) 
+        and string to index (token_to_idx)
+        output ex. for token_to_idx -> {'the':5, 'a':6, 'an':7}
 
         Args:
             sentence_list: List of code snippets/summaries
@@ -64,7 +65,7 @@ class Vocabulary:
         idx = 4  # index from which we want our dict to start. We already used 4 indexes for pad, start, end, unk
 
         # calculate freq of words
-        for sentence in tqdm(sentence_list, total=len(sentence_list), 
+        for sentence in tqdm(sentence_list, total=len(sentence_list),
                              desc="Building " + type + " word frequency"):
             for word in self.tokenizer(sentence):
                 if word not in frequencies.keys():
@@ -82,7 +83,7 @@ class Vocabulary:
             sorted(frequencies.items(), key=lambda x: -x[1])[:self.max_size-idx])
 
         # create vocab
-        for word in tqdm(frequencies.keys(), total=len(frequencies), 
+        for word in tqdm(frequencies.keys(), total=len(frequencies),
                          desc="Building " + type + " vocabulary"):
             self.token_to_idx[word] = idx
             self.idx_to_token[idx] = word
@@ -90,7 +91,7 @@ class Vocabulary:
 
     def numericalize(self, text):
         '''
-        convert the list of words to a list of corresponding indexes
+        Convert the list of words to a list of corresponding indexes.
 
         Args:
             text: The code snippet/summary text

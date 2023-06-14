@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
-from evaluation import display_attention
+from evaluation.graphs import display_attention
 
-from transformer.embeddings import Embeddings
-from transformer.positional_encoding import PositionalEncoding
-from transformer.encoder_layer import EncoderLayer
-from transformer.decoder_layer import DecoderLayer
+from model.transformer.embeddings import Embeddings
+from model.transformer.positional_encoding import PositionalEncoding
+from model.transformer.encoder_layer import EncoderLayer
+from model.transformer.decoder_layer import DecoderLayer
 
 
 class Transformer(nn.Module):
