@@ -163,58 +163,13 @@ class Model:
                     tgt = tgt.to(self.device)
 
                     if mode == 'translation':
-                        start_symbol_idx = target_vocab.token_to_idx['<BOS>']
-                        end_symbol_idx = target_vocab.token_to_idx['<EOS>']
-
-                        # Translating a batch of source sentences
-                        for i in range(src.shape[0]):
-                            # src[i] has shape (max_src_length, )
-                            # Performing an unsqueeze on src[i] will make its shape (1, max_src_length)
-                            # which is the correct shape since batch_size = 1 in this case
-                            tgt_preds_idx = greedy_decode(self.model,
-                                                          src[i].unsqueeze(0),
-                                                          self.device,
-                                                          start_symbol_idx,
-                                                          end_symbol_idx,
-                                                          max_seq_length)
-
-                            # Passing the tensor to 1 dimension
-                            tgt_preds_idx.flatten()
-
-                            # Translating the indexes of tokens to the textual
-                            # representation of tokens Replacing <BOS> and <EOS>
-                            # with empty string
-                            tgt_pred_tokens = translate_tokens(tgt_preds_idx,
-                                                               target_vocab)
-
-                            # Getting tokens of the reference and prediction to
-                            # compute METEOR
-                            reference = summary[i].split()
-                            prediction = tgt_pred_tokens.split()
-
-                            # Creating sets to compute traditional metrics:
-                            # precision, recall and F1 score (required by NLTK package)
-                            reference_set = set(reference)
-                            prediction_set = set(prediction)
-
-                            example = {}
-                            example["prediction"] = tgt_pred_tokens
-                            example["reference"] = summary[i]
-                            example["code"] = code[i]
-                            # Sentence BLEU requires a list(list(str)) for the references
-                            example["BLEU"] = sentence_bleu(
-                                [reference], prediction)
-                            example["METEOR"] = single_meteor_score(
-                                reference, prediction)
-                            example["ROUGE-L"] = scorer.score(summary[i], tgt_pred_tokens)
-                            example["Precision"] = precision(
-                                reference_set, prediction_set)
-                            example["Recall"] = recall(
-                                reference_set, prediction_set)
-                            example["F1"] = f_measure(
-                                reference_set, prediction_set)
-
-                            log.write(json.dumps(example, indent=4) + ',\n')
+                        self.translate_sentence(src, 
+                                                target_vocab, 
+                                                max_seq_length, 
+                                                code, 
+                                                summary, 
+                                                log, 
+                                                scorer)
 
                     # Slicing the last element of tgt_data because it is used to compute the
                     # loss.
@@ -231,6 +186,86 @@ class Model:
                     losses += loss.item()
 
         return losses / len(list(val_dataloader))
+    
+    def translate_sentence(self, 
+                           src, 
+                           target_vocab, 
+                           max_seq_length, 
+                           code, 
+                           summary, 
+                           log, 
+                           scorer):
+        '''
+        Produces the code comment given a code snippet step by step and evaluates
+        the generated comment against the reference summary.
+
+        Args:
+            src: code snippet numericalized
+            target_vocab: The vocabulary built from the summaries in training set.
+            max_seq_length (int): Maximum length of the generated summary.
+            code (string): code snippet in textual form.
+            summary (string): reference code comment.
+            log: file to write the evaluation metrics of the generated summaries.
+            scorer: A RougeScorer object to compute ROUGE-L.
+        '''
+        start_symbol_idx = target_vocab.token_to_idx['<BOS>']
+        end_symbol_idx = target_vocab.token_to_idx['<EOS>']
+
+        # Translating a batch of source sentences
+        for i in range(src.shape[0]):
+            # src[i] has shape (max_src_length, )
+            # Performing an unsqueeze on src[i] will make its shape (1, max_src_length)
+            # which is the correct shape since batch_size = 1 in this case
+            tgt_preds_idx = greedy_decode(self.model,
+                                          src[i].unsqueeze(0),
+                                          self.device,
+                                          start_symbol_idx,
+                                          end_symbol_idx,
+                                          max_seq_length)
+
+            # Passing the tensor to 1 dimension
+            tgt_preds_idx.flatten()
+
+            # Translating the indexes of tokens to the textual
+            # representation of tokens Replacing <BOS> and <EOS>
+            # with empty string
+            tgt_pred_tokens = translate_tokens(tgt_preds_idx, target_vocab)
+
+            # Getting tokens of the reference and prediction to
+            # compute METEOR
+            reference = summary[i].split()
+            prediction = tgt_pred_tokens.split()
+
+            # Creating sets to compute traditional metrics:
+            # precision, recall and F1 score (required by NLTK package)
+            reference_set = set(reference)
+            prediction_set = set(prediction)
+
+            example = {}
+            example["prediction"] = tgt_pred_tokens
+            example["reference"] = summary[i]
+            example["code"] = code[i]
+
+            precision_score = precision(reference_set, prediction_set)
+            if precision_score is None:
+                precision_score = 0.0
+            
+            f_score = f_measure(reference_set, prediction_set)
+            if f_score is None:
+                f_score = 0.0
+
+            # Sentence BLEU requires a list(list(str)) for the references
+            example["BLEU"] = sentence_bleu([reference], prediction)
+            example["METEOR"] = single_meteor_score(reference, prediction)
+            
+            # Getting the ROUGE-L F1-score (and ignoring the ROUGE-L Precision/Recall
+            # scores)
+            example["ROUGE-L"] = scorer.score(summary[i], tgt_pred_tokens)['rougeL'].fmeasure
+            example["Precision"] = precision_score
+            example["Recall"] = recall(reference_set, prediction_set)
+            example["F1"] = f_score
+
+            log.write(json.dumps(example, indent=4) + ',\n')
 
     def save(self):
         '''
