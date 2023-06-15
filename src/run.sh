@@ -35,8 +35,7 @@ function train_and_validate() {
     --validation_code_filename ../data/validation_code.txt \
     --validation_summary_filename ../data/validation_summary.txt \
     --mode translation \
-    --checkpoint True \
-    --debug_max_lines 32
+    --checkpoint True
 
 }
 
@@ -66,4 +65,4 @@ function test_model() {
 }
 
 train_and_validate
-test_model
+#test_model

@@ -11,6 +11,7 @@ from tqdm import tqdm
 from evaluation.translation import greedy_decode, translate_tokens
 from model.transformer.transformer_model import Transformer
 from rouge_score import rouge_scorer
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 
 class Model:
@@ -31,7 +32,8 @@ class Model:
                  dropout,
                  learning_rate,
                  pad_idx,
-                 device):
+                 device,
+                 gpu_rank):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -47,6 +49,7 @@ class Model:
             learning_rate (int): Value of the learning rate.
             pad_idx (int): index of the <PAD> token
             device: The device where the model and tensors are inserted (GPU or CPU).
+            gpu_rank (int): The rank of the GPU.
         '''
         self.model = Transformer(src_vocab_size,
                                  tgt_vocab_size,
@@ -61,6 +64,12 @@ class Model:
 
         # Passing the model and all its layers to GPU if available
         self.model = self.model.to(device)
+
+        # Used to run model in several GPUs
+        self.model = DDP(self.model,
+                         device_ids=[gpu_rank],
+                         output_device=gpu_rank,
+                         find_unused_parameters=True)
 
         # Function used to compute the loss. ignore_index is the padding token index
         self.criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
@@ -153,7 +162,7 @@ class Model:
         # Set the model to evaluation mode
         self.model.eval()
         losses = 0
-        
+
         # Used to compute the ROUGE-L score
         scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
 
@@ -166,12 +175,12 @@ class Model:
                     tgt = tgt.to(self.device)
 
                     if mode == 'translation':
-                        self.translate_sentence(src, 
-                                                target_vocab, 
-                                                max_tgt_length, 
-                                                code, 
-                                                summary, 
-                                                log, 
+                        self.translate_sentence(src,
+                                                target_vocab,
+                                                max_tgt_length,
+                                                code,
+                                                summary,
+                                                log,
                                                 scorer)
 
                     # Slicing the last element of tgt_data because it is used to compute the
@@ -189,7 +198,7 @@ class Model:
                     losses += loss.item()
 
         return losses / len(list(val_dataloader))
-    
+
     def test(self,
              test_dataloader,
              target_vocab,
@@ -216,21 +225,21 @@ class Model:
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)
 
-                    self.translate_sentence(src, 
-                                            target_vocab, 
-                                            max_tgt_length, 
-                                            code, 
-                                            summary, 
-                                            log, 
+                    self.translate_sentence(src,
+                                            target_vocab,
+                                            max_tgt_length,
+                                            code,
+                                            summary,
+                                            log,
                                             scorer)
-    
-    def translate_sentence(self, 
-                           src, 
-                           target_vocab, 
-                           max_tgt_length, 
-                           code, 
-                           summary, 
-                           log, 
+
+    def translate_sentence(self,
+                           src,
+                           target_vocab,
+                           max_tgt_length,
+                           code,
+                           summary,
+                           log,
                            scorer):
         '''
         Produces the code comment given a code snippet step by step and evaluates
@@ -286,7 +295,7 @@ class Model:
             precision_score = precision(reference_set, prediction_set)
             if precision_score is None:
                 precision_score = 0.0
-            
+
             f_score = f_measure(reference_set, prediction_set)
             if f_score is None:
                 f_score = 0.0
@@ -294,10 +303,11 @@ class Model:
             # Sentence BLEU requires a list(list(str)) for the references
             example["BLEU"] = sentence_bleu([reference], prediction)
             example["METEOR"] = single_meteor_score(reference, prediction)
-            
+
             # Getting the ROUGE-L F1-score (and ignoring the ROUGE-L Precision/Recall
             # scores)
-            example["ROUGE-L"] = scorer.score(summary[i], tgt_pred_tokens)['rougeL'].fmeasure
+            example["ROUGE-L"] = scorer.score(summary[i],
+                                              tgt_pred_tokens)['rougeL'].fmeasure
             example["Precision"] = precision_score
             example["Recall"] = recall(reference_set, prediction_set)
             example["F1"] = f_score

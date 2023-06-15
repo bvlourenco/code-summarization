@@ -4,7 +4,7 @@ from dataset.load_dataset import load_dataset_file
 from dataset.domain.training_dataset import TrainDataset
 from dataset.domain.evaluation_dataset import EvaluationDataset
 from torch.utils.data import DataLoader
-
+from torch.utils.data.distributed import DistributedSampler
 
 def get_dataloader(dataset, 
                    source_vocab, 
@@ -13,7 +13,9 @@ def get_dataloader(dataset,
                    device, 
                    max_src_length,
                    max_tgt_length, 
-                   type):
+                   type,
+                   world_size,
+                   gpu_rank):
     '''
     Get a dataloader given a dataset.
 
@@ -29,6 +31,8 @@ def get_dataloader(dataset,
         type (string): Indicates whether we are loading the training set or the
                        validation set.
                        Can be one of the following: "train", "validation" or "test"
+        world_size (int): The number of GPUs available in the machine.
+        gpu_rank (int): The rank of the GPU.
 
     Returns:
         A new dataloader.
@@ -42,50 +46,65 @@ def get_dataloader(dataset,
 
     if type == 'train':
         collate = TrainCollate(pad_idx, bos_idx, eos_idx,
-                               device, max_src_length, max_tgt_length)
+                               max_src_length, max_tgt_length)
     elif type in ['validation', 'test']:
         collate = EvaluationCollate(
-            pad_idx, bos_idx, eos_idx, device, max_src_length, max_tgt_length)
+            pad_idx, bos_idx, eos_idx, max_src_length, max_tgt_length)
+    
+    # A sampler tells the order in which the data from a dataset is accessed
+    # and distributed across different processes and threads.
+    sampler = DistributedSampler(dataset, 
+                                 num_replicas=world_size, 
+                                 rank=gpu_rank,
+                                 shuffle=False,
+                                 drop_last=False)
 
+    # shuffle is disabled because we are running the model in multiple GPUs, hence
+    # we want to split the data among the GPUs and avoid having repeated data on
+    # multiple GPUs
+    # A dataloader loads data samples in parallel from the dataset and applies 
+    # transformations on the fly (like inserting <BOS> and <EOS> at the beggining and
+    # end of sequences).
     return DataLoader(dataset,
                       batch_size=batch_size,
                       num_workers=num_workers,
-                      shuffle=True,
-                      drop_last=True,
+                      shuffle=False,
+                      drop_last=False,
                       pin_memory=False,
+                      sampler=sampler,
                       collate_fn=collate)
 
 
 def create_dataloaders(source_code_texts,
                        summary_texts,
+                       val_code_texts,
+                       val_summary_texts,
                        source_vocab,
                        target_vocab,
-                       val_code_filename,
-                       val_summary_filename,
                        batch_size,
                        num_workers,
                        device,
                        max_src_length,
                        max_tgt_length,
-                       debug_max_lines):
+                       world_size,
+                       gpu_rank):
     '''
     Creates a training and validation dataset and dataloaders.
 
     Args:
         source_code_texts: A list with size of training set containing code snippets.
         summary_texts: A list with the summaries of the training set.
+        val_code_texts: A list with size of validation set containing code snippets.
+        val_summary_texts: A list with size of validation set containing summaries.
         source_vocab: The vocabulary built from the code snippets in training set.
         target_vocab: The vocabulary built from the summaries in training set.
-        val_code_filename: The validation set filename with code snippets.
-        val_summary_filename: The validation set filename with summaries.
         batch_size (int): how many samples per batch to load
         num_workers (int):how many subprocesses to use for data loading.
         device: The device where the model and tensors are inserted (GPU or CPU).
         max_src_length (int): Maximum length of the source code.
         max_tgt_length (int): Maximum length of the summaries.
-        debug_max_lines (int): Represents the number of examples we want to read
-                               from the dataset. If we pass a non-positive value, 
-                               the whole dataset will be read.
+        world_size (int): The number of GPUs available in the machine.
+        gpu_rank (int): The rank of the GPU.
 
     Returns:
         The training and validation dataloaders (instances of Dataloader).
@@ -103,13 +122,9 @@ def create_dataloaders(source_code_texts,
                                       device,
                                       max_src_length,
                                       max_tgt_length,
-                                      'train')
-
-    # Loading the validation set
-    val_code_texts, val_summary_texts = load_dataset_file(val_code_filename,
-                                                          val_summary_filename,
-                                                          'validation',
-                                                          debug_max_lines)
+                                      'train',
+                                      world_size,
+                                      gpu_rank)
 
     val_dataloader = load_evaluation_dataloader(val_code_texts,
                                                 val_summary_texts,
@@ -119,7 +134,9 @@ def create_dataloaders(source_code_texts,
                                                 num_workers,
                                                 device,
                                                 max_src_length,
-                                                max_tgt_length)
+                                                max_tgt_length,
+                                                world_size,
+                                                gpu_rank)
     return train_dataloader, val_dataloader
 
 
@@ -131,7 +148,9 @@ def load_evaluation_dataloader(code_texts,
                                num_workers, 
                                device, 
                                max_src_length,
-                               max_tgt_length):
+                               max_tgt_length,
+                               world_size,
+                               gpu_rank):
     '''
     Creates a dataloader for the validation set or the testing set.
 
@@ -145,6 +164,8 @@ def load_evaluation_dataloader(code_texts,
         device: The device where the model and tensors are inserted (GPU or CPU).
         max_src_length (int): Maximum length of the source code.
         max_tgt_length (int): Maximum length of the summaries.
+        world_size (int): The number of GPUs available in the machine.
+        gpu_rank (int): The rank of the GPU.
         
     Returns:
         A new dataloader with the validation or testing set.
@@ -160,4 +181,6 @@ def load_evaluation_dataloader(code_texts,
                           device,
                           max_src_length,
                           max_tgt_length,
-                          'test')
+                          'test',
+                          world_size,
+                          gpu_rank)

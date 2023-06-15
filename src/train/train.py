@@ -49,7 +49,9 @@ def train_validate_model(model,
     best_val_loss = float('inf')
     for epoch in range(start_epoch, num_epochs + 1):
         print(f"Epoch: {epoch}")
-        
+        train_dataloader.sampler.set_epoch(epoch)
+        val_dataloader.sampler.set_epoch(epoch)
+
         start_time = timer()
         train_loss = model.train_epoch(train_dataloader,
                                        tgt_vocab_size,
