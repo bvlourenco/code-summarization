@@ -11,21 +11,21 @@ class PositionalEncoding(nn.Module):
             https://medium.com/@hunter-j-phillips/positional-encoding-7a93db4109e6
     '''
 
-    def __init__(self, d_model, max_seq_length, dropout):
+    def __init__(self, d_model, max_length, dropout):
         '''
         Args:
-            max_seq_length (int): maximum length of the input
+            max_length (int): maximum length of the input
             d_model (int): embedding size
             dropout (int): dropout probability (between 0 and 1).
         '''
         super(PositionalEncoding, self).__init__()
 
         # Positional encoding matrix
-        pe = torch.zeros(max_seq_length, d_model)
-        # Generates a sequence of values from 0 to max_seq_length - 1 and adds
-        # a new dimension. Tensor will have shape (max_seq_length, 1)
+        pe = torch.zeros(max_length, d_model)
+        # Generates a sequence of values from 0 to max_length - 1 and adds
+        # a new dimension. Tensor will have shape (max_length, 1)
         position = torch.arange(
-            0, max_seq_length, dtype=torch.float).unsqueeze(1)
+            0, max_length, dtype=torch.float).unsqueeze(1)
         # Creates a 1D tensor from 0 to d_model with a step size of 2.
         # Multiplies it by a step size to control the range and spacing of the
         # positional encodings.
@@ -43,7 +43,7 @@ class PositionalEncoding(nn.Module):
         # Selects odd columns of pe
         pe[:, 1::2] = torch.cos(position * div_term)
 
-        # pe gets the shape (1, max_seq_length, d_model) with the `unsqueeze`
+        # pe gets the shape (1, max_length, d_model) with the `unsqueeze`
         # `register_bufer` registers the tensor as a buffer in the class
         # instance.
         # It can be accessed later during the forward pass or other operations.

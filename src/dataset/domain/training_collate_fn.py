@@ -15,20 +15,22 @@ class TrainCollate:
     Source: https://towardsdatascience.com/custom-datasets-in-pytorch-part-2-text-machine-translation-71c41a3e994e
     '''
 
-    def __init__(self, pad_idx, bos_idx, eos_idx, device, max_seq_length):
+    def __init__(self, pad_idx, bos_idx, eos_idx, device, max_src_length, max_tgt_length):
         '''
         Args:
             pad_idx (int): index of the <PAD> token
             bos_idx (int): index of the <BOS> token
             eos_idx (int): index of the <EOS> token
             device: The device where the model and tensors are inserted (GPU or CPU).
-            max_seq_length (int): Maximum length of the source code and summary.
+            max_src_length (int): Maximum length of the source code.
+            max_tgt_length (int): Maximum length of the summaries.
         '''
         self.pad_idx = pad_idx
         self.bos_idx = bos_idx
         self.eos_idx = eos_idx
         self.device = device
-        self.max_seq_length = max_seq_length
+        self.max_src_length = max_src_length
+        self.max_tgt_length = max_tgt_length
 
     def __call__(self, batch):
         '''
@@ -54,10 +56,10 @@ class TrainCollate:
         for (source_code, summary) in batch:
             # add padding
             code_batch.append(
-                pad(source_code, (0, self.max_seq_length - len(source_code)), value=self.pad_idx))
+                pad(source_code, (0, self.max_src_length - len(source_code)), value=self.pad_idx))
 
             # add padding
             summary_batch.append(
-                pad(summary, (0, self.max_seq_length - len(summary)), value=self.pad_idx))
+                pad(summary, (0, self.max_tgt_length - len(summary)), value=self.pad_idx))
 
         return torch.stack(code_batch), torch.stack(summary_batch)

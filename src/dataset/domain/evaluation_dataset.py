@@ -1,9 +1,9 @@
 import torch
 
 
-class ValidationDataset:
+class EvaluationDataset:
     '''
-    Custom validation dataset used to load the dataset through a dataloader.
+    Custom validation/test dataset used to load the dataset through a dataloader.
 
     Source: https://towardsdatascience.com/custom-datasets-in-pytorch-part-2-text-machine-translation-71c41a3e994e
     '''

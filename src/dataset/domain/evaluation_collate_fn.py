@@ -2,7 +2,7 @@ import torch
 from torch.nn.functional import pad
 
 
-class ValidationCollate:
+class EvaluationCollate:
     '''
     Class to add padding to the batches.
     It also adds <BOS> to the beggining and <EOS> to the end of each example.
@@ -15,20 +15,22 @@ class ValidationCollate:
     Source: https://towardsdatascience.com/custom-datasets-in-pytorch-part-2-text-machine-translation-71c41a3e994e
     '''
 
-    def __init__(self, pad_idx, bos_idx, eos_idx, device, max_seq_length):
+    def __init__(self, pad_idx, bos_idx, eos_idx, device, max_src_length, max_tgt_length):
         '''
         Args:
             pad_idx (int): index of the <PAD> token
             bos_idx (int): index of the <BOS> token
             eos_idx (int): index of the <EOS> token
             device: The device where the model and tensors are inserted (GPU or CPU).
-            max_seq_length (int): Maximum length of the source code and summary.
+            max_src_length (int): Maximum length of the source code.
+            max_tgt_length (int): Maximum length of the summaries.
         '''
         self.pad_idx = pad_idx
         self.bos_idx = bos_idx
         self.eos_idx = eos_idx
         self.device = device
-        self.max_seq_length = max_seq_length
+        self.max_src_length = max_src_length
+        self.max_tgt_length = max_tgt_length
 
     def __call__(self, batch):
         '''
@@ -61,11 +63,11 @@ class ValidationCollate:
 
             # add padding
             code_idxs_batch.append(
-                pad(code_idxs, (0, self.max_seq_length - len(code_idxs)), value=self.pad_idx))
+                pad(code_idxs, (0, self.max_src_length - len(code_idxs)), value=self.pad_idx))
 
             # add padding
             summary_idxs_batch.append(
-                pad(summary_idxs, (0, self.max_seq_length - len(summary_idxs)), value=self.pad_idx))
+                pad(summary_idxs, (0, self.max_tgt_length - len(summary_idxs)), value=self.pad_idx))
 
         return code_batch, summary_batch, torch.stack(code_idxs_batch), \
-               torch.stack(summary_idxs_batch)
+            torch.stack(summary_idxs_batch)

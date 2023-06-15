@@ -45,7 +45,8 @@ def main():
                                                           args.batch_size,
                                                           args.num_workers,
                                                           device,
-                                                          args.max_seq_length,
+                                                          args.max_src_length,
+                                                          args.max_tgt_length,
                                                           args.debug_max_lines)
 
     model = Model(args.src_vocab_size,
@@ -54,7 +55,8 @@ def main():
                   args.num_heads,
                   args.num_layers,
                   args.d_ff,
-                  args.max_seq_length,
+                  args.max_src_length,
+                  args.max_tgt_length,
                   args.dropout,
                   args.learning_rate,
                   source_vocab.token_to_idx['<PAD>'],
@@ -68,7 +70,7 @@ def main():
                          args.gradient_clipping,
                          args.mode,
                          target_vocab,
-                         args.max_seq_length,
+                         args.max_tgt_length,
                          args.checkpoint)
 
 

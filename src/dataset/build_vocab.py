@@ -1,3 +1,6 @@
+import os
+import pickle
+import torch
 from dataset.domain.vocabulary import Vocabulary
 
 
@@ -24,4 +27,23 @@ def create_vocabulary(source_code_texts, summary_texts, freq_threshold, src_voca
     target_vocab = Vocabulary(freq_threshold, tgt_vocab_size)
     target_vocab.build_vocabulary(summary_texts, "summary")
 
+    pickle.dump(source_vocab, open('../results/src_vocab.pkl', 'wb'))
+    pickle.dump(target_vocab, open('../results/tgt_vocab.pkl', 'wb'))
+
     return source_vocab, target_vocab
+
+
+def load_vocab(src_filename, tgt_filename):
+    '''
+    Loads the source and target vocabulary from the given filename
+
+    Args:
+        src_filename: The name of file with the source vocabulary
+        tgt_filename: The name of file with the target vocabulary
+    '''
+    if os.path.isfile(src_filename) and os.path.isfile(tgt_filename):
+        return pickle.load(open('../results/src_vocab.pkl', 'rb')), \
+            pickle.load(open('../results/tgt_vocab.pkl', 'rb'))
+    else:
+        raise ValueError("Either " + src_filename + " or " +
+                         tgt_filename + " are not files")

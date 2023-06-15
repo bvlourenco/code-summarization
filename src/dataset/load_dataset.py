@@ -10,9 +10,9 @@ def load_dataset_file(code_filename, summary_filename, type, debug_max_lines):
     Args:
         code_filename (string): The filename of the file with code snippets.
         summary_filename (string): The filename of the file with summaries.
-        type (string): Indicates whether we are loading the training set or the
-                       validation set from the files.
-                       Can be one of the following: "train", "validation"
+        type (string): Indicates whether we are loading the training set, the
+                       validation set or the testing set from the files.
+                       Can be one of the following: "train", "validation", "test"
         debug_max_lines (int): Represents the number of examples we want to read
                                from the dataset. If we pass a non-positive value, 
                                the whole dataset will be read.

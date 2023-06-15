@@ -1,26 +1,34 @@
 from dataset.domain.training_collate_fn import TrainCollate
-from dataset.domain.validation_collate_fn import ValidationCollate
+from dataset.domain.evaluation_collate_fn import EvaluationCollate
 from dataset.load_dataset import load_dataset_file
 from dataset.domain.training_dataset import TrainDataset
-from dataset.domain.validation_dataset import ValidationDataset
+from dataset.domain.evaluation_dataset import EvaluationDataset
 from torch.utils.data import DataLoader
 
 
-def get_dataloader(dataset, source_vocab, batch_size, num_workers, device, max_seq_length, type):
+def get_dataloader(dataset, 
+                   source_vocab, 
+                   batch_size, 
+                   num_workers, 
+                   device, 
+                   max_src_length,
+                   max_tgt_length, 
+                   type):
     '''
     Get a dataloader given a dataset.
 
     Args:
         dataset: The dataset from which we will build the dataloader.
-                 Instance of TrainDataset or ValidationDataset.
+                 Instance of TrainDataset or EvaluationDataset.
         source_vocab: The vocabulary built from the code snippets in training set.
         batch_size (int): how many samples per batch to load
         num_workers (int): how many subprocesses to use for data loading.
         device: The device where the model and tensors are inserted (GPU or CPU).
-        max_seq_length (int): Maximum length of the source code and summary.
+        max_src_length (int): Maximum length of the source code.
+        max_tgt_length (int): Maximum length of the summaries.
         type (string): Indicates whether we are loading the training set or the
                        validation set.
-                       Can be one of the following: "train", "validation"
+                       Can be one of the following: "train", "validation" or "test"
 
     Returns:
         A new dataloader.
@@ -33,9 +41,11 @@ def get_dataloader(dataset, source_vocab, batch_size, num_workers, device, max_s
     eos_idx = source_vocab.token_to_idx['<EOS>']
 
     if type == 'train':
-        collate = TrainCollate(pad_idx, bos_idx, eos_idx, device, max_seq_length)
-    elif type == 'validation':
-        collate = ValidationCollate(pad_idx, bos_idx, eos_idx, device, max_seq_length)
+        collate = TrainCollate(pad_idx, bos_idx, eos_idx,
+                               device, max_src_length, max_tgt_length)
+    elif type in ['validation', 'test']:
+        collate = EvaluationCollate(
+            pad_idx, bos_idx, eos_idx, device, max_src_length, max_tgt_length)
 
     return DataLoader(dataset,
                       batch_size=batch_size,
@@ -55,7 +65,8 @@ def create_dataloaders(source_code_texts,
                        batch_size,
                        num_workers,
                        device,
-                       max_seq_length,
+                       max_src_length,
+                       max_tgt_length,
                        debug_max_lines):
     '''
     Creates a training and validation dataset and dataloaders.
@@ -70,7 +81,8 @@ def create_dataloaders(source_code_texts,
         batch_size (int): how many samples per batch to load
         num_workers (int):how many subprocesses to use for data loading.
         device: The device where the model and tensors are inserted (GPU or CPU).
-        max_seq_length (int): Maximum length of the source code and summary.
+        max_src_length (int): Maximum length of the source code.
+        max_tgt_length (int): Maximum length of the summaries.
         debug_max_lines (int): Represents the number of examples we want to read
                                from the dataset. If we pass a non-positive value, 
                                the whole dataset will be read.
@@ -80,14 +92,17 @@ def create_dataloaders(source_code_texts,
 
     Source: https://towardsdatascience.com/custom-datasets-in-pytorch-part-2-text-machine-translation-71c41a3e994e
     '''
-    train_dataset = TrainDataset(
-        source_code_texts, summary_texts, source_vocab, target_vocab)
+    train_dataset = TrainDataset(source_code_texts, 
+                                 summary_texts, 
+                                 source_vocab, 
+                                 target_vocab)
     train_dataloader = get_dataloader(train_dataset,
                                       source_vocab,
                                       batch_size,
                                       num_workers,
                                       device,
-                                      max_seq_length,
+                                      max_src_length,
+                                      max_tgt_length,
                                       'train')
 
     # Loading the validation set
@@ -96,13 +111,53 @@ def create_dataloaders(source_code_texts,
                                                           'validation',
                                                           debug_max_lines)
 
-    validation_dataset = ValidationDataset(
-        val_code_texts, val_summary_texts, source_vocab, target_vocab)
-    val_dataloader = get_dataloader(validation_dataset,
-                                    source_vocab,
-                                    batch_size,
-                                    num_workers,
-                                    device,
-                                    max_seq_length,
-                                    'validation')
+    val_dataloader = load_evaluation_dataloader(val_code_texts,
+                                                val_summary_texts,
+                                                source_vocab,
+                                                target_vocab,
+                                                batch_size,
+                                                num_workers,
+                                                device,
+                                                max_src_length,
+                                                max_tgt_length)
     return train_dataloader, val_dataloader
+
+
+def load_evaluation_dataloader(code_texts, 
+                               summary_texts, 
+                               source_vocab, 
+                               target_vocab, 
+                               batch_size, 
+                               num_workers, 
+                               device, 
+                               max_src_length,
+                               max_tgt_length):
+    '''
+    Creates a dataloader for the validation set or the testing set.
+
+    Args:
+        source_code_texts: A list with size of validation/testing set containing code snippets.
+        summary_texts: A list with the summaries of the validation/testing  set.
+        source_vocab: The vocabulary built from the code snippets in training set.
+        target_vocab: The vocabulary built from the summaries in training set.
+        batch_size (int): how many samples per batch to load
+        num_workers (int):how many subprocesses to use for data loading.
+        device: The device where the model and tensors are inserted (GPU or CPU).
+        max_src_length (int): Maximum length of the source code.
+        max_tgt_length (int): Maximum length of the summaries.
+        
+    Returns:
+        A new dataloader with the validation or testing set.
+    '''
+    evaluation_dataset = EvaluationDataset(code_texts,
+                                           summary_texts,
+                                           source_vocab,
+                                           target_vocab)
+    return get_dataloader(evaluation_dataset,
+                          source_vocab,
+                          batch_size,
+                          num_workers,
+                          device,
+                          max_src_length,
+                          max_tgt_length,
+                          'test')

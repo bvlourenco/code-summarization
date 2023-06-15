@@ -30,7 +30,7 @@ def translate_tokens(tokens_idx, vocabulary):
     return translation.strip()
 
 
-def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_seq_length):
+def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_len):
     '''
     Creates a code comment given a code snippet using the greedy decoding
     strategy (where we generate one token at a time by greedily selecting the
@@ -42,7 +42,7 @@ def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_seq_
         device: The device where the model and tensors are inserted (GPU or CPU). 
         start_symbol_idx: The vocabulary start symbol index (<BOS> index)
         end_symbol_idx: The vocabulary end symbol index (<EOS> index)
-        max_seq_length (int): Maximum length of the summary.
+        max_tgt_len (int): Maximum length of the summary.
 
     Returns:
         tgt: The predicted code comment token indexes. Shape: `(1, tgt_length)`
@@ -56,8 +56,6 @@ def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_seq_
     # Will be further expland to include the predicted tokens
     tgt = torch.ones(1, 1).fill_(start_symbol_idx).type(torch.long).to(device)
 
-    # TODO: Add as argument in parse args
-    max_tgt_len = 50
     for _ in range(max_tgt_len - 1):
         enc_output = enc_output.to(device)
 

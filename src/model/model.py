@@ -26,7 +26,8 @@ class Model:
                  num_heads,
                  num_layers,
                  d_ff,
-                 max_seq_length,
+                 max_src_length,
+                 max_tgt_length,
                  dropout,
                  learning_rate,
                  pad_idx,
@@ -40,7 +41,8 @@ class Model:
             num_layers (int): number of encoder and decoder layers.
             d_ff (int): the hidden layer size of the second-layer of the Feed
                         Forward Network (in encoder and decoder).
-            max_seq_length (int): maximum length of the input.
+            max_src_length (int): maximum length of the source code.
+            max_tgt_length (int): maximum length of the summaries.
             dropout (int): dropout probability (between 0 and 1).
             learning_rate (int): Value of the learning rate.
             pad_idx (int): index of the <PAD> token
@@ -52,7 +54,8 @@ class Model:
                                  num_heads,
                                  num_layers,
                                  d_ff,
-                                 max_seq_length,
+                                 max_src_length,
+                                 max_tgt_length,
                                  dropout,
                                  device)
 
@@ -123,12 +126,12 @@ class Model:
 
         return losses / len(list(train_dataloader))
 
-    def evaluate(self,
+    def validate(self,
                  val_dataloader,
                  mode,
                  target_vocab,
                  tgt_vocab_size,
-                 max_seq_length):
+                 max_tgt_length):
         '''
         Validates the model after a training epoch to see how well he generalizes. 
         Does not update the weights of the model.
@@ -140,7 +143,7 @@ class Model:
                            Can be one of the following: "loss", "translation"
             target_vocab: The vocabulary built from the summaries in training set.
             tgt_vocab_size (int): size of the target vocabulary.
-            max_seq_length (int): The maximum length of the summaries.
+            max_tgt_length (int): The maximum length of the summaries.
 
         Returns:
             The average loss across all examples during one epoch.
@@ -165,7 +168,7 @@ class Model:
                     if mode == 'translation':
                         self.translate_sentence(src, 
                                                 target_vocab, 
-                                                max_seq_length, 
+                                                max_tgt_length, 
                                                 code, 
                                                 summary, 
                                                 log, 
@@ -187,10 +190,44 @@ class Model:
 
         return losses / len(list(val_dataloader))
     
+    def test(self,
+             test_dataloader,
+             target_vocab,
+             max_tgt_length):
+        '''
+        Tests the model with the testing set.
+
+        Args:
+            test_dataloader: A Dataloader object that contains the testing set.
+            target_vocab: The vocabulary built from the summaries in training set.
+            max_tgt_length (int): The maximum length of the summaries.
+        '''
+        # Set the model to evaluation mode
+        self.model.eval()
+
+        # Used to compute the ROUGE-L score
+        scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
+
+        # evaluate without updating gradients
+        # Tells pytorch to not calculate the gradients
+        with torch.no_grad():
+            with open('../results/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.json', 'w') as log:
+                for code, summary, src, tgt in tqdm(test_dataloader, desc="Testing"):
+                    src = src.to(self.device)
+                    tgt = tgt.to(self.device)
+
+                    self.translate_sentence(src, 
+                                            target_vocab, 
+                                            max_tgt_length, 
+                                            code, 
+                                            summary, 
+                                            log, 
+                                            scorer)
+    
     def translate_sentence(self, 
                            src, 
                            target_vocab, 
-                           max_seq_length, 
+                           max_tgt_length, 
                            code, 
                            summary, 
                            log, 
@@ -202,7 +239,7 @@ class Model:
         Args:
             src: code snippet numericalized
             target_vocab: The vocabulary built from the summaries in training set.
-            max_seq_length (int): Maximum length of the generated summary.
+            max_tgt_length (int): Maximum length of the generated summary.
             code (string): code snippet in textual form.
             summary (string): reference code comment.
             log: file to write the evaluation metrics of the generated summaries.
@@ -221,7 +258,7 @@ class Model:
                                           self.device,
                                           start_symbol_idx,
                                           end_symbol_idx,
-                                          max_seq_length)
+                                          max_tgt_length)
 
             # Passing the tensor to 1 dimension
             tgt_preds_idx.flatten()

@@ -12,7 +12,7 @@ def train_validate_model(model,
                          gradient_clipping,
                          mode,
                          target_vocab,
-                         max_seq_length,
+                         max_tgt_length,
                          checkpoint):
     '''
     Performs the model training. In each epoch, it is done an evaluation using the
@@ -30,7 +30,7 @@ def train_validate_model(model,
                        Can be one of the following: "loss", "translation"
         source_vocab: The vocabulary built from the code snippets in training set.
         target_vocab: The vocabulary built from the summaries in training set.
-        max_seq_length (int): Maximum length of the source code and summary.
+        max_tgt_length (int): Maximum length of the generated summaries.
         checkpoint (bool): Flag that tells whether we want to save a checkpoint of the model
                            at the end of each epoch or not.
 
@@ -48,15 +48,17 @@ def train_validate_model(model,
 
     best_val_loss = float('inf')
     for epoch in range(start_epoch, num_epochs + 1):
+        print(f"Epoch: {epoch}")
+        
         start_time = timer()
         train_loss = model.train_epoch(train_dataloader,
                                        tgt_vocab_size,
                                        gradient_clipping)
-        val_loss = model.evaluate(val_dataloader,
+        val_loss = model.validate(val_dataloader,
                                   mode,
                                   target_vocab,
                                   tgt_vocab_size,
-                                  max_seq_length)
+                                  max_tgt_length)
         end_time = timer()
 
         print(f"Epoch: {epoch} | Time = {(end_time - start_time):.3f}s")

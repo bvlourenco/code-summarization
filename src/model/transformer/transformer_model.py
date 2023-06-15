@@ -16,7 +16,17 @@ class Transformer(nn.Module):
             https://nlp.seas.harvard.edu/annotated-transformer/
     '''
 
-    def __init__(self, src_vocab_size, tgt_vocab_size, d_model, num_heads, num_layers, d_ff, max_seq_length, dropout, device):
+    def __init__(self,
+                 src_vocab_size,
+                 tgt_vocab_size,
+                 d_model,
+                 num_heads,
+                 num_layers,
+                 d_ff,
+                 max_src_length,
+                 max_tgt_length,
+                 dropout,
+                 device):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -26,7 +36,8 @@ class Transformer(nn.Module):
             num_layers (int): number of encoder and decoder layers.
             d_ff (int): the hidden layer size of the second-layer of the Feed
                         Forward Network (in encoder and decoder).
-            max_seq_length (int): maximum length of the input.
+            max_src_length (int): maximum length of the source code.
+            max_tgt_length (int): maximum length of the summaries.
             dropout (int): dropout probability (between 0 and 1).
             device: The device where the model and tensors are inserted (GPU or CPU).
 
@@ -37,8 +48,10 @@ class Transformer(nn.Module):
         super(Transformer, self).__init__()
         self.encoder_embedding = Embeddings(src_vocab_size, d_model)
         self.decoder_embedding = Embeddings(tgt_vocab_size, d_model)
-        self.positional_encoding = PositionalEncoding(
-            d_model, max_seq_length, dropout)
+        self.encoder_positional_encoding = PositionalEncoding(
+            d_model, max_src_length, dropout)
+        self.decoder_positional_encoding = PositionalEncoding(
+            d_model, max_tgt_length, dropout)
 
         self.encoder_layers = nn.ModuleList(
             [EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
@@ -122,7 +135,7 @@ class Transformer(nn.Module):
         tgt_mask = tgt_mask & nopeak_mask
         return tgt_mask
 
-    def encode(self, src, src_mask, display_attn = False):
+    def encode(self, src, src_mask, display_attn=False):
         '''
         Encodes the input and returns the result of the last encoder layer.
 
@@ -132,12 +145,12 @@ class Transformer(nn.Module):
                       Shape: `(batch_size, 1, 1, src_len)`
             display_attn (bool): Tells whether we want to save the attention of
                                  the last layer encoder multi-head attention.
-        
+
         Returns:
             The resulting encoding from the last layer. 
             Shape: `(batch_size, max_src_len, d_model)`
         '''
-        src_embedded = self.positional_encoding(self.encoder_embedding(src))
+        src_embedded = self.encoder_positional_encoding(self.encoder_embedding(src))
         enc_output = src_embedded
         for enc_layer in self.encoder_layers:
             enc_output, enc_attn_score = enc_layer(enc_output, src_mask)
@@ -149,10 +162,10 @@ class Transformer(nn.Module):
             # example passed as input
             display_attention(
                 src[0], src[0], enc_attn_score[0], "encoder_self_attn")
-        
+
         return enc_output
-    
-    def decode(self, src, src_mask, tgt, tgt_mask, enc_output, display_attn = False):
+
+    def decode(self, src, src_mask, tgt, tgt_mask, enc_output, display_attn=False):
         '''
         Decodes the input and returns the result of the last decoder layer.
 
@@ -174,7 +187,7 @@ class Transformer(nn.Module):
             The resulting decoding from the last layer. 
             Shape: `(batch_size, tgt_seq_length, d_model)`
         '''
-        tgt_embedded = self.positional_encoding(self.decoder_embedding(tgt))
+        tgt_embedded = self.decoder_positional_encoding(self.decoder_embedding(tgt))
 
         dec_output = tgt_embedded
         for dec_layer in self.decoder_layers:
@@ -190,10 +203,10 @@ class Transformer(nn.Module):
                 tgt[0], tgt[0], dec_self_attn_score[0], "decoder_self_attn")
             display_attention(
                 src[0], tgt[0], dec_cross_attn_score[0], "decoder_cross_attn")
-        
+
         return dec_output
 
-    def forward(self, src, tgt, display_attn = False):
+    def forward(self, src, tgt, display_attn=False):
         '''
         Args:
             src: The encoder input. Shape: `(batch_size, max_src_len)`
@@ -211,7 +224,8 @@ class Transformer(nn.Module):
 
         enc_output = self.encode(src, src_mask, display_attn)
 
-        dec_output = self.decode(src, src_mask, tgt, tgt_mask, enc_output, display_attn)
+        dec_output = self.decode(
+            src, src_mask, tgt, tgt_mask, enc_output, display_attn)
 
         output = self.fc(dec_output)
         return output
