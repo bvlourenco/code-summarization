@@ -61,14 +61,14 @@ def parse_arguments():
     parser.add_argument('--gradient_clipping', type=int, required=True,
                         help='Value of maximum norm of the gradients')
 
-    parser.add_argument('--train_code_filename', type=str, required=True,
-                        help="Filename of the training set with code snippets")
-    parser.add_argument('--train_summary_filename', type=str, required=True,
-                        help="Filename of the training set with summaries")
-    parser.add_argument('--validation_code_filename', type=str, required=True,
-                        help="Filename of the validation set with code snippets")
-    parser.add_argument('--validation_summary_filename', type=str, required=True,
-                        help="Filename of the validation set with summaries")
+    parser.add_argument('--train_filename', type=str, required=True,
+                        help="Filename of the training set. Each line is a \
+                              JSON object with structure: \
+                              {original_string: code, docstring: summary}")
+    parser.add_argument('--validation_filename', type=str, required=True,
+                        help="Filename of the training set. Each line is a \
+                              JSON object with structure: \
+                              {original_string: code, docstring: summary}")
 
     parser.add_argument('--mode', type=str, required=True,
                         choices=['translation', 'loss'],
@@ -80,6 +80,7 @@ def parse_arguments():
 
     return parser.parse_args()
 
+
 def parse_test_args():
     '''
     Parses the arguments given as input to the test program.
@@ -87,7 +88,7 @@ def parse_test_args():
     parser = argparse.ArgumentParser(
         'Testing a code summarization model created previously',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    
+
     parser.add_argument('--src_vocab_size', type=int, required=True,
                         help='Maximum allowed length for the code snippets dictionary')
     parser.add_argument('--tgt_vocab_size', type=int, required=True,
@@ -99,11 +100,11 @@ def parse_test_args():
     parser.add_argument('--debug_max_lines', type=int, default=-1,
                         help='number of examples we want to read from the dataset. Used for debug.')
 
-    parser.add_argument('--test_code_filename', type=str, required=True,
-                        help="Filename of the testing set with code snippets")
-    parser.add_argument('--test_summary_filename', type=str, required=True,
-                        help="Filename of the testing set with summaries")
-    
+    parser.add_argument('--test_filename', type=str, required=True,
+                        help="Filename of the training set. Each line is a \
+                              JSON object with structure: \
+                              {original_string: code, docstring: summary}")
+
     parser.add_argument('--d_model', type=int, required=True,
                         help='Dimensionality of the model')
     parser.add_argument('--num_heads', type=int, required=True,

@@ -12,8 +12,7 @@ def main():
     torch.manual_seed(0)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    test_code_texts, test_summary_texts = load_dataset_file(args.test_code_filename,
-                                                            args.test_summary_filename,
+    test_code_texts, test_summary_texts = load_dataset_file(args.test_filename,
                                                             'test',
                                                             args.debug_max_lines)
 

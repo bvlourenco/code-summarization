@@ -115,13 +115,11 @@ def main():
     n_gpus = torch.cuda.device_count()
     world_size = n_gpus
 
-    train_code_texts, train_summary_texts = load_dataset_file(args.train_code_filename,
-                                                              args.train_summary_filename,
+    train_code_texts, train_summary_texts = load_dataset_file(args.train_filename,
                                                               'train',
                                                               args.debug_max_lines)
 
-    val_code_texts, val_summary_texts = load_dataset_file(args.validation_code_filename,
-                                                          args.validation_summary_filename,
+    val_code_texts, val_summary_texts = load_dataset_file(args.validation_filename,
                                                           'validation',
                                                           args.debug_max_lines)
 

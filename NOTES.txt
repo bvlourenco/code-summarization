@@ -4,14 +4,15 @@
     https://medium.com/@hunter-j-phillips/putting-it-all-together-the-implemented-transformer-bfb11ac1ddfe
 
     TODO: Check the following points:
-    --  For evaluation, check:
+    - (IN PROGRESS) Training Transformer models in multiple GPUs: https://pytorch.org/tutorials/advanced/ddp_pipeline.html?highlight=transformer
+    
+    - DO not load all dataset into a list (will get out of memory error with CodeSearchNet)
+
+    -- (LATER) For evaluation, check:
         https://github.com/DeepSoftwareAnalytics/CodeSumEvaluation
         https://arxiv.org/pdf/2107.07112.pdf
-    - Training Transformer models in multiple GPUs: https://pytorch.org/tutorials/advanced/ddp_pipeline.html?highlight=transformer
-    - Deploying Pytorch in python via a REST API with Flask: https://pytorch.org/tutorials/intermediate/flask_rest_api_tutorial.html?highlight=transformer
-    - DO not load all dataset into a list (will get out of memory error with CodeSearchNet)
-    - Adapt the code to receive datasets in the form of the CodeSearchNet
     
+    AFTER BASELINE IS DONE:
     - Check learning rate scheduler
     - Experimentar técnicas diferentes de tokenization (Word, Subword, and Character-Based Tokenization)
     --  Check tokenization techniques 
@@ -26,6 +27,9 @@
     - Aplicar as alterações que proponho no paper
     - Check Kaiming initialization
         https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
+    
+
+    - (LATER) Deploying Pytorch in python via a REST API with Flask: https://pytorch.org/tutorials/intermediate/flask_rest_api_tutorial.html?highlight=transformer
     
     General tutorial with Transformer model, training, evaluation and inference:
     https://pytorch.org/tutorials/beginner/translation_transformer.html?highlight=transformer

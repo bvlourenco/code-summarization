@@ -30,10 +30,8 @@ function train_and_validate() {
     --num_workers 0 \
     --num_epochs 1 \
     --gradient_clipping 1 \
-    --train_code_filename ../data/train_code.txt \
-    --train_summary_filename ../data/train_summary.txt \
-    --validation_code_filename ../data/validation_code.txt \
-    --validation_summary_filename ../data/validation_summary.txt \
+    --train_filename ../data/python/train_processed.json \
+    --validation_filename ../data/python/validation_processed.json \
     --mode translation \
     --checkpoint True
 
@@ -58,8 +56,7 @@ function test_model() {
     --learning_rate 0.0001 \
     --batch_size 32 \
     --num_workers 0 \
-    --test_code_filename ../data/test_code.txt \
-    --test_summary_filename ../data/test_summary.txt \
+    --test_filename ../data/python/test_processed.json \
     --debug_max_lines 32
 
 }
