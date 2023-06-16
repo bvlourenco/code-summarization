@@ -62,7 +62,10 @@ def main():
         code_snippet_file = open(args.code_snippet_file, 'r')
         summary_file = open(args.summary_file, 'r')
 
-        num_lines = sum(1 for _ in open(args.code_snippet_file, 'r'))
+        num_lines = sum(1 for _ in open(code_snippet_file, 'r'))
+
+        # Reset the file pointer to the beggining
+        code_snippet_file.seek(0)
 
         for _ in tqdm(range(num_lines), desc="Reading python code snippets and summaries"):
             code_snippet = code_snippet_file.readline()

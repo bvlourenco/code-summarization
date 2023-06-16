@@ -2,22 +2,25 @@ import torch
 from torch.utils.data import Dataset
 
 
-class TrainDataset(Dataset):
+class CustomDataset(Dataset):
     '''
-    Custom train dataset used to load the dataset through a dataloader.
+    Custom dataset used to load the dataset through a dataloader.
 
     Source: https://towardsdatascience.com/custom-datasets-in-pytorch-part-2-text-machine-translation-71c41a3e994e
     '''
 
-    def __init__(self, source_code_texts, summary_texts, source_vocab, target_vocab):
+    def __init__(self, source_code_texts, summary_texts, source_vocab, target_vocab, type):
         '''
         Args:
-            source_code_texts: A list with size of training set containing code snippets.
-            summary_texts: A list with the summaries of the training set.
+            source_code_texts: A list containing code snippets.
+            summary_texts: A list containing summaries.
             source_vocab: The vocabulary built from the code snippets in training set.
             target_vocab: The vocabulary built from the summaries in training set.
+            type (string): Indicates whether we are loading the training set or the
+                           validation/testing set.
+                           Can be one of the following: "train", "evaluation"
         '''
-        super(TrainDataset, self).__init__()
+        super(CustomDataset, self).__init__()
 
         self.source_code_texts = source_code_texts
         self.summary_texts = summary_texts
@@ -27,6 +30,8 @@ class TrainDataset(Dataset):
 
         self.source_vocab = source_vocab
         self.target_vocab = target_vocab
+
+        self.type = type
 
     def __len__(self):
         '''
@@ -44,7 +49,10 @@ class TrainDataset(Dataset):
             index (int): index of the example we want to numericalize
 
         Returns:
-            Two tensors with the source code and summary translated to numbers
+            If this represents the training set:
+            - Two tensors with the source code and summary translated to numbers
+            Otherwise (if this represents the validation or testing set):
+            - The source code, summary and their translation to numbers
         '''
         source_text = self.source_code_texts[index]
         target_text = self.summary_texts[index]
@@ -58,5 +66,11 @@ class TrainDataset(Dataset):
         numericalized_target += self.target_vocab.numericalize(target_text)
         numericalized_target.append(self.target_vocab.token_to_idx["<EOS>"])
 
-        # convert the list to tensor and return
-        return torch.tensor(numericalized_source), torch.tensor(numericalized_target)
+        if self.type == 'train':
+            # convert the list to tensor and return
+            return torch.tensor(numericalized_source), torch.tensor(numericalized_target)
+        elif self.type == 'evaluation':
+            return source_text, target_text, torch.tensor(numericalized_source), \
+                   torch.tensor(numericalized_target)
+        else:
+            raise ValueError("Invalid type: " + self.type + ". It can only be: train, evaluation.")

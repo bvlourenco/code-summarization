@@ -1,16 +1,14 @@
-from dataset.domain.training_collate_fn import TrainCollate
-from dataset.domain.evaluation_collate_fn import EvaluationCollate
+from dataset.domain.custom_collate_fn import CustomCollate
 from dataset.load_dataset import load_dataset_file
-from dataset.domain.training_dataset import TrainDataset
-from dataset.domain.evaluation_dataset import EvaluationDataset
+from dataset.domain.custom_dataset import CustomDataset
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
-def get_dataloader(dataset, 
-                   source_vocab, 
-                   batch_size, 
-                   num_workers, 
-                   device, 
+def get_dataloader(dataset,
+                   source_vocab,
+                   batch_size,
+                   num_workers,
+                   device,
                    max_src_length,
                    max_tgt_length, 
                    type,
@@ -21,7 +19,7 @@ def get_dataloader(dataset,
 
     Args:
         dataset: The dataset from which we will build the dataloader.
-                 Instance of TrainDataset or EvaluationDataset.
+                 Instance of CustomDataset.
         source_vocab: The vocabulary built from the code snippets in training set.
         batch_size (int): how many samples per batch to load
         num_workers (int): how many subprocesses to use for data loading.
@@ -30,7 +28,7 @@ def get_dataloader(dataset,
         max_tgt_length (int): Maximum length of the summaries.
         type (string): Indicates whether we are loading the training set or the
                        validation set.
-                       Can be one of the following: "train", "validation" or "test"
+                       Can be one of the following: "train", "evaluation"
         world_size (int): The number of GPUs available in the machine.
         gpu_rank (int): The rank of the GPU.
 
@@ -44,13 +42,6 @@ def get_dataloader(dataset,
     bos_idx = source_vocab.token_to_idx['<BOS>']
     eos_idx = source_vocab.token_to_idx['<EOS>']
 
-    if type == 'train':
-        collate = TrainCollate(pad_idx, bos_idx, eos_idx,
-                               max_src_length, max_tgt_length)
-    elif type in ['validation', 'test']:
-        collate = EvaluationCollate(
-            pad_idx, bos_idx, eos_idx, max_src_length, max_tgt_length)
-    
     # A sampler tells the order in which the data from a dataset is accessed
     # and distributed across different processes and threads.
     sampler = DistributedSampler(dataset, 
@@ -72,7 +63,9 @@ def get_dataloader(dataset,
                       drop_last=False,
                       pin_memory=False,
                       sampler=sampler,
-                      collate_fn=collate)
+                      collate_fn=CustomCollate(pad_idx, bos_idx, eos_idx, 
+                                               device, max_src_length, 
+                                               max_tgt_length, type))
 
 
 def create_dataloaders(source_code_texts,
@@ -111,10 +104,11 @@ def create_dataloaders(source_code_texts,
 
     Source: https://towardsdatascience.com/custom-datasets-in-pytorch-part-2-text-machine-translation-71c41a3e994e
     '''
-    train_dataset = TrainDataset(source_code_texts, 
-                                 summary_texts, 
-                                 source_vocab, 
-                                 target_vocab)
+    train_dataset = CustomDataset(source_code_texts,
+                                  summary_texts,
+                                  source_vocab,
+                                  target_vocab,
+                                  'train')
     train_dataloader = get_dataloader(train_dataset,
                                       source_vocab,
                                       batch_size,
@@ -140,13 +134,13 @@ def create_dataloaders(source_code_texts,
     return train_dataloader, val_dataloader
 
 
-def load_evaluation_dataloader(code_texts, 
-                               summary_texts, 
-                               source_vocab, 
-                               target_vocab, 
-                               batch_size, 
-                               num_workers, 
-                               device, 
+def load_evaluation_dataloader(code_texts,
+                               summary_texts,
+                               source_vocab,
+                               target_vocab,
+                               batch_size,
+                               num_workers,
+                               device,
                                max_src_length,
                                max_tgt_length,
                                world_size,
@@ -170,10 +164,11 @@ def load_evaluation_dataloader(code_texts,
     Returns:
         A new dataloader with the validation or testing set.
     '''
-    evaluation_dataset = EvaluationDataset(code_texts,
-                                           summary_texts,
-                                           source_vocab,
-                                           target_vocab)
+    evaluation_dataset = CustomDataset(code_texts,
+                                       summary_texts,
+                                       source_vocab,
+                                       target_vocab,
+                                       'evaluation')
     return get_dataloader(evaluation_dataset,
                           source_vocab,
                           batch_size,
@@ -181,6 +176,6 @@ def load_evaluation_dataloader(code_texts,
                           device,
                           max_src_length,
                           max_tgt_length,
-                          'test',
+                          'evaluation',
                           world_size,
                           gpu_rank)

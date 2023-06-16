@@ -31,7 +31,11 @@ def load_dataset_file(dataset_filename, type, debug_max_lines):
             description = "Reading {} {} entries of the dataset".format(debug_max_lines, type)
             lines_to_read = range(debug_max_lines)
         else:
-            num_lines = sum(1 for _ in open(dataset_filename, 'r'))
+            num_lines = sum(1 for _ in dataset_file)
+
+            # Reset the file pointer to the beggining
+            dataset_file.seek(0)
+
             description = "Reading {} dataset".format(type)
             lines_to_read = dataset_file
         
