@@ -78,7 +78,7 @@ def test_model(test_code_texts,
                   device,
                   gpu_rank)
 
-    model.load()
+    model.load(gpu_rank)
     model.test(test_dataloader,
                target_vocab,
                max_tgt_length)

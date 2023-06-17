@@ -48,7 +48,7 @@ def train_validate_model(model,
     # Load model checkpoint (loading model parameters and optimizer state)
     # if the checkpoint exists
     if os.path.isfile('../results/model_weights_checkpoint.pth'):
-        start_epoch, train_epoch_loss, val_epoch_loss = model.load_checkpoint()
+        start_epoch, train_epoch_loss, val_epoch_loss = model.load_checkpoint(gpu_rank)
         start_epoch += 1
     else:
         train_epoch_loss, val_epoch_loss = [], []

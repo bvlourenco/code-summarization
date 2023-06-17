@@ -1,5 +1,7 @@
 from datetime import datetime
 import json
+import sys
+import traceback
 from nltk.metrics.scores import precision, recall, f_measure
 from nltk.translate.bleu_score import sentence_bleu
 from nltk.translate.meteor_score import single_meteor_score
@@ -186,7 +188,8 @@ class Model:
                  mode,
                  target_vocab,
                  tgt_vocab_size,
-                 max_tgt_length):
+                 max_tgt_length,
+                 num_epoch):
         '''
         Validates the model after a training epoch to see how well he generalizes. 
         Does not update the weights of the model.
@@ -199,6 +202,7 @@ class Model:
             target_vocab: The vocabulary built from the summaries in training set.
             tgt_vocab_size (int): size of the target vocabulary.
             max_tgt_length (int): The maximum length of the summaries.
+            num_epoch (int): The current training epoch.
 
         Returns:
             The average loss across all examples during one epoch.
@@ -212,37 +216,43 @@ class Model:
         # Used to compute the ROUGE-L score
         scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
 
+        # Writing the translation results to a file
+        if mode == 'translation':
+            log = open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
+                      '_gpu' + str(self.gpu_rank) + '_epoch' + str(num_epoch) + '.json', 'w')
+
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
-            with open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
-                      '_' + str(self.gpu_rank) + '.json', 'w') as log:
-                for code, summary, src, tgt in tqdm(val_dataloader, desc="Validating"):
-                    src = src.to(self.device)
-                    tgt = tgt.to(self.device)
+            for code, summary, src, tgt in tqdm(val_dataloader, desc="Validating"):
+                src = src.to(self.device)
+                tgt = tgt.to(self.device)
 
-                    if mode == 'translation':
-                        self.translate_sentence(src,
-                                                target_vocab,
-                                                max_tgt_length,
-                                                code,
-                                                summary,
-                                                log,
-                                                scorer)
+                if mode == 'translation':
+                    self.translate_sentence(src,
+                                            target_vocab,
+                                            max_tgt_length,
+                                            code,
+                                            summary,
+                                            log,
+                                            scorer)
 
-                    # Slicing the last element of tgt_data because it is used to compute the
-                    # loss.
-                    output = self.model(src, tgt[:, :-1])
+                # Slicing the last element of tgt_data because it is used to compute the
+                # loss.
+                output = self.model(src, tgt[:, :-1])
 
-                    # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
-                    # - tgt_data is reshaped using view() method in shape (batch_size * tgt_len)
-                    # - criterion(prediction_labels, target_labels)
-                    # - tgt[:, 1:] removes the first token from the target sequence since we are training the
-                    # model to predict the next word based on previous words.
-                    loss = self.criterion(output.contiguous().view(-1, tgt_vocab_size),
-                                          tgt[:, 1:].contiguous().view(-1))
+                # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
+                # - tgt_data is reshaped using view() method in shape (batch_size * tgt_len)
+                # - criterion(prediction_labels, target_labels)
+                # - tgt[:, 1:] removes the first token from the target sequence since we are training the
+                # model to predict the next word based on previous words.
+                loss = self.criterion(output.contiguous().view(-1, tgt_vocab_size),
+                                        tgt[:, 1:].contiguous().view(-1))
 
-                    losses += loss.item()
+                losses += loss.item()
+
+        if mode == 'translation':
+            log.close()
 
         return losses / len(list(val_dataloader))
 
@@ -372,6 +382,26 @@ class Model:
             return self.model.module
         else:
             return self.model
+    
+    def get_map_location(self, gpu_rank):
+        '''
+        Specifies how to map the storage location for devices 
+        (used to load the model). It is useful when we are running the
+        program with multiple GPUs, to tell to the GPUs 1,2,... that the
+        model is stored in a location mapped by GPU 0 (because that was the
+        GPU that stored the model).
+
+        Args:
+            gpu_rank (int): The rank of the GPU.
+                            It has the value of -1 if no GPUs are avaiable.: 
+
+        Returns:
+            A dictionary with a mapping between devices and storage
+        '''
+        if self.device == torch.device('cuda'):
+            return {'cuda:%d' % 0: 'cuda:%d' % gpu_rank}
+        else:
+            return None
 
     def save(self):
         '''
@@ -381,7 +411,9 @@ class Model:
         try:
             torch.save(model.state_dict(), '../results/model_weights.pth')
         except Exception:
-            print("It was not possible to save the model weights. Continuing...")
+            traceback.print_exc()
+            print("It was not possible to save the model weights.")
+            sys.exit(1)
 
     def save_checkpoint(self, epoch, training_losses, validation_losses):
         '''
@@ -404,21 +436,26 @@ class Model:
             }
             torch.save(params, '../results/model_weights_checkpoint.pth')
         except Exception:
-            print("It was not possible to save a model checkpoint. Continuing...")
+            traceback.print_exc()
+            print("It was not possible to save a model checkpoint.")
+            sys.exit(1)
 
-    def load(self):
+    def load(self, gpu_rank):
         '''
         Loads the model learned parameters from a saved file.
         '''
         self.model = self.get_model()
+        map_location = self.get_map_location(gpu_rank)
         try:
-            self.model.load_state_dict(
-                torch.load('../results/model_weights.pth'))
+            self.model.load_state_dict(torch.load('../results/model_weights.pth', 
+                                                  map_location=map_location))
         except Exception:
-            print("It was not possible to load the model weights from the" +
-                  "specified filename. Continuing...")
+            traceback.print_exc()
+            print("It was not possible to load the model weights from the " +
+                  "specified filename.")
+            sys.exit(1)
 
-    def load_checkpoint(self):
+    def load_checkpoint(self, gpu_rank):
         '''
         Loads the last model checkpoint.
 
@@ -430,8 +467,10 @@ class Model:
                                to epoch of the checkpoint
         '''
         self.model = self.get_model()
+        map_location = self.get_map_location(gpu_rank)
         try:
-            checkpoint = torch.load('../results/model_weights_checkpoint.pth')
+            checkpoint = torch.load('../results/model_weights_checkpoint.pth',
+                                    map_location=map_location)
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             training_losses = checkpoint['training_losses']
@@ -439,5 +478,8 @@ class Model:
             epoch = checkpoint['epoch']
             return epoch, training_losses, validation_losses
         except Exception:
-            print("It was not possible to load the model from the" +
-                  "checkpoint. Continuing...")
+            traceback.print_exc()
+            print("It was not possible to load the model from the " +
+                  "checkpoint.")
+            sys.exit(1)
+            
