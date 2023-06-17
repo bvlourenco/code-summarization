@@ -33,7 +33,8 @@ function train_and_validate() {
     --train_filename ../data/python/train_processed.json \
     --validation_filename ../data/python/validation_processed.json \
     --mode translation \
-    --checkpoint True
+    --checkpoint True \
+    --debug_max_lines 32
 
 }
 

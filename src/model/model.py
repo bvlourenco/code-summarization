@@ -65,11 +65,11 @@ class Model:
         # Passing the model and all its layers to GPU if available
         self.model = self.model.to(device)
 
-        # Used to run model in several GPUs
-        self.model = DDP(self.model,
-                         device_ids=[gpu_rank],
-                         output_device=gpu_rank,
-                         find_unused_parameters=True)
+        if device == torch.device('cuda'):
+            # Used to run model in several GPUs
+            self.model = DDP(self.model,
+                            device_ids=[gpu_rank],
+                            output_device=gpu_rank)
 
         # Function used to compute the loss. ignore_index is the padding token index
         self.criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)

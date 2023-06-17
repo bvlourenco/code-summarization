@@ -1,3 +1,4 @@
+import torch
 from dataset.domain.custom_collate_fn import CustomCollate
 from dataset.load_dataset import load_dataset_file
 from dataset.domain.custom_dataset import CustomDataset
@@ -44,11 +45,14 @@ def get_dataloader(dataset,
 
     # A sampler tells the order in which the data from a dataset is accessed
     # and distributed across different processes and threads.
-    sampler = DistributedSampler(dataset, 
-                                 num_replicas=world_size, 
-                                 rank=gpu_rank,
-                                 shuffle=False,
-                                 drop_last=False)
+    if device == torch.device('cuda'):
+        sampler = DistributedSampler(dataset, 
+                                    num_replicas=world_size, 
+                                    rank=gpu_rank,
+                                    shuffle=False,
+                                    drop_last=False)
+    else:
+        sampler = None
 
     # shuffle is disabled because we are running the model in multiple GPUs, hence
     # we want to split the data among the GPUs and avoid having repeated data on
