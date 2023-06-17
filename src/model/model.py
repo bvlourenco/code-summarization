@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
+from torch.optim.lr_scheduler import LambdaLR
 from tqdm import tqdm
 from evaluation.translation import greedy_decode, translate_tokens
 from model.transformer.transformer_model import Transformer
@@ -76,7 +77,7 @@ class Model:
                              output_device=gpu_rank)
 
         # Function used to compute the loss. ignore_index is the padding token index
-        self.criterion = nn.CrossEntropyLoss(ignore_index=pad_idx, 
+        self.criterion = nn.CrossEntropyLoss(ignore_index=pad_idx,
                                              label_smoothing=label_smoothing)
 
         # TODO: Test with SGD optimizer
@@ -85,8 +86,44 @@ class Model:
                                     betas=(0.9, 0.98),
                                     eps=1e-9)
 
+        # Adjusts the learning rate during training
+        # Implements the "Noam" learning rate scheduler, used in vanilla Transformer
+        self.scheduler = LambdaLR(
+            optimizer=self.optimizer,
+            lr_lambda=lambda step: Model.rate(
+                step, model_size=d_model, factor=1.0, warmup=400
+            ),
+        )
+
         self.device = device
         self.gpu_rank = gpu_rank
+
+    @staticmethod
+    def rate(step, model_size, factor, warmup):
+        '''
+        Compute the learning rate at each step based on the model size, 
+        factor, and warmup.
+
+        Args:
+            step: Current step in the training process.
+            model_size: Size of the model, typically the dimensionality of the 
+                        model (d_model).
+            factor: Scaling factor for the learning rate.
+            warmup: Number of warmup steps for gradual learning rate increase.
+        
+        Returns:
+            The computed learning rate for the given step.
+
+        Note: We have to default the step to 1 for LambdaLR function to avoid 
+              zero raising to negative power.
+
+        Source: https://nlp.seas.harvard.edu/annotated-transformer/
+        '''
+        if step == 0:
+            step = 1
+        return factor * (
+            model_size ** (-0.5) * min(step ** (-0.5), step * warmup ** (-1.5))
+        )
 
     def train_epoch(self, train_dataloader, tgt_vocab_size, grad_clipping):
         '''
@@ -137,6 +174,9 @@ class Model:
             # Update the model's parameters based on the computed gradients
             self.optimizer.step()
 
+            # Adjust learning rate
+            self.scheduler.step()
+
             losses += loss.item()
 
         return losses / len(list(train_dataloader))
@@ -175,7 +215,7 @@ class Model:
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
-            with open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + 
+            with open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                       '_' + str(self.gpu_rank) + '.json', 'w') as log:
                 for code, summary, src, tgt in tqdm(val_dataloader, desc="Validating"):
                     src = src.to(self.device)
@@ -227,7 +267,7 @@ class Model:
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
-            with open('../results/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + 
+            with open('../results/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                       '_' + str(self.gpu_rank) + '.json', 'w') as log:
                 for code, summary, src, tgt in tqdm(test_dataloader, desc="Testing"):
                     src = src.to(self.device)
@@ -400,4 +440,4 @@ class Model:
             return epoch, training_losses, validation_losses
         except Exception:
             print("It was not possible to load the model from the" +
-                   "checkpoint. Continuing...")
+                  "checkpoint. Continuing...")
