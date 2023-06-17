@@ -48,7 +48,7 @@ class Model:
             max_src_length (int): maximum length of the source code.
             max_tgt_length (int): maximum length of the summaries.
             dropout (int): dropout probability (between 0 and 1).
-            learning_rate (int): Value of the learning rate.
+            learning_rate (int): Value of the initial learning rate.
             label_smoothing (int): Value of label smoothing to be applied in 
                                    loss function.
             pad_idx (int): index of the <PAD> token

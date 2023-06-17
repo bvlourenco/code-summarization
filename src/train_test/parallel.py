@@ -52,7 +52,7 @@ def train_model_parallel(gpu_rank,
         max_src_length (int): maximum length of the source code.
         max_tgt_length (int): maximum length of the summaries.
         dropout (int): dropout probability (between 0 and 1).
-        learning_rate (int): Value of the learning rate.
+        learning_rate (int): Value of the initial learning rate.
         pad_idx (int): index of the <PAD> token
         num_epochs (int): The number of training epochs. 
         gradient_clipping (int): Maximum norm of the gradient.
@@ -162,7 +162,7 @@ def test_model_parallel(gpu_rank,
         d_ff (int): the hidden layer size of the second-layer of the Feed
                     Forward Network (in encoder and decoder).
         dropout (int): dropout probability (between 0 and 1).
-        learning_rate (int): Value of the learning rate.
+        learning_rate (int): Value of the initial learning rate.
         label_smoothing (int): Value of label smoothing to be applied in 
                                loss function.
     '''
@@ -245,7 +245,7 @@ def train_parallel(world_size,
         max_src_length (int): maximum length of the source code.
         max_tgt_length (int): maximum length of the summaries.
         dropout (int): dropout probability (between 0 and 1).
-        learning_rate (int): Value of the learning rate.
+        learning_rate (int): Value of the initial learning rate.
         pad_idx (int): index of the <PAD> token
         num_epochs (int): The number of training epochs. 
         gradient_clipping (int): Maximum norm of the gradient.
@@ -343,7 +343,7 @@ def test_parallel(world_size,
         d_ff (int): the hidden layer size of the second-layer of the Feed
                     Forward Network (in encoder and decoder).
         dropout (int): dropout probability (between 0 and 1).
-        learning_rate (int): Value of the learning rate.
+        learning_rate (int): Value of the initial learning rate.
         label_smoothing (int): Value of label smoothing to be applied in 
                                loss function.
     '''

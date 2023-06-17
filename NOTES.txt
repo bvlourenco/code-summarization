@@ -8,7 +8,6 @@
         https://arxiv.org/pdf/2107.07112.pdf
     
     AFTER BASELINE IS DONE:
-    - Check learning rate scheduler
     - Experimentar técnicas diferentes de tokenization (Word, Subword, and Character-Based Tokenization)
     --  Check tokenization techniques 
         https://towardsdatascience.com/word-subword-and-character-based-tokenization-know-the-difference-ea0976b64e17

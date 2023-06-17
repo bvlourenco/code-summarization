@@ -143,7 +143,7 @@ def create_train_model(gpu_rank,
         max_src_length (int): maximum length of the source code.
         max_tgt_length (int): maximum length of the summaries.
         dropout (int): dropout probability (between 0 and 1).
-        learning_rate (int): Value of the learning rate.
+        learning_rate (int): Value of the initial learning rate.
         pad_idx (int): index of the <PAD> token
         num_epochs (int): The number of training epochs. 
         gradient_clipping (int): Maximum norm of the gradient.

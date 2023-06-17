@@ -47,7 +47,7 @@ def test_model(test_code_texts,
         d_ff (int): the hidden layer size of the second-layer of the Feed
                     Forward Network (in encoder and decoder).
         dropout (int): dropout probability (between 0 and 1).
-        learning_rate (int): Value of the learning rate.
+        learning_rate (int): Value of the initial learning rate.
         label_smoothing (int): Value of label smoothing to be applied in 
                                loss function. 
     '''

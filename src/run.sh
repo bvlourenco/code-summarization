@@ -25,7 +25,7 @@ function train_and_validate() {
     --num_layers 6 \
     --d_ff 2048 \
     --dropout 0.1 \
-    --learning_rate 0.0001 \
+    --learning_rate 1.0 \
     --batch_size 32 \
     --num_workers 0 \
     --num_epochs 1 \
@@ -55,7 +55,7 @@ function test_model() {
     --num_layers 6 \
     --d_ff 2048 \
     --dropout 0.1 \
-    --learning_rate 0.0001 \
+    --learning_rate 1.0 \
     --label_smoothing 0.1 \
     --batch_size 32 \
     --num_workers 0 \

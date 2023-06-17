@@ -51,7 +51,7 @@ def parse_arguments():
                         help='Value of the dropout probability')
 
     parser.add_argument('--learning_rate', type=float, required=True,
-                        help='Value of the learning rate')
+                        help='Value of the initial learning rate')
     parser.add_argument('--batch_size', type=int, required=True,
                         help='Number of examples processed per batch')
     parser.add_argument('--num_workers', type=int, required=True,
@@ -120,7 +120,7 @@ def parse_test_args():
                         help='Value of the dropout probability')
 
     parser.add_argument('--learning_rate', type=float, required=True,
-                        help='Value of the learning rate')
+                        help='Value of the initial learning rate')
     parser.add_argument('--batch_size', type=int, required=True,
                         help='Number of examples processed per batch')
     parser.add_argument('--num_workers', type=int, required=True,
