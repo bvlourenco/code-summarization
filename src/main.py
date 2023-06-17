@@ -1,160 +1,9 @@
-import os
 import torch
 from args.parse_args import parse_arguments
 from dataset.build_vocab import create_vocabulary
-from dataset.dataloader import create_dataloaders
 from dataset.load_dataset import load_dataset_file
-from model.model import Model
-from train.train import train_validate_model
-import torch.multiprocessing as mp
-import torch.distributed as dist
-
-def train_model(gpu_rank,
-                world_size,
-                device,
-                src_vocab_size,
-                tgt_vocab_size,
-                d_model,
-                num_heads,
-                num_layers,
-                d_ff,
-                max_src_length,
-                max_tgt_length,
-                dropout,
-                learning_rate,
-                pad_idx,
-                num_epochs,
-                gradient_clipping,
-                mode,
-                source_vocab,
-                target_vocab,
-                checkpoint,
-                train_code_texts,
-                train_summary_texts,
-                val_code_texts,
-                val_summary_texts,
-                batch_size,
-                num_workers):
-    '''
-    TODO
-    '''
-    train_dataloader, val_dataloader = create_dataloaders(train_code_texts,
-                                                          train_summary_texts,
-                                                          val_code_texts,
-                                                          val_summary_texts,
-                                                          source_vocab,
-                                                          target_vocab,
-                                                          batch_size,
-                                                          num_workers,
-                                                          device,
-                                                          max_src_length,
-                                                          max_tgt_length,
-                                                          world_size,
-                                                          gpu_rank)
-
-    if device == torch.device('cuda'):
-        model_device = gpu_rank
-    else:
-        model_device = device
-    
-    model = Model(src_vocab_size,
-                  tgt_vocab_size,
-                  d_model,
-                  num_heads,
-                  num_layers,
-                  d_ff,
-                  max_src_length,
-                  max_tgt_length,
-                  dropout,
-                  learning_rate,
-                  pad_idx,
-                  model_device,
-                  gpu_rank)
-
-    train_validate_model(model,
-                         num_epochs,
-                         train_dataloader,
-                         val_dataloader,
-                         tgt_vocab_size,
-                         gradient_clipping,
-                         mode,
-                         target_vocab,
-                         max_tgt_length,
-                         checkpoint,
-                         device)
-
-def demo_model_parallel(gpu_rank,
-                        world_size,
-                        device,
-                        src_vocab_size,
-                        tgt_vocab_size,
-                        d_model,
-                        num_heads,
-                        num_layers,
-                        d_ff,
-                        max_src_length,
-                        max_tgt_length,
-                        dropout,
-                        learning_rate,
-                        pad_idx,
-                        num_epochs,
-                        gradient_clipping,
-                        mode,
-                        source_vocab,
-                        target_vocab,
-                        checkpoint,
-                        train_code_texts,
-                        train_summary_texts,
-                        val_code_texts,
-                        val_summary_texts,
-                        batch_size,
-                        num_workers):
-    '''
-    TODO
-
-    Source: https://medium.com/codex/a-comprehensive-tutorial-to-pytorch-distributeddataparallel-1f4b42bb1b51
-            https://pytorch.org/tutorials/intermediate/ddp_tutorial.html#id1
-            https://yangkky.github.io/2019/07/08/distributed-pytorch-tutorial.html
-    '''
-
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
-
-    dist.init_process_group(
-        backend='nccl',
-        world_size=world_size,
-        rank=gpu_rank
-    )
-    torch.cuda.set_device(gpu_rank)
-
-    train_model(gpu_rank,
-                world_size,
-                device,
-                src_vocab_size,
-                tgt_vocab_size,
-                d_model,
-                num_heads,
-                num_layers,
-                d_ff,
-                max_src_length,
-                max_tgt_length,
-                dropout,
-                learning_rate,
-                pad_idx,
-                num_epochs,
-                gradient_clipping,
-                mode,
-                source_vocab,
-                target_vocab,
-                checkpoint,
-                train_code_texts,
-                train_summary_texts,
-                val_code_texts,
-                val_summary_texts,
-                batch_size,
-                num_workers)
-
-    dist.destroy_process_group()
+from train_test.parallel import train_parallel
+from train_test.train import create_train_model
 
 
 def main():
@@ -176,8 +25,13 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if device == torch.device('cuda'):
+        # If we're running in GPU, we'll have 1 process per GPU
+        # world_size is the number of processes to be launched
         n_gpus = torch.cuda.device_count()
         world_size = n_gpus
+    else:
+        # If we're running in CPU, we will only have 1 main process
+        n_gpus, world_size = -1, -1
 
     train_code_texts, train_summary_texts = load_dataset_file(args.train_filename,
                                                               'train',
@@ -194,62 +48,58 @@ def main():
                                                    args.tgt_vocab_size)
 
     if device == torch.device('cuda'):
-        mp.spawn(demo_model_parallel,
-                args=(world_size,
-                      device,
-                      args.src_vocab_size,
-                      args.tgt_vocab_size,
-                      args.d_model,
-                      args.num_heads,
-                      args.num_layers,
-                      args.d_ff,
-                      args.max_src_length,
-                      args.max_tgt_length,
-                      args.dropout,
-                      args.learning_rate,
-                      source_vocab.token_to_idx['<PAD>'],
-                      args.num_epochs,
-                      args.gradient_clipping,
-                      args.mode,
-                      source_vocab,
-                      target_vocab,
-                      args.checkpoint,
-                      train_code_texts,
-                      train_summary_texts,
-                      val_code_texts,
-                      val_summary_texts,
-                      args.batch_size,
-                      args.num_workers,
-                    ),
-                nprocs=world_size,
-                join=True)
+        train_parallel(world_size,
+                       device,
+                       args.src_vocab_size,
+                       args.tgt_vocab_size,
+                       args.d_model,
+                       args.num_heads,
+                       args.num_layers,
+                       args.d_ff,
+                       args.max_src_length,
+                       args.max_tgt_length,
+                       args.dropout,
+                       args.learning_rate,
+                       source_vocab.token_to_idx['<PAD>'],
+                       args.num_epochs,
+                       args.gradient_clipping,
+                       args.mode,
+                       source_vocab,
+                       target_vocab,
+                       args.checkpoint,
+                       train_code_texts,
+                       train_summary_texts,
+                       val_code_texts,
+                       val_summary_texts,
+                       args.batch_size,
+                       args.num_workers)
     else:
-        train_model(-1,
-                    -1,
-                    device,
-                    args.src_vocab_size,
-                    args.tgt_vocab_size,
-                    args.d_model,
-                    args.num_heads,
-                    args.num_layers,
-                    args.d_ff,
-                    args.max_src_length,
-                    args.max_tgt_length,
-                    args.dropout,
-                    args.learning_rate,
-                    source_vocab.token_to_idx['<PAD>'],
-                    args.num_epochs,
-                    args.gradient_clipping,
-                    args.mode,
-                    source_vocab,
-                    target_vocab,
-                    args.checkpoint,
-                    train_code_texts,
-                    train_summary_texts,
-                    val_code_texts,
-                    val_summary_texts,
-                    args.batch_size,
-                    args.num_workers)
+        create_train_model(n_gpus,
+                           world_size,
+                           device,
+                           args.src_vocab_size,
+                           args.tgt_vocab_size,
+                           args.d_model,
+                           args.num_heads,
+                           args.num_layers,
+                           args.d_ff,
+                           args.max_src_length,
+                           args.max_tgt_length,
+                           args.dropout,
+                           args.learning_rate,
+                           source_vocab.token_to_idx['<PAD>'],
+                           args.num_epochs,
+                           args.gradient_clipping,
+                           args.mode,
+                           source_vocab,
+                           target_vocab,
+                           args.checkpoint,
+                           train_code_texts,
+                           train_summary_texts,
+                           val_code_texts,
+                           val_summary_texts,
+                           args.batch_size,
+                           args.num_workers)
 
 
 if __name__ == '__main__':

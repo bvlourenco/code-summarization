@@ -3,9 +3,6 @@
     https://nlp.seas.harvard.edu/annotated-transformer/
     https://medium.com/@hunter-j-phillips/putting-it-all-together-the-implemented-transformer-bfb11ac1ddfe
 
-    TODO: Check the following points:
-    - (IN PROGRESS) Training Transformer models in multiple GPUs: https://pytorch.org/tutorials/advanced/ddp_pipeline.html?highlight=transformer
-
     -- (LATER) For evaluation, check:
         https://github.com/DeepSoftwareAnalytics/CodeSumEvaluation
         https://arxiv.org/pdf/2107.07112.pdf

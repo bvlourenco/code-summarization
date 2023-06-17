@@ -31,7 +31,9 @@ def get_dataloader(dataset,
                        validation set.
                        Can be one of the following: "train", "evaluation"
         world_size (int): The number of GPUs available in the machine.
+                          It has the value of -1 if no GPUs are avaiable.
         gpu_rank (int): The rank of the GPU.
+                        It has the value of -1 if no GPUs are avaiable.
 
     Returns:
         A new dataloader.
@@ -47,10 +49,10 @@ def get_dataloader(dataset,
     # and distributed across different processes and threads.
     if device == torch.device('cuda'):
         sampler = DistributedSampler(dataset, 
-                                    num_replicas=world_size, 
-                                    rank=gpu_rank,
-                                    shuffle=False,
-                                    drop_last=False)
+                                     num_replicas=world_size, 
+                                     rank=gpu_rank,
+                                     shuffle=False,
+                                     drop_last=False)
     else:
         sampler = None
 
@@ -101,7 +103,9 @@ def create_dataloaders(source_code_texts,
         max_src_length (int): Maximum length of the source code.
         max_tgt_length (int): Maximum length of the summaries.
         world_size (int): The number of GPUs available in the machine.
+                          It has the value of -1 if no GPUs are avaiable.
         gpu_rank (int): The rank of the GPU.
+                        It has the value of -1 if no GPUs are avaiable.
 
     Returns:
         The training and validation dataloaders (instances of Dataloader).
@@ -163,7 +167,9 @@ def load_evaluation_dataloader(code_texts,
         max_src_length (int): Maximum length of the source code.
         max_tgt_length (int): Maximum length of the summaries.
         world_size (int): The number of GPUs available in the machine.
+                          It has the value of -1 if no GPUs are avaiable.
         gpu_rank (int): The rank of the GPU.
+                        It has the value of -1 if no GPUs are avaiable.
         
     Returns:
         A new dataloader with the validation or testing set.

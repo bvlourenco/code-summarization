@@ -50,6 +50,7 @@ class Model:
             pad_idx (int): index of the <PAD> token
             device: The device where the model and tensors are inserted (GPU or CPU).
             gpu_rank (int): The rank of the GPU.
+                            It has the value of -1 if no GPUs are avaiable.
         '''
         self.model = Transformer(src_vocab_size,
                                  tgt_vocab_size,
@@ -68,8 +69,8 @@ class Model:
         if device == torch.device('cuda'):
             # Used to run model in several GPUs
             self.model = DDP(self.model,
-                            device_ids=[gpu_rank],
-                            output_device=gpu_rank)
+                             device_ids=[gpu_rank],
+                             output_device=gpu_rank)
 
         # Function used to compute the loss. ignore_index is the padding token index
         self.criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
@@ -81,6 +82,7 @@ class Model:
                                     eps=1e-9)
 
         self.device = device
+        self.gpu_rank = gpu_rank
 
     def train_epoch(self, train_dataloader, tgt_vocab_size, grad_clipping):
         '''
@@ -169,7 +171,8 @@ class Model:
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
-            with open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.json', 'w') as log:
+            with open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + 
+                      '_' + str(self.gpu_rank) + '.json', 'w') as log:
                 for code, summary, src, tgt in tqdm(val_dataloader, desc="Validating"):
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)
@@ -220,7 +223,8 @@ class Model:
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
-            with open('../results/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.json', 'w') as log:
+            with open('../results/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + 
+                      '_' + str(self.gpu_rank) + '.json', 'w') as log:
                 for code, summary, src, tgt in tqdm(test_dataloader, desc="Testing"):
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)
@@ -314,12 +318,22 @@ class Model:
 
             log.write(json.dumps(example, indent=4) + ',\n')
 
+    def get_model(self):
+        '''
+        TODO
+        '''
+        if self.device == torch.device('cuda'):
+            return self.model.module
+        else:
+            return self.model
+
     def save(self):
         '''
         Stores the model learned parameters (weights) in a file.
         '''
+        model = self.get_model()
         try:
-            torch.save(self.model.state_dict(), '../results/model_weights.pth')
+            torch.save(model.state_dict(), '../results/model_weights.pth')
         except Exception:
             print("It was not possible to save the model weights. Continuing...")
 
@@ -333,10 +347,11 @@ class Model:
             training_losses: List of training losses
             validation_losses: List of validation losses
         '''
+        model = self.get_model()
         try:
             params = {
                 'epoch': epoch,
-                'model_state_dict': self.model.state_dict(),
+                'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': self.optimizer.state_dict(),
                 'training_losses': training_losses,
                 'validation_losses': validation_losses
@@ -349,6 +364,7 @@ class Model:
         '''
         Loads the model learned parameters from a saved file.
         '''
+        self.model = self.get_model()
         try:
             self.model.load_state_dict(
                 torch.load('../results/model_weights.pth'))
@@ -367,6 +383,7 @@ class Model:
             validation_losses: List with the losses during validation from first epoch
                                to epoch of the checkpoint
         '''
+        self.model = self.get_model()
         try:
             checkpoint = torch.load('../results/model_weights_checkpoint.pth')
             self.model.load_state_dict(checkpoint['model_state_dict'])

@@ -92,8 +92,8 @@ def train_validate_model(model,
 
         if checkpoint and gpu_rank in [-1, 0]:
             model.save_checkpoint(epoch, train_epoch_loss, val_epoch_loss)
-
-    create_loss_plot(train_epoch_loss, val_epoch_loss)
+    
+    create_loss_plot(train_epoch_loss, val_epoch_loss, gpu_rank)
 
 
 def create_train_model(gpu_rank,
