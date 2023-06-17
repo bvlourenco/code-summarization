@@ -18,7 +18,12 @@ def translate_tokens(tokens_idx, vocabulary):
     translation = ""
     # tokens_idx[1:] -> Ignoring the first token, which is <BOS>
     for token_idx in tokens_idx[1:]:
-        token = vocabulary.idx_to_token[token_idx.item()]
+        # Token not in vocabulary -> Unknown token
+        if token_idx.item() not in vocabulary.idx_to_token:
+            token = "<UNK>"
+        else:
+            token = vocabulary.idx_to_token[token_idx.item()]
+        
         if token in ["<EOS>", "<PAD>"]:
             break
         elif token == "<BOS>":
