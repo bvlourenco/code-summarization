@@ -29,7 +29,8 @@ function train_and_validate() {
     --batch_size 32 \
     --num_workers 0 \
     --num_epochs 1 \
-    --gradient_clipping 1 \
+    --gradient_clipping 1.0 \
+    --label_smoothing 0.1 \
     --train_filename ../data/python/train_processed.json \
     --validation_filename ../data/python/validation_processed.json \
     --mode translation \
@@ -55,6 +56,7 @@ function test_model() {
     --d_ff 2048 \
     --dropout 0.1 \
     --learning_rate 0.0001 \
+    --label_smoothing 0.1 \
     --batch_size 32 \
     --num_workers 0 \
     --test_filename ../data/python/test_processed.json \

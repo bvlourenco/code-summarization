@@ -58,8 +58,11 @@ def parse_arguments():
                         help='Number of subprocesses used for data loading')
     parser.add_argument('--num_epochs', type=int, required=True,
                         help='Number of epochs')
-    parser.add_argument('--gradient_clipping', type=int, required=True,
+    parser.add_argument('--gradient_clipping', type=float, required=True,
                         help='Value of maximum norm of the gradients')
+    parser.add_argument('--label_smoothing', type=float, required=True,
+                        help='Value of label smoothing in range [0.0, 1.0] \
+                              to be applied in loss function.')
 
     parser.add_argument('--train_filename', type=str, required=True,
                         help="Filename of the training set. Each line is a \
@@ -122,5 +125,8 @@ def parse_test_args():
                         help='Number of examples processed per batch')
     parser.add_argument('--num_workers', type=int, required=True,
                         help='Number of subprocesses used for data loading')
+    parser.add_argument('--label_smoothing', type=float, required=True,
+                        help='Value of label smoothing in range [0.0, 1.0] \
+                              to be applied in loss function.')
 
     return parser.parse_args()

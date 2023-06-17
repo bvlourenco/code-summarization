@@ -112,6 +112,7 @@ def create_train_model(gpu_rank,
                        pad_idx,
                        num_epochs,
                        gradient_clipping,
+                       label_smoothing,
                        mode,
                        source_vocab,
                        target_vocab,
@@ -146,6 +147,7 @@ def create_train_model(gpu_rank,
         pad_idx (int): index of the <PAD> token
         num_epochs (int): The number of training epochs. 
         gradient_clipping (int): Maximum norm of the gradient.
+        label_smoothing (int): Value of label smoothing to be applied in loss function.
         mode (string): Indicates whether we only want to compute validation loss or if we also
                        want to translate the source sentences in the validation set.
                        Can be one of the following: "loss", "translation" 
@@ -189,6 +191,7 @@ def create_train_model(gpu_rank,
                   max_tgt_length,
                   dropout,
                   learning_rate,
+                  label_smoothing,
                   pad_idx,
                   model_device,
                   gpu_rank)

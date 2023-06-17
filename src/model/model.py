@@ -31,6 +31,7 @@ class Model:
                  max_tgt_length,
                  dropout,
                  learning_rate,
+                 label_smoothing,
                  pad_idx,
                  device,
                  gpu_rank):
@@ -47,6 +48,8 @@ class Model:
             max_tgt_length (int): maximum length of the summaries.
             dropout (int): dropout probability (between 0 and 1).
             learning_rate (int): Value of the learning rate.
+            label_smoothing (int): Value of label smoothing to be applied in 
+                                   loss function.
             pad_idx (int): index of the <PAD> token
             device: The device where the model and tensors are inserted (GPU or CPU).
             gpu_rank (int): The rank of the GPU.
@@ -73,7 +76,8 @@ class Model:
                              output_device=gpu_rank)
 
         # Function used to compute the loss. ignore_index is the padding token index
-        self.criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
+        self.criterion = nn.CrossEntropyLoss(ignore_index=pad_idx, 
+                                             label_smoothing=label_smoothing)
 
         # TODO: Test with SGD optimizer
         self.optimizer = optim.Adam(self.model.parameters(),
@@ -320,7 +324,9 @@ class Model:
 
     def get_model(self):
         '''
-        TODO
+        Function that obtains the module of the model when we're running it in
+        parallel with one or more GPUs.
+        It's only used in load/save operations.
         '''
         if self.device == torch.device('cuda'):
             return self.model.module
@@ -369,8 +375,8 @@ class Model:
             self.model.load_state_dict(
                 torch.load('../results/model_weights.pth'))
         except Exception:
-            print("It was not possible to load the model weights from the \
-                  specified filename. Continuing...")
+            print("It was not possible to load the model weights from the" +
+                  "specified filename. Continuing...")
 
     def load_checkpoint(self):
         '''
@@ -393,5 +399,5 @@ class Model:
             epoch = checkpoint['epoch']
             return epoch, training_losses, validation_losses
         except Exception:
-            print("It was not possible to load the model from the \
-                   checkpoint. Continuing...")
+            print("It was not possible to load the model from the" +
+                   "checkpoint. Continuing...")

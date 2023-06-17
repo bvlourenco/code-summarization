@@ -14,12 +14,11 @@
         https://towardsdatascience.com/word-subword-and-character-based-tokenization-know-the-difference-ea0976b64e17
         Good paper: https://openreview.net/pdf?id=htL4UZ344nF
                     https://openreview.net/forum?id=htL4UZ344nF
-    - Aplicar label smoothing
     - Aplicar beam search em vez de greedy decoding no processo de inference
     --  In inference time, use beam search instead of greedy decoding. Explanation:
         https://datascience.stackexchange.com/a/93146
     - Aplicar copy attention e relative positional encoding
-    - Aplicar as alterações que proponho no paper
+    - Aplicar as alterações que proponho no paper (2 encoders; token, statement, data-flow and control-flow adjacency matrices; Pre-trained model)
     - Check Kaiming initialization
         https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
     

@@ -46,7 +46,8 @@ def main():
                       args.num_layers,
                       args.d_ff,
                       args.dropout,
-                      args.learning_rate)
+                      args.learning_rate,
+                      args.label_smoothing)
     else:
         test_model(test_code_texts,
                    test_summary_texts,
@@ -66,7 +67,8 @@ def main():
                    args.num_layers,
                    args.d_ff,
                    args.dropout,
-                   args.learning_rate)
+                   args.learning_rate,
+                   args.label_smoothing)
 
 
 if __name__ == '__main__':
