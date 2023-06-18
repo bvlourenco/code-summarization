@@ -274,6 +274,9 @@ class Model:
         # Used to compute the ROUGE-L score
         scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
 
+        number_examples = 0
+        sum_bleu, sum_meteor, sum_rouge_l, sum_precision, sum_recall, sum_f1 = 0, 0, 0, 0, 0, 0
+
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
@@ -283,13 +286,33 @@ class Model:
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)
 
-                    self.translate_sentence(src,
-                                            target_vocab,
-                                            max_tgt_length,
-                                            code,
-                                            summary,
-                                            log,
-                                            scorer)
+                    batch_size = src.shape[0]
+
+                    bleu, meteor, rouge_l, \
+                    precision, recall, f1 = self.translate_sentence(src,
+                                                                    target_vocab,
+                                                                    max_tgt_length,
+                                                                    code,
+                                                                    summary,
+                                                                    log,
+                                                                    scorer)
+                    
+                    # Performing weighted average of metrics
+                    sum_bleu += bleu * batch_size
+                    sum_meteor += meteor * batch_size
+                    sum_rouge_l += rouge_l * batch_size
+                    sum_precision += precision * batch_size
+                    sum_recall += recall * batch_size
+                    sum_f1 += f1 * batch_size
+
+                    number_examples += batch_size
+        
+        print(f"Metrics:\nBLEU: {sum_bleu / number_examples:7.3f} | " + 
+              f"METEOR: {sum_meteor / number_examples:7.3f} | " + 
+              f"ROUGE-L: {sum_rouge_l / number_examples:7.3f} | " +
+              f"Precision: {sum_precision / number_examples:7.3f} | " +
+              f"Recall: {sum_recall / number_examples:7.3f} | " + 
+              f"F1: {sum_f1 / number_examples:7.3f}")
 
     def translate_sentence(self,
                            src,
@@ -311,12 +334,20 @@ class Model:
             summary (string): reference code comment.
             log: file to write the evaluation metrics of the generated summaries.
             scorer: A RougeScorer object to compute ROUGE-L.
+        
+        Returns:
+            The average BLEU, METEOR, ROUGE-L F-measure, Precision, Recall and 
+            F1-score of the predicted sentence relative to the reference. 
         '''
         start_symbol_idx = target_vocab.token_to_idx['<BOS>']
         end_symbol_idx = target_vocab.token_to_idx['<EOS>']
 
+        sum_bleu, sum_meteor, sum_rouge_l, sum_precision, sum_recall, sum_f1 = 0, 0, 0, 0, 0, 0
+
+        batch_size = src.shape[0]
+
         # Translating a batch of source sentences
-        for i in range(src.shape[0]):
+        for i in range(batch_size):
             # src[i] has shape (max_src_length, )
             # Performing an unsqueeze on src[i] will make its shape (1, max_src_length)
             # which is the correct shape since batch_size = 1 in this case
@@ -371,6 +402,16 @@ class Model:
             example["F1"] = f_score
 
             log.write(json.dumps(example, indent=4) + ',\n')
+
+            sum_bleu += example["BLEU"]
+            sum_meteor += example["METEOR"]
+            sum_rouge_l += example["ROUGE-L"]
+            sum_precision += example["Precision"]
+            sum_recall += example["Recall"]
+            sum_f1 += example["F1"]
+
+        return sum_bleu / batch_size, sum_meteor / batch_size, sum_rouge_l / batch_size, \
+            sum_precision / batch_size, sum_recall / batch_size, sum_f1 / batch_size
 
     def get_model(self):
         '''

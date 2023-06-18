@@ -87,6 +87,7 @@ def train_validate_model(model,
         # gpu_rank is 0 (to avoid having multiple processed storing the model 
         # when using multiple GPUs)
         if val_loss < best_val_loss and gpu_rank in [-1, 0]:
+            print(f"Saving model with validation loss of {val_loss:7.3f}")
             best_val_loss = val_loss
             model.save()
 
