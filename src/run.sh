@@ -33,7 +33,8 @@ function train_and_validate() {
     --label_smoothing 0.1 \
     --train_filename ../data/python/train_processed.json \
     --validation_filename ../data/python/validation_processed.json \
-    --mode translation \
+    --mode beam \
+    --beam_size 4 \
     --checkpoint True \
     --debug_max_lines 32
 
@@ -60,6 +61,8 @@ function test_model() {
     --batch_size 32 \
     --num_workers 0 \
     --test_filename ../data/python/test_processed.json \
+    --mode beam \
+    --beam_size 4 \
     --debug_max_lines 32
 
 }

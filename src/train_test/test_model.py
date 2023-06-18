@@ -21,7 +21,9 @@ def test_model(test_code_texts,
                d_ff,
                dropout,
                learning_rate,
-               label_smoothing):
+               label_smoothing,
+               mode,
+               beam_size):
     '''
     Creates the testing dataloader, the model and tests the model.
 
@@ -49,7 +51,13 @@ def test_model(test_code_texts,
         dropout (int): dropout probability (between 0 and 1).
         learning_rate (int): Value of the initial learning rate.
         label_smoothing (int): Value of label smoothing to be applied in 
-                               loss function. 
+                               loss function.
+        mode (string): Indicates what is the strategy to be used in translation.
+                       It can either be a greedy decoding strategy or a beam 
+                       search strategy.
+                       Can be one of the following: "greedy" or "beam"
+        beam_size (int): Number of elements to store during beam search
+                         Only applicable if `mode == 'beam'` 
     '''
     test_dataloader = load_evaluation_dataloader(test_code_texts,
                                                  test_summary_texts,
@@ -81,4 +89,6 @@ def test_model(test_code_texts,
     model.load(gpu_rank)
     model.test(test_dataloader,
                target_vocab,
-               max_tgt_length)
+               max_tgt_length,
+               mode,
+               beam_size)

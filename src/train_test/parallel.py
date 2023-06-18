@@ -24,6 +24,7 @@ def train_model_parallel(gpu_rank,
                          gradient_clipping,
                          label_smoothing,
                          mode,
+                         beam_size,
                          source_vocab,
                          target_vocab,
                          checkpoint,
@@ -58,8 +59,11 @@ def train_model_parallel(gpu_rank,
         gradient_clipping (int): Maximum norm of the gradient.
         label_smoothing (int): Value of label smoothing to be applied in loss function.
         mode (string): Indicates whether we only want to compute validation loss or if we also
-                       want to translate the source sentences in the validation set.
-                       Can be one of the following: "loss", "translation" 
+                       want to translate the source sentences in the validation set
+                       (either using greedy decoding or beam search).
+                       Can be one of the following: "loss", "greedy" or "beam"
+        beam_size (int): Number of elements to store during beam search
+                         Only applicable if `mode == 'beam'`
         source_vocab: The vocabulary built from the code snippets in training set.
         target_vocab: The vocabulary built from the summaries in training set.
         checkpoint (bool): Flag that tells whether we want to save a checkpoint of the model
@@ -104,6 +108,7 @@ def train_model_parallel(gpu_rank,
                        gradient_clipping,
                        label_smoothing,
                        mode,
+                       beam_size,
                        source_vocab,
                        target_vocab,
                        checkpoint,
@@ -136,7 +141,9 @@ def test_model_parallel(gpu_rank,
                         d_ff,
                         dropout,
                         learning_rate,
-                        label_smoothing):
+                        label_smoothing,
+                        mode,
+                        beam_size):
     '''
     Initializes the process group and tests the model.
 
@@ -165,6 +172,12 @@ def test_model_parallel(gpu_rank,
         learning_rate (int): Value of the initial learning rate.
         label_smoothing (int): Value of label smoothing to be applied in 
                                loss function.
+        mode (string): Indicates what is the strategy to be used in translation.
+                       It can either be a greedy decoding strategy or a beam 
+                       search strategy.
+                       Can be one of the following: "greedy" or "beam"
+        beam_size (int): Number of elements to store during beam search
+                         Only applicable if `mode == 'beam'` 
     '''
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
@@ -195,7 +208,9 @@ def test_model_parallel(gpu_rank,
                d_ff,
                dropout,
                learning_rate,
-               label_smoothing)
+               label_smoothing,
+               mode,
+               beam_size)
 
     dist.destroy_process_group()
 
@@ -217,6 +232,7 @@ def train_parallel(world_size,
                    gradient_clipping,
                    label_smoothing,
                    mode,
+                   beam_size,
                    source_vocab,
                    target_vocab,
                    checkpoint,
@@ -251,8 +267,11 @@ def train_parallel(world_size,
         gradient_clipping (int): Maximum norm of the gradient.
         label_smoothing (int): Value of label smoothing to be applied in loss function.
         mode (string): Indicates whether we only want to compute validation loss or if we also
-                       want to translate the source sentences in the validation set.
-                       Can be one of the following: "loss", "translation" 
+                       want to translate the source sentences in the validation set
+                       (either using greedy decoding or beam search).
+                       Can be one of the following: "loss", "greedy" or "beam"
+        beam_size (int): Number of elements to store during beam search
+                         Only applicable if `mode == 'beam'`
         source_vocab: The vocabulary built from the code snippets in training set.
         target_vocab: The vocabulary built from the summaries in training set.
         checkpoint (bool): Flag that tells whether we want to save a checkpoint of the model
@@ -286,6 +305,7 @@ def train_parallel(world_size,
                    gradient_clipping,
                    label_smoothing,
                    mode,
+                   beam_size,
                    source_vocab,
                    target_vocab,
                    checkpoint,
@@ -318,7 +338,9 @@ def test_parallel(world_size,
                   d_ff,
                   dropout,
                   learning_rate,
-                  label_smoothing):
+                  label_smoothing,
+                  mode,
+                  beam_size):
     '''
     Creates several processes used to test the model. The dataset is split among
     the processes.
@@ -346,6 +368,12 @@ def test_parallel(world_size,
         learning_rate (int): Value of the initial learning rate.
         label_smoothing (int): Value of label smoothing to be applied in 
                                loss function.
+        mode (string): Indicates what is the strategy to be used in translation.
+                       It can either be a greedy decoding strategy or a beam 
+                       search strategy.
+                       Can be one of the following: "greedy" or "beam"
+        beam_size (int): Number of elements to store during beam search
+                         Only applicable if `mode == 'beam'` 
     '''
     mp.spawn(test_model_parallel,
              args=(world_size,
@@ -366,7 +394,9 @@ def test_parallel(world_size,
                    d_ff,
                    dropout,
                    learning_rate,
-                   label_smoothing
+                   label_smoothing,
+                   mode,
+                   beam_size
                    ),
              nprocs=world_size,
              join=True)

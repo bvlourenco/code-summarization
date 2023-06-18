@@ -14,6 +14,7 @@ def train_validate_model(model,
                          tgt_vocab_size,
                          gradient_clipping,
                          mode,
+                         beam_size,
                          target_vocab,
                          max_tgt_length,
                          checkpoint,
@@ -31,8 +32,11 @@ def train_validate_model(model,
         tgt_vocab_size (int): size of the target vocabulary.
         gradient_clipping (int): Maximum norm of the gradient.
         mode (string): Indicates whether we only want to compute validation loss or if we also
-                       want to translate the source sentences in the validation set.
-                       Can be one of the following: "loss", "translation"
+                       want to translate the source sentences in the validation set
+                       (either using greedy decoding or beam search).
+                       Can be one of the following: "loss", "greedy" or "beam"
+        beam_size (int): Number of elements to store during beam search
+                         Only applicable if `mode == 'beam'`
         source_vocab: The vocabulary built from the code snippets in training set.
         target_vocab: The vocabulary built from the summaries in training set.
         max_tgt_length (int): Maximum length of the generated summaries.
@@ -70,7 +74,9 @@ def train_validate_model(model,
                                   mode,
                                   target_vocab,
                                   tgt_vocab_size,
-                                  max_tgt_length)
+                                  max_tgt_length,
+                                  epoch,
+                                  beam_size)
         end_time = timer()
 
         print(f"Epoch: {epoch} | Time = {(end_time - start_time):.3f}s")
@@ -115,6 +121,7 @@ def create_train_model(gpu_rank,
                        gradient_clipping,
                        label_smoothing,
                        mode,
+                       beam_size,
                        source_vocab,
                        target_vocab,
                        checkpoint,
@@ -150,8 +157,11 @@ def create_train_model(gpu_rank,
         gradient_clipping (int): Maximum norm of the gradient.
         label_smoothing (int): Value of label smoothing to be applied in loss function.
         mode (string): Indicates whether we only want to compute validation loss or if we also
-                       want to translate the source sentences in the validation set.
-                       Can be one of the following: "loss", "translation" 
+                       want to translate the source sentences in the validation set
+                       (either using greedy decoding or beam search).
+                       Can be one of the following: "loss", "greedy" or "beam"
+        beam_size (int): Number of elements to store during beam search
+                         Only applicable if `mode == 'beam'`
         source_vocab: The vocabulary built from the code snippets in training set.
         target_vocab: The vocabulary built from the summaries in training set.
         checkpoint (bool): Flag that tells whether we want to save a checkpoint of the model
@@ -204,6 +214,7 @@ def create_train_model(gpu_rank,
                          tgt_vocab_size,
                          gradient_clipping,
                          mode,
+                         beam_size,
                          target_vocab,
                          max_tgt_length,
                          checkpoint,

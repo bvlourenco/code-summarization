@@ -47,7 +47,9 @@ def main():
                       args.d_ff,
                       args.dropout,
                       args.learning_rate,
-                      args.label_smoothing)
+                      args.label_smoothing,
+                      args.mode,
+                      args.beam_size)
     else:
         test_model(test_code_texts,
                    test_summary_texts,
@@ -68,7 +70,9 @@ def main():
                    args.d_ff,
                    args.dropout,
                    args.learning_rate,
-                   args.label_smoothing)
+                   args.label_smoothing,
+                   args.mode,
+                   args.beam_size)
 
 
 if __name__ == '__main__':

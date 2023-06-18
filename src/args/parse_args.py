@@ -74,9 +74,12 @@ def parse_arguments():
                               {original_string: code, docstring: summary}")
 
     parser.add_argument('--mode', type=str, required=True,
-                        choices=['translation', 'loss'],
+                        choices=['beam', 'greedy', 'loss'],
                         help="Tells if we want to compute only validation loss or \
-                              validation loss and translation of the validation set")
+                              validation loss and translation of the validation set \
+                                (using a greedy decoding or beam search strategy)")
+    parser.add_argument('--beam_size', type=int, default=1,
+                        help="Number of elements to store during beam search")
 
     parser.add_argument("--checkpoint", type=str2bool, required=True,
                         help="Save model + optimizer state after each epoch")
@@ -128,5 +131,12 @@ def parse_test_args():
     parser.add_argument('--label_smoothing', type=float, required=True,
                         help='Value of label smoothing in range [0.0, 1.0] \
                               to be applied in loss function.')
+    
+    parser.add_argument('--mode', type=str, required=True,
+                        choices=['beam', 'greedy'],
+                        help="Tells if we want to translate the code snippets using \
+                                a greedy decoding or beam search strategy")
+    parser.add_argument('--beam_size', type=int, default=1,
+                        help="Number of elements to store during beam search")
 
     return parser.parse_args()

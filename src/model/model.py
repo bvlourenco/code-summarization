@@ -11,7 +11,7 @@ from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
 from tqdm import tqdm
-from evaluation.translation import greedy_decode, translate_tokens
+from evaluation.translation import beam_search, greedy_decode, translate_tokens
 from model.transformer.transformer_model import Transformer
 from rouge_score import rouge_scorer
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -189,7 +189,8 @@ class Model:
                  target_vocab,
                  tgt_vocab_size,
                  max_tgt_length,
-                 num_epoch):
+                 num_epoch,
+                 beam_size):
         '''
         Validates the model after a training epoch to see how well he generalizes. 
         Does not update the weights of the model.
@@ -197,12 +198,15 @@ class Model:
         Args:
             val_dataloader: A Dataloader object that contains the validation set.
             mode (string): Indicates whether we only want to compute validation loss or if we also
-                           want to translate the source sentences in the validation set.
-                           Can be one of the following: "loss", "translation"
+                           want to translate the source sentences in the validation set
+                           (either using greedy decoding or beam search).
+                           Can be one of the following: "loss", "greedy" or "beam"
             target_vocab: The vocabulary built from the summaries in training set.
             tgt_vocab_size (int): size of the target vocabulary.
             max_tgt_length (int): The maximum length of the summaries.
             num_epoch (int): The current training epoch.
+            beam_size (int): Number of elements to store during beam search
+                             Only applicable if `mode == 'beam'`
 
         Returns:
             The average loss across all examples during one epoch.
@@ -217,7 +221,7 @@ class Model:
         scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
 
         # Writing the translation results to a file
-        if mode == 'translation':
+        if mode in ['beam', 'greedy']:
             log = open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                       '_gpu' + str(self.gpu_rank) + '_epoch' + str(num_epoch) + '.json', 'w')
 
@@ -228,14 +232,16 @@ class Model:
                 src = src.to(self.device)
                 tgt = tgt.to(self.device)
 
-                if mode == 'translation':
+                if mode in ['beam', 'greedy']:
                     self.translate_sentence(src,
                                             target_vocab,
                                             max_tgt_length,
                                             code,
                                             summary,
                                             log,
-                                            scorer)
+                                            scorer,
+                                            mode,
+                                            beam_size)
 
                 # Slicing the last element of tgt_data because it is used to compute the
                 # loss.
@@ -251,7 +257,7 @@ class Model:
 
                 losses += loss.item()
 
-        if mode == 'translation':
+        if mode in ['beam', 'greedy']:
             log.close()
 
         return losses / len(list(val_dataloader))
@@ -259,7 +265,9 @@ class Model:
     def test(self,
              test_dataloader,
              target_vocab,
-             max_tgt_length):
+             max_tgt_length,
+             mode,
+             beam_size):
         '''
         Tests the model with the testing set.
 
@@ -267,6 +275,12 @@ class Model:
             test_dataloader: A Dataloader object that contains the testing set.
             target_vocab: The vocabulary built from the summaries in training set.
             max_tgt_length (int): The maximum length of the summaries.
+            mode (string): Indicates what is the strategy to be used in translation.
+                           It can either be a greedy decoding strategy or a beam 
+                           search strategy.
+                           Can be one of the following: "greedy" or "beam"
+            beam_size (int): Number of elements to store during beam search
+                             Only applicable if `mode == 'beam'`
         '''
         # Set the model to evaluation mode
         self.model.eval()
@@ -295,7 +309,9 @@ class Model:
                                                                     code,
                                                                     summary,
                                                                     log,
-                                                                    scorer)
+                                                                    scorer,
+                                                                    mode,
+                                                                    beam_size)
                     
                     # Performing weighted average of metrics
                     sum_bleu += bleu * batch_size
@@ -321,7 +337,9 @@ class Model:
                            code,
                            summary,
                            log,
-                           scorer):
+                           scorer,
+                           mode,
+                           beam_size):
         '''
         Produces the code comment given a code snippet step by step and evaluates
         the generated comment against the reference summary.
@@ -334,6 +352,12 @@ class Model:
             summary (string): reference code comment.
             log: file to write the evaluation metrics of the generated summaries.
             scorer: A RougeScorer object to compute ROUGE-L.
+            mode (string): Indicates whether we only want to compute validation loss or if we also
+                           want to translate the source sentences in the validation set
+                           (either using greedy decoding or beam search).
+                           Can be one of the following: "loss", "greedy" or "beam"
+            beam_size (int): Number of elements to store during beam search
+                             Only applicable if `mode == 'beam'`
         
         Returns:
             The average BLEU, METEOR, ROUGE-L F-measure, Precision, Recall and 
@@ -351,12 +375,23 @@ class Model:
             # src[i] has shape (max_src_length, )
             # Performing an unsqueeze on src[i] will make its shape (1, max_src_length)
             # which is the correct shape since batch_size = 1 in this case
-            tgt_preds_idx = greedy_decode(self.model,
-                                          src[i].unsqueeze(0),
-                                          self.device,
-                                          start_symbol_idx,
-                                          end_symbol_idx,
-                                          max_tgt_length)
+            if mode == 'greedy':
+                tgt_preds_idx = greedy_decode(self.model,
+                                            src[i].unsqueeze(0),
+                                            self.device,
+                                            start_symbol_idx,
+                                            end_symbol_idx,
+                                            max_tgt_length)
+            elif mode == 'beam':
+                tgt_preds_idx = beam_search(self.model,
+                                            src[i].unsqueeze(0),
+                                            self.device,
+                                            start_symbol_idx,
+                                            end_symbol_idx,
+                                            max_tgt_length,
+                                            beam_size)
+            else:
+                raise ValueError("The mode " + mode + " does not exist.")
 
             # Passing the tensor to 1 dimension
             tgt_preds_idx.flatten()

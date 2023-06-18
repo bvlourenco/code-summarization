@@ -16,6 +16,7 @@
 
     - Check Kaiming initialization
         https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
+    - Pytorch link: https://pytorch.org/docs/stable/nn.init.html#torch.nn.init.kaiming_uniform_
 
 
     - Experimentar técnicas diferentes de tokenization (Word, Subword, and Character-Based Tokenization)
