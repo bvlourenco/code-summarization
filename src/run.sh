@@ -18,7 +18,7 @@ function train_and_validate() {
     --src_vocab_size 50000 \
     --tgt_vocab_size 30000 \
     --max_src_length 150 \
-    --max_tgt_length 50 \
+    --max_tgt_length 30 \
     --freq_threshold 0 \
     --d_model 512 \
     --num_heads 8 \
@@ -33,9 +33,9 @@ function train_and_validate() {
     --label_smoothing 0.1 \
     --train_filename ../data/python/train_processed.json \
     --validation_filename ../data/python/validation_processed.json \
-    --mode beam \
-    --beam_size 4 \
-    --checkpoint True \
+    --mode loss \
+    --checkpoint False \
+    --hyperparameter_tuning True \
     --debug_max_lines 32
 
 }
@@ -68,4 +68,4 @@ function test_model() {
 }
 
 train_and_validate
-test_model
+#test_model

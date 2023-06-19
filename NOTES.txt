@@ -8,12 +8,6 @@
         https://arxiv.org/pdf/2107.07112.pdf
     
     AFTER BASELINE IS DONE:
-    - Aplicar beam search em vez de greedy decoding no processo de inference
-    --  In inference time, use beam search instead of greedy decoding. Explanation:
-        https://datascience.stackexchange.com/a/93146
-    -- Ver código gerado pelo chatGPT e ver código do CodeBERT: https://github.com/microsoft/CodeBERT/blob/master/CodeBERT/code2nl/model.py
-    -- Ver também explicação teórica: https://towardsdatascience.com/foundations-of-nlp-explained-visually-beam-search-how-it-works-1586b9849a24
-
     - Check Kaiming initialization
         https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
     - Pytorch link: https://pytorch.org/docs/stable/nn.init.html#torch.nn.init.kaiming_uniform_

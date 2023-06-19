@@ -33,7 +33,8 @@ def train_model_parallel(gpu_rank,
                          val_code_texts,
                          val_summary_texts,
                          batch_size,
-                         num_workers):
+                         num_workers,
+                         trial_number):
     '''
     Initializes the process group and then creates and trains the model.
 
@@ -74,6 +75,9 @@ def train_model_parallel(gpu_rank,
         val_summary_texts: A list of summaries examples belonging to the validation set.
         batch_size (int): how many samples per batch to load
         num_workers (int): how many subprocesses to use for data loading.
+        trial_number (int): If we are fine-tuning the parameters of the program, it is the
+                            number of trial that are we are doing using optuna. 
+                            Otherwise, it is None.
 
     Source: https://medium.com/codex/a-comprehensive-tutorial-to-pytorch-distributeddataparallel-1f4b42bb1b51
             https://pytorch.org/tutorials/intermediate/ddp_tutorial.html#id1
@@ -81,7 +85,7 @@ def train_model_parallel(gpu_rank,
     '''
 
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ['MASTER_PORT'] = '12356'
 
     dist.init_process_group(
         backend='nccl',
@@ -117,7 +121,8 @@ def train_model_parallel(gpu_rank,
                        val_code_texts,
                        val_summary_texts,
                        batch_size,
-                       num_workers)
+                       num_workers,
+                       trial_number)
 
     dist.destroy_process_group()
 
@@ -241,8 +246,8 @@ def train_parallel(world_size,
                    val_code_texts,
                    val_summary_texts,
                    batch_size,
-                   num_workers
-                   ):
+                   num_workers,
+                   trial_number):
     '''
     Creates several processes used to run the model. The dataset is split among
     the processes.
@@ -282,6 +287,9 @@ def train_parallel(world_size,
         val_summary_texts: A list of summaries examples belonging to the validation set.
         batch_size (int): how many samples per batch to load
         num_workers (int): how many subprocesses to use for data loading.
+        trial_number (int): If we are fine-tuning the parameters of the program, it is the
+                            number of trial that are we are doing using optuna. 
+                            Otherwise, it is None.
 
     Source: https://medium.com/codex/a-comprehensive-tutorial-to-pytorch-distributeddataparallel-1f4b42bb1b51
             https://pytorch.org/tutorials/intermediate/ddp_tutorial.html#id1
@@ -314,7 +322,8 @@ def train_parallel(world_size,
                    val_code_texts,
                    val_summary_texts,
                    batch_size,
-                   num_workers
+                   num_workers,
+                   trial_number
                    ),
              nprocs=world_size,
              join=True)

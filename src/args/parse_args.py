@@ -83,6 +83,8 @@ def parse_arguments():
 
     parser.add_argument("--checkpoint", type=str2bool, required=True,
                         help="Save model + optimizer state after each epoch")
+    parser.add_argument("--hyperparameter_tuning", type=str2bool, required=True,
+                        help="Fine-tune some selected parameters or not")
 
     return parser.parse_args()
 

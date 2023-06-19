@@ -19,7 +19,8 @@ def train_validate_model(model,
                          max_tgt_length,
                          checkpoint,
                          device,
-                         gpu_rank):
+                         gpu_rank,
+                         trial_number):
     '''
     Performs the model training. In each epoch, it is done an evaluation using the
     validation set. In the end, it plots a graph with the training and validation loss.
@@ -45,6 +46,9 @@ def train_validate_model(model,
         device: The device where the model and tensors are inserted (GPU or CPU).
         gpu_rank (int): The rank of the GPU.
                         It has the value of -1 if no GPUs are avaiable.
+        trial_number (int): If we are fine-tuning the parameters of the program, it is the
+                            number of trial that are we are doing using optuna. 
+                            Otherwise, it is None.
 
     Source: https://pytorch.org/tutorials/beginner/translation_transformer.html?highlight=transformer
     '''
@@ -102,6 +106,10 @@ def train_validate_model(model,
     
     create_loss_plot(train_epoch_loss, val_epoch_loss, gpu_rank)
 
+    if trial_number is not None:
+        with open('../results/loss_file', 'a') as loss_file:
+            loss_file.write(str(trial_number) + ' ' + str(val_epoch_loss[-1]) + '\n')
+
 
 def create_train_model(gpu_rank,
                        world_size,
@@ -130,7 +138,8 @@ def create_train_model(gpu_rank,
                        val_code_texts,
                        val_summary_texts,
                        batch_size,
-                       num_workers):
+                       num_workers,
+                       trial_number):
     '''
     Creates the training and validation dataloaders, the models and performs
     the training and validation of the model.
@@ -172,6 +181,9 @@ def create_train_model(gpu_rank,
         val_summary_texts: A list of summaries examples belonging to the validation set.
         batch_size (int): how many samples per batch to load
         num_workers (int): how many subprocesses to use for data loading.
+        trial_number (int): If we are fine-tuning the parameters of the program, it is the
+                            number of trial that are we are doing using optuna. 
+                            Otherwise, it is None.
     '''
     train_dataloader, val_dataloader = create_dataloaders(train_code_texts,
                                                           train_summary_texts,
@@ -219,4 +231,5 @@ def create_train_model(gpu_rank,
                          max_tgt_length,
                          checkpoint,
                          device,
-                         gpu_rank)
+                         gpu_rank,
+                         trial_number)
