@@ -18,9 +18,19 @@
         https://towardsdatascience.com/word-subword-and-character-based-tokenization-know-the-difference-ea0976b64e17
         Good paper: https://openreview.net/pdf?id=htL4UZ344nF
                     https://openreview.net/forum?id=htL4UZ344nF
+    
+    -- Check: https://github.com/cedricrupb/code_tokenize (to tokenize source code)
+              Hugging Face tokenizer class (https://web.archive.org/web/20211026153231/https://huggingface.co/transformers/tokenizer_summary.html)
+                                           (https://huggingface.co/docs/transformers/model_doc/roberta#transformers.RobertaTokenizer)
+                                           (https://github.com/microsoft/CodeBERT/blob/master/CodeBERT/code2nl/run.py)
+              Byte Pair Encoding explanation (https://towardsdatascience.com/byte-pair-encoding-subword-based-tokenization-algorithm-77828a70bee0)
+              Implementation of Byte Pair Encoding (https://github.com/DolbyUUU/byte_pair_encoding_BPE_subword_tokenization_implementation_python/blob/main/BPE.py)
+    -- Also check pre-processing techniques I suggested in the Thesis Project
+
     - Aplicar copy attention e relative positional encoding
     - Aplicar as alterações que proponho no paper (2 encoders; token, statement, data-flow and control-flow adjacency matrices; Pre-trained model)
     
+    - Testar o modelo com os datasets apresentados aqui: https://github.com/DeepSoftwareAnalytics/CodeSumEvaluation
 
     - (LATER) Deploying Pytorch in python via a REST API with Flask: https://pytorch.org/tutorials/intermediate/flask_rest_api_tutorial.html?highlight=transformer
     - (LATER) DO not load all dataset into a list (optional improvement)

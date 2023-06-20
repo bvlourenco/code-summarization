@@ -1,0 +1,134 @@
+import numpy as np
+from flow.utils import build_flow
+from ast_matrix.ast_adjacency_matrix import get_AST_adjacency_matrix
+from tokenizer.code_tokenizer import CodeTokenizer, tokenize_with_camel_case, tokenize_with_snake_case
+from scipy import sparse
+
+MAX_SRC_LEN = 150
+
+
+class CodeSnippet(object):
+    code_tokenizer = CodeTokenizer()
+
+    def __init__(self, code_snippet, language, parser, dfg_function, cfg_function, log_file, debug=False):
+        self.code_snippet = code_snippet
+        self.language = language
+        self.parser = parser
+        self.dfg_function = dfg_function
+        self.cfg_function = cfg_function
+        self.in_token_adjacency_matrix = []
+        self.in_statement_adjacency_matrix = []
+        self.data_flow_adjacency_matrix = np.zeros((MAX_SRC_LEN, MAX_SRC_LEN))
+        self.control_flow_adjacency_matrix = np.zeros(
+            (MAX_SRC_LEN, MAX_SRC_LEN))
+        self.ast_adjacency_matrix = np.eye(MAX_SRC_LEN)
+        self.log_file = log_file
+        self.debug = debug
+
+    def build_token_matrix(self):
+        code_tokens = self.code_snippet.split()
+
+        snake_case_tokenized = []
+        val = 0
+        for token in code_tokens:
+            tokens_snake_case = tokenize_with_snake_case(token)
+            if len(tokens_snake_case) > 1 and len(tokens_snake_case[-1]) > 0:
+                val = 1
+            else:
+                val = 0
+            for token_snake_case in tokens_snake_case:
+                snake_case_tokenized.append((token_snake_case, val))
+
+        camel_snake_case_tokenized = []
+        for token, value in snake_case_tokenized:
+            tokens_snake_camel_case = tokenize_with_camel_case(token)
+            if len(tokens_snake_camel_case) > 1 or value == 1:
+                val = 1
+            else:
+                val = 0
+            for token_camel_case in tokens_snake_camel_case:
+                camel_snake_case_tokenized.append((token_camel_case, val))
+
+        self.in_token_adjacency_matrix.extend(
+            [el[1] for el in camel_snake_case_tokenized])
+
+    def build_statement_matrix(self):
+        # CodeSearchNet, TL-CodeSum and code-docstring-corpus datasets splits
+        # instructions with '\n'. So we do not need to split code by tokens
+        # such as ;, { and } in Java (and other languages)
+        instructions = self.code_snippet.split('\n')
+        for i in range(len(instructions)):
+            num_tokens = len(self.code_tokenizer.tokenize(
+                instructions[i]).words())
+            self.in_statement_adjacency_matrix.extend(
+                [i for _ in range(num_tokens)])
+
+        return self.in_statement_adjacency_matrix
+
+    def update_flow_matrix(self, type, i, j):
+        if type == 'Data flow':
+            self.data_flow_adjacency_matrix[i, j] = 1
+        elif type == 'Control flow':
+            self.control_flow_adjacency_matrix[i, j] = 1
+        else:
+            raise ValueError("Wrong type for data/control flow matrix: ", type)
+
+    def get_build_flow_function(self, type):
+        if type == 'Data flow':
+            return self.dfg_function
+        elif type == 'Control flow':
+            return self.cfg_function
+        else:
+            raise ValueError("Wrong type for data/control flow matrix: ", type)
+
+    def print_flow_matrix(self, type):
+        if type == 'Data flow':
+            self.log_file.write(type + " matrix:\n" +
+                                self.data_flow_adjacency_matrix.__str__() + "\n\n")
+        elif type == 'Control flow':
+            self.log_file.write(type + " matrix:\n" +
+                                self.control_flow_adjacency_matrix.__str__() + "\n\n")
+        else:
+            raise ValueError("Wrong type for data/control flow matrix: ", type)
+
+    def build_data_or_control_flow_matrix(self, type):
+        '''
+        Either builds data flow or control flow 
+        '''
+        build_flow_graph = self.get_build_flow_function(type)
+        _, edges = build_flow(
+            self.code_snippet, self.parser, self.language, build_flow_graph, type)
+        for edge in edges:
+            for dependency in edge[4]:
+                if edge[1] < MAX_SRC_LEN and dependency < MAX_SRC_LEN:
+                    self.update_flow_matrix(type, edge[1], dependency)
+
+        if self.debug:
+            self.log_file.write("\n\n\n" + self.code_snippet + "\n\n")
+            self.log_file.write(type + " edges:\n" + edges.__str__() + "\n\n")
+            self.print_flow_matrix(type)
+
+    def build_ast_matrix(self):
+        tree = self.parser.parse(bytes(self.code_snippet, "utf8"))
+        self.ast_adjacency_matrix = get_AST_adjacency_matrix(tree)
+
+        if self.debug:
+            self.log_file.write("\n\n\n" + self.code_snippet + "\n\n")
+            self.log_file.write("AST adjacency matrix:\n" +
+                                self.ast_adjacency_matrix.__str__() + "\n\n")
+            self.log_file.write("AST:\n" + tree.root_node.sexp() + "\n\n\n")
+
+    def get_adjacency_matrices(self):
+        self.build_token_matrix()
+        self.build_statement_matrix()
+        self.build_data_or_control_flow_matrix('Data flow')
+        self.build_data_or_control_flow_matrix('Control flow')
+        self.build_ast_matrix()
+
+        return {
+            "in_token_adjacency_matrix": self.in_token_adjacency_matrix,
+            "in_statement_adjacency_matrix": self.in_statement_adjacency_matrix,
+            "data_flow_adjacency_matrix": sparse.csr_matrix(self.data_flow_adjacency_matrix),
+            "control_flow_adjacency_matrix": sparse.csr_matrix(self.control_flow_adjacency_matrix),
+            "ast_adjacency_matrix": sparse.csr_matrix(self.ast_adjacency_matrix),
+        }

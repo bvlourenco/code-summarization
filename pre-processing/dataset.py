@@ -3,6 +3,32 @@ import json
 from tqdm import tqdm
 
 
+def str2bool(value):
+    '''
+    Parses a given value to a boolean. Used to parse booleans in argument parser.
+
+    Args:
+        value: The value to be parsed to a boolean.
+    '''
+    if isinstance(value, bool):
+        return value
+    if value.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif value.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
+def pre_process(line):
+    line = line.replace('qz', 'd')
+    line = line.replace('qq', 'q')
+    line = line.replace(' DCNL DCSP ', '\n\t')
+    line = line.replace(' DCNL ', '\n')
+    line = line.replace(' DCSP ', '\t')
+    return line
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         'Converts python/java dataset files into the structure \
@@ -29,6 +55,10 @@ def parse_arguments():
                         choices=['test', 'train', 'validation'],
                         help="Type of the dataset file (if it belongs to the \
                             training set, testing set or validation set)")
+    parser.add_argument('--pre_processing', type=str2bool, default=False,
+                        help='If true, tells to pre-process the code snippets by \
+                            replacing the DCNL and DCSP tokens by newline and tab \
+                            characters')
 
     args = parser.parse_args()
 
@@ -62,7 +92,7 @@ def main():
         code_snippet_file = open(args.code_snippet_file, 'r')
         summary_file = open(args.summary_file, 'r')
 
-        num_lines = sum(1 for _ in open(code_snippet_file, 'r'))
+        num_lines = sum(1 for _ in open(args.code_snippet_file, 'r'))
 
         # Reset the file pointer to the beggining
         code_snippet_file.seek(0)
@@ -74,6 +104,9 @@ def main():
             if code_snippet is None or summary is None:
                 raise ValueError(
                     "Code snippet and summary files with different size")
+
+            if args.pre_processing:
+                code_snippet = pre_process(code_snippet)
 
             code_comment = {
                 "original_string": code_snippet.strip(), "docstring": summary.strip()}

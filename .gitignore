@@ -1,3 +1,11 @@
 data
 .vscode
 __pycache__
+pre-processing/adjacency_matrices/files/ast_adjacency_matrix/*
+pre-processing/adjacency_matrices/files/control_flow/*
+pre-processing/adjacency_matrices/files/data_flow/*
+pre-processing/adjacency_matrices/files/in_statement/*
+pre-processing/adjacency_matrices/files/in_token/*
+pre-processing/adjacency_matrices/files/logs/*
+pre-processing/adjacency_matrices/language_parsers/parsers/*
+pre-processing/adjacency_matrices/language_parsers/build/languages.so
