@@ -5,7 +5,9 @@ from train_test.test_program import TestProgram
 
 def main():
     '''
-    TODO
+    Main function of the program to test.
+    Parses the arguments given to the program, loads the trained model and its
+    vocabulary and then tests it using the testing set.
     '''
     args = parse_test_args()
 

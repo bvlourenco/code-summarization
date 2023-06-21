@@ -7,12 +7,14 @@ import torch.distributed as dist
 
 class Program:
     '''
-    TODO
+    Class that represents an instance of a program. It is only used as a superclass
+    of the classes `TrainProgram` and `TestProgram`.
     '''
 
-    def __init__(self, args, trial_number=None):
+    def __init__(self, args):
         '''
-        TODO
+        Args:
+            args: The arguments given to the program.
         '''
         self.src_vocab_size = args.src_vocab_size
         self.tgt_vocab_size = args.tgt_vocab_size
@@ -39,15 +41,15 @@ class Program:
 
         # world_size is the number of processes to be launched
         self.world_size = None
-        if torch.cuda.is_available():
+        if torch.cuda.is_available() and torch.cuda.device_count() > 1:
             # If we're running in GPU, we'll have 1 process per GPU
             self.world_size = torch.cuda.device_count()
 
-        self.trial_number = trial_number
-
     def start(self):
         '''
-        TODO
+        Starts the program by checking if we're going to launch only 1 process
+        or several processes (depending on the number of GPUs being used. We have
+        1 process per GPU).
         '''
         if self.world_size is not None:
             self.run_parallel()
@@ -56,7 +58,8 @@ class Program:
 
     def run_parallel(self):
         '''
-        TODO
+        Starts multiple processes of the program. The number of processes is the
+        number of GPUs available to the program. 
         '''
         mp.spawn(self.init_multiple_processes,
                  args=(),
@@ -66,13 +69,24 @@ class Program:
     @abstractmethod
     def execute_operation(self, gpu_rank=None):
         '''
-        TODO
+        Executes the operation of the program: it either trains and validates the
+        model or it tests it. It depends on the class we've created (if it's a 
+        `TrainProgram` or `TestProgram` class).
+
+        Args:
+            gpu_rank (int): The rank of the GPU.
+                            It has the value of None if no GPUs are available or
+                            only 1 GPU is available.
         '''
         pass
 
     def init_multiple_processes(self, gpu_rank):
         '''
-        TODO
+        If we're running multiple processes of this program, it initializes all
+        of those processes and executes the operation that the program does.
+
+        Args:
+            gpu_rank (int): The rank of the GPU.
         '''
         os.environ['MASTER_ADDR'] = 'localhost'
         os.environ['MASTER_PORT'] = '12355'

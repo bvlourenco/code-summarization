@@ -5,7 +5,10 @@ from train_test.train_program import TrainProgram
 
 def main():
     '''
-    TODO
+    Main function of the program to train and validate.
+    Parses the arguments given to the program and depending on the input argument
+    `hyperparameter_tuning`, it either trains the model or performs fine-tuning on
+    the parameters of the model.
     '''
     args = parse_arguments()
 

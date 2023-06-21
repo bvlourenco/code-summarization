@@ -56,7 +56,8 @@ class Model:
             pad_idx (int): index of the <PAD> token
             device: The device where the model and tensors are inserted (GPU or CPU).
             gpu_rank (int): The rank of the GPU.
-                            It has the value of -1 if no GPUs are avaiable.
+                            It has the value of None if no GPUs are avaiable or
+                            only 1 GPU is available.
         '''
         self.model = Transformer(src_vocab_size,
                                  tgt_vocab_size,
@@ -72,7 +73,7 @@ class Model:
         # Passing the model and all its layers to GPU if available
         self.model = self.model.to(device)
 
-        if device == torch.device('cuda'):
+        if gpu_rank is not None:
             # Used to run model in several GPUs
             self.model = DDP(self.model,
                              device_ids=[gpu_rank],
@@ -454,7 +455,7 @@ class Model:
         parallel with one or more GPUs.
         It's only used in load/save operations.
         '''
-        if self.device == torch.device('cuda'):
+        if self.gpu_rank is not None:
             return self.model.module
         else:
             return self.model
@@ -469,12 +470,13 @@ class Model:
 
         Args:
             gpu_rank (int): The rank of the GPU.
-                            It has the value of -1 if no GPUs are avaiable.: 
+                            It has the value of None if no GPUs are avaiable or
+                            only 1 GPU is available.
 
         Returns:
             A dictionary with a mapping between devices and storage
         '''
-        if self.device == torch.device('cuda'):
+        if self.gpu_rank is not None:
             return {'cuda:%d' % 0: 'cuda:%d' % gpu_rank}
         else:
             return None

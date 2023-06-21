@@ -33,7 +33,8 @@ def get_dataloader(dataset,
         world_size (int): The number of GPUs available in the machine.
                           It has the value of -1 if no GPUs are avaiable.
         gpu_rank (int): The rank of the GPU.
-                        It has the value of -1 if no GPUs are avaiable.
+                        It has the value of None if no GPUs are avaiable or
+                        only 1 GPU is available.
 
     Returns:
         A new dataloader.
@@ -47,7 +48,7 @@ def get_dataloader(dataset,
 
     # A sampler tells the order in which the data from a dataset is accessed
     # and distributed across different processes and threads.
-    if device == torch.device('cuda'):
+    if gpu_rank is not None:
         sampler = DistributedSampler(dataset, 
                                      num_replicas=world_size, 
                                      rank=gpu_rank,
@@ -105,7 +106,8 @@ def create_dataloaders(source_code_texts,
         world_size (int): The number of GPUs available in the machine.
                           It has the value of -1 if no GPUs are avaiable.
         gpu_rank (int): The rank of the GPU.
-                        It has the value of -1 if no GPUs are avaiable.
+                        It has the value of None if no GPUs are avaiable or
+                        only 1 GPU is available.
 
     Returns:
         The training and validation dataloaders (instances of Dataloader).
@@ -169,7 +171,8 @@ def load_evaluation_dataloader(code_texts,
         world_size (int): The number of GPUs available in the machine.
                           It has the value of -1 if no GPUs are avaiable.
         gpu_rank (int): The rank of the GPU.
-                        It has the value of -1 if no GPUs are avaiable.
+                        It has the value of None if no GPUs are avaiable or
+                        only 1 GPU is available.
         
     Returns:
         A new dataloader with the validation or testing set.

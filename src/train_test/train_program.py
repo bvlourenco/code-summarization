@@ -12,12 +12,18 @@ from timeit import default_timer as timer
 
 class TrainProgram(Program):
     '''
-    TODO
+    Represents a program where we're loading the training and validation set,
+    creating the vocabulary with the training set and then training and 
+    validating the model.
     '''
 
     def __init__(self, args, trial_number=None):
         '''
-        TODO
+        Args:
+            args: The arguments passed to the program.
+            trial_number: If we're fine-tuning the model, it is the number of
+                          trial of the optuna study (each trial corresponds to a
+                          different parameter configuration).
         '''
         super(TrainProgram, self).__init__(args, trial_number)
         self.num_epochs = args.num_epochs
@@ -26,10 +32,22 @@ class TrainProgram(Program):
         self.train_filename = args.train_filename
         self.validation_filename = args.validation_filename
         self.checkpoint = args.checkpoint
+        self.trial_number = trial_number
 
     def execute_operation(self, gpu_rank=None):
         '''
-        TODO
+        Executes the operation necessary to test the model:
+        (1) Load the training set
+        (2) Load the validation set
+        (3) Create the vocabulary from the training set
+        (3) Create the dataloaders for the training set and validation set
+        (4) Create the model
+        (5) Train the model for some epochs and validate it after each epoch
+
+        Args:
+            gpu_rank: The rank of the GPU.
+                      It has the value of None if no GPUs are available or
+                      only 1 GPU is available.
         '''
         train_code_texts, train_summary_texts = load_dataset_file(self.train_filename,
                                                                   'train',
@@ -59,7 +77,7 @@ class TrainProgram(Program):
                                                               self.world_size,
                                                               gpu_rank)
 
-        if self.device == torch.device('cuda'):
+        if self.world_size is not None:
             model_device = gpu_rank
         else:
             model_device = self.device
@@ -133,7 +151,8 @@ class TrainProgram(Program):
                             at the end of each epoch or not.
             device: The device where the model and tensors are inserted (GPU or CPU).
             gpu_rank (int): The rank of the GPU.
-                            It has the value of -1 if no GPUs are avaiable.
+                            It has the value of None if no GPUs are avaiable or
+                            only 1 GPU is available.
             trial_number (int): If we are fine-tuning the parameters of the program, it is the
                                 number of trial that are we are doing using optuna. 
                                 Otherwise, it is None.
@@ -155,7 +174,7 @@ class TrainProgram(Program):
         for epoch in range(start_epoch, num_epochs + 1):
             print(f"Epoch: {epoch}")
 
-            if device == torch.device('cuda'):
+            if gpu_rank is not None:
                 train_dataloader.sampler.set_epoch(epoch)
                 val_dataloader.sampler.set_epoch(epoch)
 

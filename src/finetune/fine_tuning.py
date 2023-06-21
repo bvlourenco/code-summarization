@@ -43,7 +43,12 @@ def objective(trial, args):
 
 def save_optuna_study(study: optuna.study.Study, trial: optuna.trial.FrozenTrial):
     '''
-    TODO    
+    Callback function invoked after each trial of the optuna study.
+    It saves the study to a file.
+
+    Args:
+        study: The optuna study (stores the best trial and hyper-parameters)
+        trial: An optuna trial.
     '''
     joblib.dump(study, "../results/study.pkl")
 

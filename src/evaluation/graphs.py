@@ -72,7 +72,8 @@ def create_loss_plot(train_epoch_loss, val_epoch_loss, gpu_rank):
         val_epoch_loss (list): The validation loss for each epoch.
                                Size: number of epochs.
         gpu_rank (int): The rank of the GPU.
-                        It has the value of -1 if no GPUs are avaiable.
+                        It has the value of None if no GPUs are avaiable or
+                        only 1 GPU is available.
 
     Source: https://machinelearningmastery.com/plotting-the-training-and-validation-loss-curves-for-the-transformer-model/
     '''
