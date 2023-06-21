@@ -78,6 +78,9 @@ class Model:
             self.model = DDP(self.model,
                              device_ids=[gpu_rank],
                              output_device=gpu_rank)
+        
+        # Optimizes the model. TODO: Try to fix this!
+        # self.model = torch.compile(self.model)
 
         # Function used to compute the loss. ignore_index is the padding token index
         self.criterion = nn.CrossEntropyLoss(ignore_index=pad_idx,

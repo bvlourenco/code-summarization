@@ -14,7 +14,7 @@ function train_and_validate() {
     echo "= Training (with validation after each epoch)... ="
     echo "=================================================="
 
-    CUDA_VISIBLE_DEVICES=$GPUS python3 main.py \
+    CUDA_VISIBLE_DEVICES=$GPUS python3.10 main.py \
     --src_vocab_size 150000 \
     --tgt_vocab_size 30000 \
     --max_src_length 400 \
@@ -46,7 +46,7 @@ function test_model() {
     echo "=================== Testing... ==================="
     echo "=================================================="
 
-    CUDA_VISIBLE_DEVICES=$GPUS python3 test.py \
+    CUDA_VISIBLE_DEVICES=$GPUS python3.10 test.py \
     --src_vocab_size 150000 \
     --tgt_vocab_size 30000 \
     --max_src_length 400 \

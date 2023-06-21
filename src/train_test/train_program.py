@@ -25,7 +25,7 @@ class TrainProgram(Program):
                           trial of the optuna study (each trial corresponds to a
                           different parameter configuration).
         '''
-        super(TrainProgram, self).__init__(args, trial_number)
+        super(TrainProgram, self).__init__(args)
         self.num_epochs = args.num_epochs
         self.gradient_clipping = args.gradient_clipping
         self.freq_threshold = args.freq_threshold

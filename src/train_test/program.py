@@ -7,8 +7,8 @@ import torch.distributed as dist
 
 class Program:
     '''
-    Class that represents an instance of a program. It is only used as a superclass
-    of the classes `TrainProgram` and `TestProgram`.
+    Class that represents an instance of a program. It is only used as a 
+    superclass of the classes `TrainProgram` and `TestProgram`.
     '''
 
     def __init__(self, args):
