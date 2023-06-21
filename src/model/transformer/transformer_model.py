@@ -1,3 +1,5 @@
+import logging
+from prettytable import PrettyTable
 import torch
 import torch.nn as nn
 from evaluation.graphs import display_attention
@@ -6,6 +8,14 @@ from model.transformer.embeddings import Embeddings
 from model.transformer.positional_encoding import PositionalEncoding
 from model.transformer.encoder_layer import EncoderLayer
 from model.transformer.decoder_layer import DecoderLayer
+
+# Multiple calls to getLogger() with the same name will return a reference
+# to the same Logger object, which saves us from passing the logger objects
+# to every part where it’s needed.
+# Source: https://realpython.com/python-logging/
+logger = logging.getLogger('main_logger')
+# To avoid having repeated logs!
+logger.propagate = False
 
 
 class Transformer(nn.Module):
@@ -67,6 +77,7 @@ class Transformer(nn.Module):
         self.device = device
 
         self.init_weights()
+        self.print_transformer_information()
 
     def init_weights(self):
         '''
@@ -87,6 +98,25 @@ class Transformer(nn.Module):
         Source: https://medium.com/@hunter-j-phillips/putting-it-all-together-the-implemented-transformer-bfb11ac1ddfe
         '''
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+    def print_transformer_information(self):
+        '''
+        Creates a table with information regarding the shapes of the layers of the
+        Transformer and the number of parameters of each layer.
+
+        Source: https://github.com/wasiahmad/NeuralCodeSum/blob/master/c2nl/models/transformer.py#L624
+        '''
+        table = PrettyTable()
+        table.field_names = ["Layer Name", "Output Shape", "Param #"]
+        table.align["Layer Name"] = "l"
+        table.align["Output Shape"] = "r"
+        table.align["Param #"] = "r"
+        for name, parameters in self.named_parameters():
+            if parameters.requires_grad:
+                table.add_row(
+                    [name, str(list(parameters.shape)), parameters.numel()])
+
+        logger.info('Transformer parameters:\n%s' % table)
 
     def generate_src_mask(self, src):
         '''
@@ -150,7 +180,8 @@ class Transformer(nn.Module):
             The resulting encoding from the last layer. 
             Shape: `(batch_size, max_src_len, d_model)`
         '''
-        src_embedded = self.encoder_positional_encoding(self.encoder_embedding(src))
+        src_embedded = self.encoder_positional_encoding(
+            self.encoder_embedding(src))
         enc_output = src_embedded
         for enc_layer in self.encoder_layers:
             enc_output, enc_attn_score = enc_layer(enc_output, src_mask)
@@ -187,7 +218,8 @@ class Transformer(nn.Module):
             The resulting decoding from the last layer. 
             Shape: `(batch_size, tgt_seq_length, d_model)`
         '''
-        tgt_embedded = self.decoder_positional_encoding(self.decoder_embedding(tgt))
+        tgt_embedded = self.decoder_positional_encoding(
+            self.decoder_embedding(tgt))
 
         dec_output = tgt_embedded
         for dec_layer in self.decoder_layers:

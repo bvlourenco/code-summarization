@@ -1,6 +1,6 @@
+import logging
 import math
 import os
-import torch
 from dataset.build_vocab import create_vocabulary
 from dataset.dataloader import create_dataloaders
 from dataset.load_dataset import load_dataset_file
@@ -8,6 +8,14 @@ from evaluation.graphs import create_loss_plot
 from model.model import Model
 from train_test.program import Program
 from timeit import default_timer as timer
+
+# Multiple calls to getLogger() with the same name will return a reference
+# to the same Logger object, which saves us from passing the logger objects
+# to every part where it’s needed.
+# Source: https://realpython.com/python-logging/
+logger = logging.getLogger('main_logger')
+# To avoid having repeated logs!
+logger.propagate = False
 
 
 class TrainProgram(Program):
@@ -172,7 +180,7 @@ class TrainProgram(Program):
 
         best_val_loss = float('inf')
         for epoch in range(start_epoch, num_epochs + 1):
-            print(f"Epoch: {epoch}")
+            logger.info(f"Epoch: {epoch}")
 
             if gpu_rank is not None:
                 train_dataloader.sampler.set_epoch(epoch)
@@ -191,11 +199,9 @@ class TrainProgram(Program):
                                       beam_size)
             end_time = timer()
 
-            print(f"Epoch: {epoch} | Time = {(end_time - start_time):.3f}s")
-            print(
-                f'Train Loss: {train_loss:.3f} | Train Perplexity: {math.exp(train_loss):7.3f}')
-            print(
-                f'Validation Loss: {val_loss:.3f} | Validation Perplexity: {math.exp(val_loss):7.3f}')
+            logger.info(f"Epoch: {epoch} | Time = {(end_time - start_time):.3f}s")
+            logger.info(f'Train Loss: {train_loss:.3f} | Train Perplexity: {math.exp(train_loss):7.3f}')
+            logger.info(f'Validation Loss: {val_loss:.3f} | Validation Perplexity: {math.exp(val_loss):7.3f}')
 
             train_epoch_loss.append(train_loss)
             val_epoch_loss.append(val_loss)
@@ -205,7 +211,8 @@ class TrainProgram(Program):
             # gpu_rank is 0 (to avoid having multiple processed storing the model
             # when using multiple GPUs)
             if val_loss < best_val_loss and gpu_rank in [None, 0]:
-                print(f"Saving model with validation loss of {val_loss:7.3f}")
+                logger.info(
+                    f"Saving model with validation loss of {val_loss:7.3f}")
                 best_val_loss = val_loss
                 model.save()
 
@@ -216,8 +223,8 @@ class TrainProgram(Program):
         if num_epochs > 1 and trial_number is None:
             create_loss_plot(train_epoch_loss, val_epoch_loss, gpu_rank)
         else:
-            print(f"Training loss of epoch 1: {train_epoch_loss[0]}\n" +
-                  f"Validation loss of epoch 1: {val_epoch_loss[0]}")
+            logger.info(f"Training loss of epoch 1: {train_epoch_loss[0]}")
+            logger.info(f"Validation loss of epoch 1: {val_epoch_loss[0]}")
 
         if trial_number is not None:
             with open('../results/loss_file', 'a') as loss_file:

@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import logging
 import sys
 import traceback
 from nltk.metrics.scores import precision, recall, f_measure
@@ -16,6 +17,13 @@ from model.transformer.transformer_model import Transformer
 from rouge_score import rouge_scorer
 from torch.nn.parallel import DistributedDataParallel as DDP
 
+# Multiple calls to getLogger() with the same name will return a reference
+# to the same Logger object, which saves us from passing the logger objects
+# to every part where it’s needed.
+# Source: https://realpython.com/python-logging/
+logger = logging.getLogger('main_logger')
+# To avoid having repeated logs!
+logger.propagate = False
 
 class Model:
     '''
@@ -78,7 +86,7 @@ class Model:
             self.model = DDP(self.model,
                              device_ids=[gpu_rank],
                              output_device=gpu_rank)
-        
+
         # Optimizes the model. TODO: Try to fix this!
         # self.model = torch.compile(self.model)
 
@@ -116,7 +124,7 @@ class Model:
                         model (d_model).
             factor: Scaling factor for the learning rate.
             warmup: Number of warmup steps for gradual learning rate increase.
-        
+
         Returns:
             The computed learning rate for the given step.
 
@@ -227,7 +235,7 @@ class Model:
         # Writing the translation results to a file
         if mode in ['beam', 'greedy']:
             log = open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
-                      '_gpu' + str(self.gpu_rank) + '_epoch' + str(num_epoch) + '.json', 'w')
+                       '_gpu' + str(self.gpu_rank) + '_epoch' + str(num_epoch) + '.json', 'w')
 
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
@@ -257,7 +265,7 @@ class Model:
                 # - tgt[:, 1:] removes the first token from the target sequence since we are training the
                 # model to predict the next word based on previous words.
                 loss = self.criterion(output.contiguous().view(-1, tgt_vocab_size),
-                                        tgt[:, 1:].contiguous().view(-1))
+                                      tgt[:, 1:].contiguous().view(-1))
 
                 losses += loss.item()
 
@@ -290,6 +298,7 @@ class Model:
         self.model.eval()
 
         # Used to compute the ROUGE-L score
+        # RougeScorer has the line "logging.info("Using default tokenizer.")"
         scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
 
         number_examples = 0
@@ -307,16 +316,16 @@ class Model:
                     batch_size = src.shape[0]
 
                     bleu, meteor, rouge_l, \
-                    precision, recall, f1 = self.translate_sentence(src,
-                                                                    target_vocab,
-                                                                    max_tgt_length,
-                                                                    code,
-                                                                    summary,
-                                                                    log,
-                                                                    scorer,
-                                                                    mode,
-                                                                    beam_size)
-                    
+                        precision, recall, f1 = self.translate_sentence(src,
+                                                                        target_vocab,
+                                                                        max_tgt_length,
+                                                                        code,
+                                                                        summary,
+                                                                        log,
+                                                                        scorer,
+                                                                        mode,
+                                                                        beam_size)
+
                     # Performing weighted average of metrics
                     sum_bleu += bleu * batch_size
                     sum_meteor += meteor * batch_size
@@ -326,13 +335,13 @@ class Model:
                     sum_f1 += f1 * batch_size
 
                     number_examples += batch_size
-        
-        print(f"Metrics:\nBLEU: {sum_bleu / number_examples:7.3f} | " + 
-              f"METEOR: {sum_meteor / number_examples:7.3f} | " + 
-              f"ROUGE-L: {sum_rouge_l / number_examples:7.3f} | " +
-              f"Precision: {sum_precision / number_examples:7.3f} | " +
-              f"Recall: {sum_recall / number_examples:7.3f} | " + 
-              f"F1: {sum_f1 / number_examples:7.3f}")
+
+        logger.info(f"Metrics:\nBLEU: {sum_bleu / number_examples:7.3f} | " +
+                    f"METEOR: {sum_meteor / number_examples:7.3f} | " +
+                    f"ROUGE-L: {sum_rouge_l / number_examples:7.3f} | " +
+                    f"Precision: {sum_precision / number_examples:7.3f} | " +
+                    f"Recall: {sum_recall / number_examples:7.3f} | " +
+                    f"F1: {sum_f1 / number_examples:7.3f}")
 
     def translate_sentence(self,
                            src,
@@ -362,7 +371,7 @@ class Model:
                            Can be one of the following: "loss", "greedy" or "beam"
             beam_size (int): Number of elements to store during beam search
                              Only applicable if `mode == 'beam'`
-        
+
         Returns:
             The average BLEU, METEOR, ROUGE-L F-measure, Precision, Recall and 
             F1-score of the predicted sentence relative to the reference. 
@@ -381,11 +390,11 @@ class Model:
             # which is the correct shape since batch_size = 1 in this case
             if mode == 'greedy':
                 tgt_preds_idx = greedy_decode(self.model,
-                                            src[i].unsqueeze(0),
-                                            self.device,
-                                            start_symbol_idx,
-                                            end_symbol_idx,
-                                            max_tgt_length)
+                                              src[i].unsqueeze(0),
+                                              self.device,
+                                              start_symbol_idx,
+                                              end_symbol_idx,
+                                              max_tgt_length)
             elif mode == 'beam':
                 tgt_preds_idx = beam_search(self.model,
                                             src[i].unsqueeze(0),
@@ -462,7 +471,7 @@ class Model:
             return self.model.module
         else:
             return self.model
-    
+
     def get_map_location(self, gpu_rank):
         '''
         Specifies how to map the storage location for devices 
@@ -493,7 +502,7 @@ class Model:
             torch.save(model.state_dict(), '../results/model_weights.pth')
         except Exception:
             traceback.print_exc()
-            print("It was not possible to save the model weights.")
+            logger.error("It was not possible to save the model weights.")
             sys.exit(1)
 
     def save_checkpoint(self, epoch, training_losses, validation_losses):
@@ -518,7 +527,7 @@ class Model:
             torch.save(params, '../results/model_weights_checkpoint.pth')
         except Exception:
             traceback.print_exc()
-            print("It was not possible to save a model checkpoint.")
+            logger.error("It was not possible to save a model checkpoint.")
             sys.exit(1)
 
     def load(self, gpu_rank):
@@ -528,11 +537,11 @@ class Model:
         self.model = self.get_model()
         map_location = self.get_map_location(gpu_rank)
         try:
-            self.model.load_state_dict(torch.load('../results/model_weights.pth', 
+            self.model.load_state_dict(torch.load('../results/model_weights.pth',
                                                   map_location=map_location))
         except Exception:
             traceback.print_exc()
-            print("It was not possible to load the model weights from the " +
+            logger.error("It was not possible to load the model weights from the " +
                   "specified filename.")
             sys.exit(1)
 
@@ -560,7 +569,6 @@ class Model:
             return epoch, training_losses, validation_losses
         except Exception:
             traceback.print_exc()
-            print("It was not possible to load the model from the " +
+            logger.error("It was not possible to load the model from the " +
                   "checkpoint.")
             sys.exit(1)
-            

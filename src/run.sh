@@ -15,9 +15,9 @@ function train_and_validate() {
     echo "=================================================="
 
     CUDA_VISIBLE_DEVICES=$GPUS python3.10 main.py \
-    --src_vocab_size 150000 \
-    --tgt_vocab_size 30000 \
-    --max_src_length 400 \
+    --src_vocab_size 10 \
+    --tgt_vocab_size 10 \
+    --max_src_length 10 \
     --max_tgt_length 30 \
     --freq_threshold 0 \
     --d_model 512 \
@@ -47,9 +47,9 @@ function test_model() {
     echo "=================================================="
 
     CUDA_VISIBLE_DEVICES=$GPUS python3.10 test.py \
-    --src_vocab_size 150000 \
-    --tgt_vocab_size 30000 \
-    --max_src_length 400 \
+    --src_vocab_size 10 \
+    --tgt_vocab_size 10 \
+    --max_src_length 10 \
     --max_tgt_length 30 \
     --d_model 512 \
     --num_heads 8 \

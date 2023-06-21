@@ -13,7 +13,7 @@
     - Pytorch link: https://pytorch.org/docs/stable/nn.init.html#torch.nn.init.kaiming_uniform_
 
 
-    - Experimentar técnicas diferentes de tokenization (Word, Subword, and Character-Based Tokenization)
+    - AMANHÃ: FAZER COMMENTS E TESTAR COM VÁRIAS GPUSExperimentar técnicas diferentes de tokenization (Word, Subword, and Character-Based Tokenization)
     --  Check tokenization techniques 
         https://towardsdatascience.com/word-subword-and-character-based-tokenization-know-the-difference-ea0976b64e17
         Good paper: https://openreview.net/pdf?id=htL4UZ344nF

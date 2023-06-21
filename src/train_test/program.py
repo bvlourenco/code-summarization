@@ -1,9 +1,18 @@
 from abc import abstractmethod
+import json
+import logging
 import os
 import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
 
+# Multiple calls to getLogger() with the same name will return a reference
+# to the same Logger object, which saves us from passing the logger objects
+# to every part where it’s needed.
+# Source: https://realpython.com/python-logging/
+logger = logging.getLogger('main_logger')
+# To avoid having repeated logs!
+logger.propagate = False
 
 class Program:
     '''
@@ -45,12 +54,18 @@ class Program:
             # If we're running in GPU, we'll have 1 process per GPU
             self.world_size = torch.cuda.device_count()
 
+        # Storing all arguments to be print at the start of the program
+        self.args = args
+
     def start(self):
         '''
         Starts the program by checking if we're going to launch only 1 process
         or several processes (depending on the number of GPUs being used. We have
         1 process per GPU).
         '''
+        logger.info("Arguments:\n%s" % json.dumps(vars(self.args),
+                                                  indent=4,
+                                                  sort_keys=True))
         if self.world_size is not None:
             self.run_parallel()
         else:

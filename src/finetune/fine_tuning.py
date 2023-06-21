@@ -10,6 +10,13 @@ from train_test.train_program import TrainProgram
 optuna.logging.get_logger("optuna").addHandler(
     logging.StreamHandler(sys.stdout))
 
+# Multiple calls to getLogger() with the same name will return a reference
+# to the same Logger object, which saves us from passing the logger objects
+# to every part where it’s needed.
+# Source: https://realpython.com/python-logging/
+logger = logging.getLogger('main_logger')
+# To avoid having repeated logs!
+logger.propagate = False
 
 def objective(trial, args):
     '''
@@ -25,8 +32,6 @@ def objective(trial, args):
     args.gradient_clipping = trial.suggest_float(
         'gradient_clipping', 0.0, 10.0)
     args.label_smoothing = trial.suggest_float('label_smoothing', 0.0, 1.0)
-
-    print("Arguments: ", json.dumps(vars(args), indent=4, sort_keys=True))
 
     program = TrainProgram(args)
     program.start()
@@ -80,7 +85,7 @@ def fine_tune(args):
 
     # Printing statistics about the study
     df = study.trials_dataframe(attrs=('number', 'value', 'params', 'state'))
-    print(df)
-    print("Best trial:", study.best_trial.number)
-    print("Best loss:", study.best_trial.value)
-    print("Best hyperparameters:", study.best_params)
+    logger.info(df)
+    logger.info("Best trial:", study.best_trial.number)
+    logger.info("Best loss:", study.best_trial.value)
+    logger.info("Best hyperparameters:", study.best_params)
