@@ -103,7 +103,8 @@ class TrainProgram(Program):
                       self.label_smoothing,
                       source_vocab.token_to_idx['<PAD>'],
                       model_device,
-                      gpu_rank)
+                      gpu_rank,
+                      self.init_type)
 
         self.train_validate_model(model,
                                   self.num_epochs,
@@ -173,13 +174,16 @@ class TrainProgram(Program):
         if os.path.isfile('../results/model_weights_checkpoint.pth'):
             start_epoch, train_epoch_loss, val_epoch_loss = model.load_checkpoint(
                 gpu_rank)
+            best_val_loss = max(val_epoch_loss)
             start_epoch += 1
         else:
             train_epoch_loss, val_epoch_loss = [], []
             start_epoch = 1
+            best_val_loss = float('inf')
 
-        best_val_loss = float('inf')
         for epoch in range(start_epoch, num_epochs + 1):
+            model.optimizer.param_groups[0]['lr'] = model.optimizer.param_groups[0]['lr'] * 0.99
+
             logger.info(f"Epoch: {epoch}")
 
             if gpu_rank is not None:
@@ -199,9 +203,12 @@ class TrainProgram(Program):
                                       beam_size)
             end_time = timer()
 
-            logger.info(f"Epoch: {epoch} | Time = {(end_time - start_time):.3f}s")
-            logger.info(f'Train Loss: {train_loss:.3f} | Train Perplexity: {math.exp(train_loss):7.3f}')
-            logger.info(f'Validation Loss: {val_loss:.3f} | Validation Perplexity: {math.exp(val_loss):7.3f}')
+            logger.info(
+                f"Epoch: {epoch} | Time = {(end_time - start_time):.3f}s")
+            logger.info(
+                f'Train Loss: {train_loss:.3f} | Train Perplexity: {math.exp(train_loss):7.3f}')
+            logger.info(
+                f'Validation Loss: {val_loss:.3f} | Validation Perplexity: {math.exp(val_loss):7.3f}')
 
             train_epoch_loss.append(train_loss)
             val_epoch_loss.append(val_loss)

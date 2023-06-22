@@ -72,7 +72,8 @@ class TestProgram(Program):
                       self.label_smoothing,
                       source_vocab.token_to_idx['<PAD>'],
                       model_device,
-                      gpu_rank)
+                      gpu_rank,
+                      self.init_type)
 
         model.load(gpu_rank)
         model.test(test_dataloader,

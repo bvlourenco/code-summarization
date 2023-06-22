@@ -63,6 +63,10 @@ def parse_arguments():
     parser.add_argument('--label_smoothing', type=float, required=True,
                         help='Value of label smoothing in range [0.0, 1.0] \
                               to be applied in loss function.')
+    parser.add_argument('--init_type', type=str, required=True,
+                        choices=['kaiming', 'xavier'],
+                        help="The weight initialization technique to be used in \
+                              the Transformer architecture")
 
     parser.add_argument('--train_filename', type=str, required=True,
                         help="Filename of the training set. Each line is a \
@@ -133,6 +137,10 @@ def parse_test_args():
     parser.add_argument('--label_smoothing', type=float, required=True,
                         help='Value of label smoothing in range [0.0, 1.0] \
                               to be applied in loss function.')
+    parser.add_argument('--init_type', type=str, required=True,
+                        choices=['kaiming', 'xavier'],
+                        help="The weight initialization technique to be used in \
+                              the Transformer architecture")
     
     parser.add_argument('--mode', type=str, required=True,
                         choices=['beam', 'greedy'],

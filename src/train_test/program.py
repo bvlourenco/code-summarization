@@ -41,6 +41,7 @@ class Program:
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers
         self.label_smoothing = args.label_smoothing
+        self.init_type = args.init_type
 
         self.mode = args.mode
         self.beam_size = args.beam_size

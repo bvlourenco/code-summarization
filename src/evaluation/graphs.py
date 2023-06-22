@@ -60,6 +60,7 @@ def display_attention(input, output, attention, label, n_heads=8, n_rows=4, n_co
 
     plt.savefig('../results/' + label + "_" +
                 datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.png')
+    plt.close()
 
 
 def create_loss_plot(train_epoch_loss, val_epoch_loss, gpu_rank):

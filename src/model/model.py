@@ -45,7 +45,8 @@ class Model:
                  label_smoothing,
                  pad_idx,
                  device,
-                 gpu_rank):
+                 gpu_rank,
+                 init_type):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -66,6 +67,8 @@ class Model:
             gpu_rank (int): The rank of the GPU.
                             It has the value of None if no GPUs are avaiable or
                             only 1 GPU is available.
+            init_type (string): The weight initialization technique to be used
+                                with the Transformer architecture.
         '''
         self.model = Transformer(src_vocab_size,
                                  tgt_vocab_size,
@@ -76,7 +79,8 @@ class Model:
                                  max_src_length,
                                  max_tgt_length,
                                  dropout,
-                                 device)
+                                 device,
+                                 init_type)
 
         # Passing the model and all its layers to GPU if available
         self.model = self.model.to(device)
@@ -102,12 +106,12 @@ class Model:
 
         # Adjusts the learning rate during training
         # Implements the "Noam" learning rate scheduler, used in vanilla Transformer
-        self.scheduler = LambdaLR(
-            optimizer=self.optimizer,
-            lr_lambda=lambda step: Model.rate(
-                step, model_size=d_model, factor=1.0, warmup=400
-            ),
-        )
+        # self.scheduler = LambdaLR(
+        #     optimizer=self.optimizer,
+        #     lr_lambda=lambda step: Model.rate(
+        #         step, model_size=d_model, factor=1.0, warmup=400
+        #     ),
+        # )
 
         self.device = device
         self.gpu_rank = gpu_rank
@@ -189,7 +193,7 @@ class Model:
             self.optimizer.step()
 
             # Adjust learning rate
-            self.scheduler.step()
+            # self.scheduler.step()
 
             losses += loss.item()
 
@@ -235,7 +239,7 @@ class Model:
         # Writing the translation results to a file
         if mode in ['beam', 'greedy']:
             log = open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
-                       '_gpu' + str(self.gpu_rank) + '_epoch' + str(num_epoch) + '.json', 'w')
+                       '_gpu_' + str(self.gpu_rank) + '_epoch' + str(num_epoch) + '.json', 'w')
 
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
@@ -308,7 +312,7 @@ class Model:
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
             with open('../results/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
-                      '_' + str(self.gpu_rank) + '.json', 'w') as log:
+                      '_gpu_' + str(self.gpu_rank) + '.json', 'w') as log:
                 for code, summary, src, tgt in tqdm(test_dataloader, desc="Testing"):
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)

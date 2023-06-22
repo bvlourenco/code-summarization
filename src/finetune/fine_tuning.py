@@ -26,14 +26,12 @@ def objective(trial, args):
         trial: An object used by optuna library to manage the fine-tuning.
         args: The arguments given as input to the program.
     '''
-    args.dropout = trial.suggest_float('dropout', 0.0, 1.0)
-    args.learning_rate = trial.suggest_float(
-        'learning_rate', 1e-5, 1e-1, log=True)
+    args.dropout = trial.suggest_float('dropout', 0.0, 1.0, step=0.1)
     args.gradient_clipping = trial.suggest_float(
-        'gradient_clipping', 0.0, 10.0)
-    args.label_smoothing = trial.suggest_float('label_smoothing', 0.0, 1.0)
+        'gradient_clipping', 0.0, 10.0, step=0.1)
+    args.label_smoothing = trial.suggest_float('label_smoothing', 0.0, 1.0, step=0.1)
 
-    program = TrainProgram(args)
+    program = TrainProgram(args, trial.number)
     program.start()
 
     with open('../results/loss_file', 'r') as loss_file:
@@ -80,7 +78,7 @@ def fine_tune(args):
 
     # Lambda function used to pass args to the objective function
     study.optimize(lambda trial: objective(trial, args),
-                   n_trials=200,
+                   n_trials=100,
                    callbacks=[save_optuna_study])
 
     # Printing statistics about the study

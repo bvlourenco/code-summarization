@@ -36,7 +36,8 @@ class Transformer(nn.Module):
                  max_src_length,
                  max_tgt_length,
                  dropout,
-                 device):
+                 device,
+                 init_type):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -50,6 +51,8 @@ class Transformer(nn.Module):
             max_tgt_length (int): maximum length of the summaries.
             dropout (int): dropout probability (between 0 and 1).
             device: The device where the model and tensors are inserted (GPU or CPU).
+            init_type (string): The weight initialization technique to be used
+                                with the Transformer architecture.
 
         Note: The log-softmax function is not applied here due to the later use 
               of CrossEntropyLoss, which requires the inputs to be unnormalized 
@@ -76,18 +79,25 @@ class Transformer(nn.Module):
 
         self.device = device
 
-        self.init_weights()
-        self.print_transformer_information()
+        self.init_weights(init_type)
+        # self.print_transformer_information()
 
-    def init_weights(self):
+    def init_weights(self, init_type):
         '''
         Initialize parameters in the transformer model.
+
+        Args:
+            init_type (string): The weight initialization technique to be used
+                                with the Transformer architecture.
 
         Source: https://nlp.seas.harvard.edu/annotated-transformer/
         '''
         for p in self.parameters():
             if p.dim() > 1:
-                nn.init.xavier_uniform_(p)
+                if init_type == 'kaiming':
+                    nn.init.kaiming_uniform_(p, mode='fan_in', nonlinearity='relu')
+                elif init_type == 'xavier':
+                    nn.init.xavier_uniform_(p)
 
     def count_parameters(self):
         '''

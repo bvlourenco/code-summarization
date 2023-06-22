@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import torch
 import logging
@@ -27,7 +28,9 @@ def configure_logger():
         mode = 'a'
     else:
         mode = 'w'
-    logfile = logging.FileHandler("../results/log.txt", mode)
+    logfile = logging.FileHandler("../results/log_" + 
+                                  datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + 
+                                  ".txt", mode)
     logfile.setFormatter(fmt)
     logger.addHandler(logfile)
 

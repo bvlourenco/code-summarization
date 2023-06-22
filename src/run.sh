@@ -15,28 +15,28 @@ function train_and_validate() {
     echo "=================================================="
 
     CUDA_VISIBLE_DEVICES=$GPUS python3.10 main.py \
-    --src_vocab_size 10 \
-    --tgt_vocab_size 10 \
-    --max_src_length 10 \
-    --max_tgt_length 30 \
+    --src_vocab_size 50000 \
+    --tgt_vocab_size 30000 \
+    --max_src_length 150 \
+    --max_tgt_length 50 \
     --freq_threshold 0 \
     --d_model 512 \
     --num_heads 8 \
     --num_layers 6 \
     --d_ff 2048 \
     --dropout 0.2 \
-    --learning_rate 1.0 \
+    --learning_rate 0.0001 \
     --batch_size 32 \
     --num_workers 0 \
-    --num_epochs 1 \
+    --num_epochs 200 \
     --gradient_clipping 5.0 \
-    --label_smoothing 0.1 \
+    --label_smoothing 0 \
+    --init_type xavier \
     --train_filename ../data/python/train_processed.json \
     --validation_filename ../data/python/validation_processed.json \
     --mode loss \
-    --checkpoint False \
-    --hyperparameter_tuning False \
-    --debug_max_lines 32
+    --checkpoint True \
+    --hyperparameter_tuning False
 
 }
 
@@ -47,24 +47,24 @@ function test_model() {
     echo "=================================================="
 
     CUDA_VISIBLE_DEVICES=$GPUS python3.10 test.py \
-    --src_vocab_size 10 \
-    --tgt_vocab_size 10 \
-    --max_src_length 10 \
-    --max_tgt_length 30 \
+    --src_vocab_size 50000 \
+    --tgt_vocab_size 30000 \
+    --max_src_length 150 \
+    --max_tgt_length 50 \
     --d_model 512 \
     --num_heads 8 \
     --num_layers 6 \
     --d_ff 2048 \
     --dropout 0.2 \
-    --learning_rate 1.0 \
-    --label_smoothing 0.1 \
+    --learning_rate 0.0001 \
+    --label_smoothing 0 \
+    --init_type xavier \
     --batch_size 32 \
     --num_workers 0 \
     --test_filename ../data/python/test_processed.json \
-    --mode greedy \
-    --debug_max_lines 32
+    --mode greedy
 
 }
 
 train_and_validate
-test_model
+#test_model
