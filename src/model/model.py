@@ -4,7 +4,7 @@ import logging
 import sys
 import traceback
 from nltk.metrics.scores import precision, recall, f_measure
-from nltk.translate.bleu_score import sentence_bleu
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from nltk.translate.meteor_score import single_meteor_score
 import torch
 import torch.nn as nn
@@ -240,6 +240,8 @@ class Model:
         if mode in ['beam', 'greedy']:
             log = open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                        '_gpu_' + str(self.gpu_rank) + '_epoch' + str(num_epoch) + '.json', 'w')
+            number_examples = 0
+            sum_bleu, sum_meteor, sum_rouge_l, sum_precision, sum_recall, sum_f1 = 0, 0, 0, 0, 0, 0
 
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
@@ -249,15 +251,28 @@ class Model:
                 tgt = tgt.to(self.device)
 
                 if mode in ['beam', 'greedy']:
-                    self.translate_sentence(src,
-                                            target_vocab,
-                                            max_tgt_length,
-                                            code,
-                                            summary,
-                                            log,
-                                            scorer,
-                                            mode,
-                                            beam_size)
+                    batch_size = src.shape[0]
+
+                    bleu, meteor, rouge_l, \
+                        precision, recall, f1 = self.translate_sentence(src,
+                                                                        target_vocab,
+                                                                        max_tgt_length,
+                                                                        code,
+                                                                        summary,
+                                                                        log,
+                                                                        scorer,
+                                                                        mode,
+                                                                        beam_size)
+
+                    # Performing weighted average of metrics
+                    sum_bleu += bleu * batch_size
+                    sum_meteor += meteor * batch_size
+                    sum_rouge_l += rouge_l * batch_size
+                    sum_precision += precision * batch_size
+                    sum_recall += recall * batch_size
+                    sum_f1 += f1 * batch_size
+
+                    number_examples += batch_size
 
                 # Slicing the last element of tgt_data because it is used to compute the
                 # loss.
@@ -275,6 +290,19 @@ class Model:
 
         if mode in ['beam', 'greedy']:
             log.close()
+            final_bleu = (sum_bleu / number_examples) * 100
+            final_meteor = (sum_meteor / number_examples) * 100
+            final_rouge_l = (sum_rouge_l / number_examples) * 100
+            final_precision = (sum_precision / number_examples) * 100
+            final_recall = (sum_recall / number_examples) * 100
+            final_f1 = (sum_f1 / number_examples) * 100
+
+            logger.info(f"Metrics:\nBLEU: {final_bleu:7.3f} | " +
+                        f"METEOR: {final_meteor:7.3f} | " +
+                        f"ROUGE-L: {final_rouge_l:7.3f} | " +
+                        f"Precision: {final_precision:7.3f} | " +
+                        f"Recall: {final_recall:7.3f} | " +
+                        f"F1: {final_f1:7.3f}")
 
         return losses / len(list(val_dataloader))
 
@@ -340,12 +368,19 @@ class Model:
 
                     number_examples += batch_size
 
-        logger.info(f"Metrics:\nBLEU: {sum_bleu / number_examples:7.3f} | " +
-                    f"METEOR: {sum_meteor / number_examples:7.3f} | " +
-                    f"ROUGE-L: {sum_rouge_l / number_examples:7.3f} | " +
-                    f"Precision: {sum_precision / number_examples:7.3f} | " +
-                    f"Recall: {sum_recall / number_examples:7.3f} | " +
-                    f"F1: {sum_f1 / number_examples:7.3f}")
+        final_bleu = (sum_bleu / number_examples) * 100
+        final_meteor = (sum_meteor / number_examples) * 100
+        final_rouge_l = (sum_rouge_l / number_examples) * 100
+        final_precision = (sum_precision / number_examples) * 100
+        final_recall = (sum_recall / number_examples) * 100
+        final_f1 = (sum_f1 / number_examples) * 100
+
+        logger.info(f"Metrics:\nBLEU: {final_bleu:7.3f} | " +
+                    f"METEOR: {final_meteor:7.3f} | " +
+                    f"ROUGE-L: {final_rouge_l:7.3f} | " +
+                    f"Precision: {final_precision:7.3f} | " +
+                    f"Recall: {final_recall:7.3f} | " +
+                    f"F1: {final_f1:7.3f}")
 
     def translate_sentence(self,
                            src,
@@ -410,13 +445,13 @@ class Model:
             else:
                 raise ValueError("The mode " + mode + " does not exist.")
 
-            # Passing the tensor to 1 dimension
+            # Flattening the tensor
             tgt_preds_idx.flatten()
 
             # Translating the indexes of tokens to the textual
             # representation of tokens Replacing <BOS> and <EOS>
             # with empty string
-            tgt_pred_tokens = translate_tokens(tgt_preds_idx, target_vocab)
+            tgt_pred_tokens = translate_tokens(tgt_preds_idx[0], target_vocab)
 
             # Getting tokens of the reference and prediction to
             # compute METEOR
@@ -441,8 +476,9 @@ class Model:
             if f_score is None:
                 f_score = 0.0
 
+            method2 = SmoothingFunction().method2
             # Sentence BLEU requires a list(list(str)) for the references
-            example["BLEU"] = sentence_bleu([reference], prediction)
+            example["BLEU"] = sentence_bleu([reference], prediction, smoothing_function=method2)
             example["METEOR"] = single_meteor_score(reference, prediction)
 
             # Getting the ROUGE-L F1-score (and ignoring the ROUGE-L Precision/Recall
@@ -497,13 +533,17 @@ class Model:
         else:
             return None
 
-    def save(self):
+    def save(self, last_epoch=False):
         '''
         Stores the model learned parameters (weights) in a file.
         '''
         model = self.get_model()
         try:
-            torch.save(model.state_dict(), '../results/model_weights.pth')
+            if last_epoch:
+                filename = '../results/model_weights_last.pth'
+            else:
+                filename = '../results/model_weights.pth'
+            torch.save(model.state_dict(), filename)
         except Exception:
             traceback.print_exc()
             logger.error("It was not possible to save the model weights.")
@@ -541,7 +581,7 @@ class Model:
         self.model = self.get_model()
         map_location = self.get_map_location(gpu_rank)
         try:
-            self.model.load_state_dict(torch.load('../results/model_weights.pth',
+            self.model.load_state_dict(torch.load('../results/model_weights_last.pth',
                                                   map_location=map_location))
         except Exception:
             traceback.print_exc()

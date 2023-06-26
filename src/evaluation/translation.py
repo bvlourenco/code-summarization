@@ -31,6 +31,10 @@ def translate_tokens(tokens_idx, vocabulary):
         elif token == "<UNK>":
             token = "?"
         translation += token + " "
+    
+    if translation == "":
+        translation = "<PAD>"
+
     # Removing the last (extra) space from the translation
     return translation.strip()
 
@@ -68,7 +72,7 @@ def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_
         tgt_mask = model.generate_tgt_mask(tgt)
         dec_output = model.decode(src, src_mask, tgt, tgt_mask, enc_output)
         # prob has shape: `(batch_size, tgt_vocab_size)`
-        prob = model.fc(dec_output[-1, :, :])
+        prob = model.fc(dec_output[:, -1])
 
         # Get the index of of the token with the
         # highest probability as the predicted next word.
@@ -80,15 +84,16 @@ def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_
 
         # Adding the new predicted token to tgt
         tgt = torch.cat([tgt,
-                        torch.ones(1, 1).type_as(src.data).fill_(next_word)], dim=0)
+                        torch.ones(1, 1).type_as(src.data).fill_(next_word)], dim=1)
 
         # If the token predicted is <EOS>, then stop generating new tokens.
         if next_word == end_symbol_idx:
             break
 
     # Adding <EOS> token
-    tgt = torch.cat([tgt,
-                     torch.ones(1, 1).type_as(src.data).fill_(end_symbol_idx)], dim=0)
+    if tgt[:, -1] != end_symbol_idx:
+        tgt = torch.cat([tgt,
+                        torch.ones(1, 1).type_as(src.data).fill_(end_symbol_idx)], dim=1)
 
     # Return the indexes of the predicted tokens
     return tgt

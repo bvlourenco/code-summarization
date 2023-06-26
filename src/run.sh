@@ -34,7 +34,7 @@ function train_and_validate() {
     --init_type xavier \
     --train_filename ../data/python/train_processed.json \
     --validation_filename ../data/python/validation_processed.json \
-    --mode loss \
+    --mode greedy \
     --checkpoint True \
     --hyperparameter_tuning False
 
@@ -66,5 +66,5 @@ function test_model() {
 
 }
 
-train_and_validate
-#test_model
+#train_and_validate
+test_model

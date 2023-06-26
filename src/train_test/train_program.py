@@ -63,7 +63,7 @@ class TrainProgram(Program):
 
         val_code_texts, val_summary_texts = load_dataset_file(self.validation_filename,
                                                               'validation',
-                                                              self.debug_max_lines)
+                                                              32)
 
         source_vocab, target_vocab = create_vocabulary(train_code_texts,
                                                        train_summary_texts,
@@ -174,7 +174,7 @@ class TrainProgram(Program):
         if os.path.isfile('../results/model_weights_checkpoint.pth'):
             start_epoch, train_epoch_loss, val_epoch_loss = model.load_checkpoint(
                 gpu_rank)
-            best_val_loss = max(val_epoch_loss)
+            best_val_loss = min(val_epoch_loss)
             start_epoch += 1
         else:
             train_epoch_loss, val_epoch_loss = [], []
@@ -222,6 +222,9 @@ class TrainProgram(Program):
                     f"Saving model with validation loss of {val_loss:7.3f}")
                 best_val_loss = val_loss
                 model.save()
+            elif epoch == num_epochs:
+                logger.info(f"Saving last epoch of model with loss of {val_loss:7.3f}")
+                model.save(last_epoch=True)
 
             if checkpoint and gpu_rank in [None, 0]:
                 model.save_checkpoint(epoch, train_epoch_loss, val_epoch_loss)
