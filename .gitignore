@@ -9,3 +9,4 @@ pre-processing/adjacency_matrices/files/in_token/*
 pre-processing/adjacency_matrices/files/logs/*
 pre-processing/adjacency_matrices/language_parsers/parsers/*
 pre-processing/adjacency_matrices/language_parsers/build/languages.so
+results/
