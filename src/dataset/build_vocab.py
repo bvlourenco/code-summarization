@@ -1,6 +1,5 @@
 import os
 import pickle
-import torch
 from dataset.domain.vocabulary import Vocabulary
 
 

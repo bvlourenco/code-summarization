@@ -1,5 +1,4 @@
 import joblib
-import json
 import logging
 import os
 import sys
@@ -27,9 +26,10 @@ def objective(trial, args):
         args: The arguments given as input to the program.
     '''
     args.dropout = trial.suggest_float('dropout', 0.0, 1.0, step=0.1)
-    args.gradient_clipping = trial.suggest_float(
-        'gradient_clipping', 0.0, 10.0, step=0.1)
-    args.label_smoothing = trial.suggest_float('label_smoothing', 0.0, 1.0, step=0.1)
+    args.gradient_clipping = trial.suggest_float('gradient_clipping', 0.0, 10.0, 
+                                                 step=0.1)
+    args.label_smoothing = trial.suggest_float('label_smoothing', 0.0, 1.0, 
+                                               step=0.1)
 
     program = TrainProgram(args, trial.number)
     program.start()

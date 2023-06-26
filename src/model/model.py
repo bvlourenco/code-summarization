@@ -25,6 +25,7 @@ logger = logging.getLogger('main_logger')
 # To avoid having repeated logs!
 logger.propagate = False
 
+
 class Model:
     '''
     Class that represents a model and common operations to them (training, 
@@ -240,8 +241,9 @@ class Model:
         if mode in ['beam', 'greedy']:
             log = open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                        '_gpu_' + str(self.gpu_rank) + '_epoch' + str(num_epoch) + '.json', 'w')
-            number_examples = 0
-            sum_bleu, sum_meteor, sum_rouge_l, sum_precision, sum_recall, sum_f1 = 0, 0, 0, 0, 0, 0
+            metrics = {"number_examples": 0,
+                       "sum_bleu": 0, "sum_meteor": 0, "sum_rouge_l": 0,
+                       "sum_precision": 0, "sum_recall": 0, "sum_f1": 0}
 
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
@@ -251,28 +253,16 @@ class Model:
                 tgt = tgt.to(self.device)
 
                 if mode in ['beam', 'greedy']:
-                    batch_size = src.shape[0]
-
-                    bleu, meteor, rouge_l, \
-                        precision, recall, f1 = self.translate_sentence(src,
-                                                                        target_vocab,
-                                                                        max_tgt_length,
-                                                                        code,
-                                                                        summary,
-                                                                        log,
-                                                                        scorer,
-                                                                        mode,
-                                                                        beam_size)
-
-                    # Performing weighted average of metrics
-                    sum_bleu += bleu * batch_size
-                    sum_meteor += meteor * batch_size
-                    sum_rouge_l += rouge_l * batch_size
-                    sum_precision += precision * batch_size
-                    sum_recall += recall * batch_size
-                    sum_f1 += f1 * batch_size
-
-                    number_examples += batch_size
+                    metrics = self.translate_evaluate(src,
+                                                      target_vocab,
+                                                      max_tgt_length,
+                                                      code,
+                                                      summary,
+                                                      log,
+                                                      scorer,
+                                                      mode,
+                                                      beam_size,
+                                                      metrics)
 
                 # Slicing the last element of tgt_data because it is used to compute the
                 # loss.
@@ -290,19 +280,7 @@ class Model:
 
         if mode in ['beam', 'greedy']:
             log.close()
-            final_bleu = (sum_bleu / number_examples) * 100
-            final_meteor = (sum_meteor / number_examples) * 100
-            final_rouge_l = (sum_rouge_l / number_examples) * 100
-            final_precision = (sum_precision / number_examples) * 100
-            final_recall = (sum_recall / number_examples) * 100
-            final_f1 = (sum_f1 / number_examples) * 100
-
-            logger.info(f"Metrics:\nBLEU: {final_bleu:7.3f} | " +
-                        f"METEOR: {final_meteor:7.3f} | " +
-                        f"ROUGE-L: {final_rouge_l:7.3f} | " +
-                        f"Precision: {final_precision:7.3f} | " +
-                        f"Recall: {final_recall:7.3f} | " +
-                        f"F1: {final_f1:7.3f}")
+            Model.compute_avg_metrics(metrics)
 
         return losses / len(list(val_dataloader))
 
@@ -333,8 +311,9 @@ class Model:
         # RougeScorer has the line "logging.info("Using default tokenizer.")"
         scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
 
-        number_examples = 0
-        sum_bleu, sum_meteor, sum_rouge_l, sum_precision, sum_recall, sum_f1 = 0, 0, 0, 0, 0, 0
+        metrics = {"number_examples": 0,
+                   "sum_bleu": 0, "sum_meteor": 0, "sum_rouge_l": 0,
+                   "sum_precision": 0, "sum_recall": 0, "sum_f1": 0}
 
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
@@ -345,35 +324,101 @@ class Model:
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)
 
-                    batch_size = src.shape[0]
+                    metrics = self.translate_evaluate(src,
+                                                      target_vocab,
+                                                      max_tgt_length,
+                                                      code,
+                                                      summary,
+                                                      log,
+                                                      scorer,
+                                                      mode,
+                                                      beam_size,
+                                                      metrics)
 
-                    bleu, meteor, rouge_l, \
-                        precision, recall, f1 = self.translate_sentence(src,
-                                                                        target_vocab,
-                                                                        max_tgt_length,
-                                                                        code,
-                                                                        summary,
-                                                                        log,
-                                                                        scorer,
-                                                                        mode,
-                                                                        beam_size)
+        Model.compute_avg_metrics(metrics)
 
-                    # Performing weighted average of metrics
-                    sum_bleu += bleu * batch_size
-                    sum_meteor += meteor * batch_size
-                    sum_rouge_l += rouge_l * batch_size
-                    sum_precision += precision * batch_size
-                    sum_recall += recall * batch_size
-                    sum_f1 += f1 * batch_size
+    def translate_evaluate(self,
+                           src,
+                           target_vocab,
+                           max_tgt_length,
+                           code,
+                           summary,
+                           log,
+                           scorer,
+                           mode,
+                           beam_size,
+                           metrics):
+        '''
+        Translates a code snippet (giving its respective summary) and also
+        computes the evaluation metrics for the sentence and adds it to the
+        sum of evaluation metrics (present in `metrics` dictionary).
 
-                    number_examples += batch_size
+        Args:
+            src: code snippet numericalized
+            target_vocab: The vocabulary built from the summaries in training set.
+            max_tgt_length (int): Maximum length of the generated summary.
+            code (string): code snippet in textual form.
+            summary (string): reference code comment.
+            log: file to write the evaluation metrics of the generated summaries.
+            scorer: A RougeScorer object to compute ROUGE-L.
+            mode (string): Indicates whether we only want to compute validation 
+                           loss or if we also want to translate the source 
+                           sentences in the validation set (either using greedy 
+                           decoding or beam search).
+                           Can be one of the following: "loss", "greedy" or "beam"
+            beam_size (int): Number of elements to store during beam search
+                             Only applicable if `mode == 'beam'`
+            metrics: A dictionary containing the number of pairs 
+                     <code snippet, summary> and the sum for each evaluation 
+                     metric. 
+        '''
+        batch_size = src.shape[0]
 
-        final_bleu = (sum_bleu / number_examples) * 100
-        final_meteor = (sum_meteor / number_examples) * 100
-        final_rouge_l = (sum_rouge_l / number_examples) * 100
-        final_precision = (sum_precision / number_examples) * 100
-        final_recall = (sum_recall / number_examples) * 100
-        final_f1 = (sum_f1 / number_examples) * 100
+        bleu, meteor, rouge_l, \
+            precision, recall, f1 = self.translate_sentence(src,
+                                                            target_vocab,
+                                                            max_tgt_length,
+                                                            code,
+                                                            summary,
+                                                            log,
+                                                            scorer,
+                                                            mode,
+                                                            beam_size)
+
+        # Performing weighted average of metrics
+        metrics["sum_bleu"] += bleu * batch_size
+        metrics["sum_meteor"] += meteor * batch_size
+        metrics["sum_rouge_l"] += rouge_l * batch_size
+        metrics["sum_precision"] += precision * batch_size
+        metrics["sum_recall"] += recall * batch_size
+        metrics["sum_f1"] += f1 * batch_size
+
+        metrics["number_examples"] += batch_size
+
+        return metrics
+
+    @staticmethod
+    def compute_avg_metrics(metrics):
+        '''
+        Given the sum of each evaluation metric (BLEU, METEOR, ROUGE-L, Precision,
+        Recall and F1-score), it computes the average for each metric and prints
+        it to the logger.
+
+        Args:
+            metrics: A dictionary containing the number of pairs 
+                     <code snippet, summary> and the sum for each evaluation 
+                     metric. 
+        '''
+        final_bleu = (metrics["sum_bleu"] / metrics["number_examples"]) * 100
+        final_meteor = (metrics["sum_meteor"] /
+                        metrics["number_examples"]) * 100
+        final_rouge_l = (metrics["sum_rouge_l"] /
+                         metrics["number_examples"]) * 100
+        final_precision = (metrics["sum_precision"] /
+                           metrics["number_examples"]) * 100
+        final_recall = (metrics["sum_recall"] /
+                        metrics["number_examples"]) * 100
+        final_f1 = (metrics["sum_f1"] / metrics["number_examples"]) * 100
 
         logger.info(f"Metrics:\nBLEU: {final_bleu:7.3f} | " +
                     f"METEOR: {final_meteor:7.3f} | " +
@@ -478,7 +523,8 @@ class Model:
 
             method2 = SmoothingFunction().method2
             # Sentence BLEU requires a list(list(str)) for the references
-            example["BLEU"] = sentence_bleu([reference], prediction, smoothing_function=method2)
+            example["BLEU"] = sentence_bleu(
+                [reference], prediction, smoothing_function=method2)
             example["METEOR"] = single_meteor_score(reference, prediction)
 
             # Getting the ROUGE-L F1-score (and ignoring the ROUGE-L Precision/Recall
@@ -586,7 +632,7 @@ class Model:
         except Exception:
             traceback.print_exc()
             logger.error("It was not possible to load the model weights from the " +
-                  "specified filename.")
+                         "specified filename.")
             sys.exit(1)
 
     def load_checkpoint(self, gpu_rank):
@@ -614,5 +660,5 @@ class Model:
         except Exception:
             traceback.print_exc()
             logger.error("It was not possible to load the model from the " +
-                  "checkpoint.")
+                         "checkpoint.")
             sys.exit(1)

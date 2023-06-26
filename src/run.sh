@@ -66,5 +66,5 @@ function test_model() {
 
 }
 
-#train_and_validate
+train_and_validate
 test_model

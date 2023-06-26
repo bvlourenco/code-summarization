@@ -1,4 +1,3 @@
-import torch
 from dataset.build_vocab import load_vocab
 from dataset.dataloader import load_evaluation_dataloader
 from dataset.load_dataset import load_dataset_file

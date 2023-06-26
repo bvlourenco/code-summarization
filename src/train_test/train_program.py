@@ -137,8 +137,9 @@ class TrainProgram(Program):
                              gpu_rank,
                              trial_number):
         '''
-        Performs the model training. In each epoch, it is done an evaluation using the
-        validation set. In the end, it plots a graph with the training and validation loss.
+        Performs the model training. In each epoch, it is done an evaluation 
+        using the validation set. In the end, it plots a graph with the training 
+        and validation loss.
 
         Args:
             model: The model (an instance of Transformer). 
@@ -147,23 +148,27 @@ class TrainProgram(Program):
             val_dataloader: A Dataloader object that contains the validation set.
             tgt_vocab_size (int): size of the target vocabulary.
             gradient_clipping (int): Maximum norm of the gradient.
-            mode (string): Indicates whether we only want to compute validation loss or if we also
-                        want to translate the source sentences in the validation set
-                        (either using greedy decoding or beam search).
-                        Can be one of the following: "loss", "greedy" or "beam"
+            mode (string): Indicates whether we only want to compute validation 
+                           loss or if we also want to translate the source 
+                           sentences in the validation set (either using greedy 
+                           decoding or beam search).
+                           Can be one of the following: "loss", "greedy" or "beam"
             beam_size (int): Number of elements to store during beam search
                             Only applicable if `mode == 'beam'`
             source_vocab: The vocabulary built from the code snippets in training set.
             target_vocab: The vocabulary built from the summaries in training set.
             max_tgt_length (int): Maximum length of the generated summaries.
-            checkpoint (bool): Flag that tells whether we want to save a checkpoint of the model
-                            at the end of each epoch or not.
-            device: The device where the model and tensors are inserted (GPU or CPU).
+            checkpoint (bool): Flag that tells whether we want to save a 
+                               checkpoint of the model at the end of each epoch 
+                               or not.
+            device: The device where the model and tensors are inserted 
+                    (GPU or CPU).
             gpu_rank (int): The rank of the GPU.
                             It has the value of None if no GPUs are avaiable or
                             only 1 GPU is available.
-            trial_number (int): If we are fine-tuning the parameters of the program, it is the
-                                number of trial that are we are doing using optuna. 
+            trial_number (int): If we are fine-tuning the parameters of the program, 
+                                it is the number of trial that are we are doing 
+                                using optuna. 
                                 Otherwise, it is None.
 
         Source: https://pytorch.org/tutorials/beginner/translation_transformer.html?highlight=transformer
@@ -203,12 +208,11 @@ class TrainProgram(Program):
                                       beam_size)
             end_time = timer()
 
-            logger.info(
-                f"Epoch: {epoch} | Time = {(end_time - start_time):.3f}s")
-            logger.info(
-                f'Train Loss: {train_loss:.3f} | Train Perplexity: {math.exp(train_loss):7.3f}')
-            logger.info(
-                f'Validation Loss: {val_loss:.3f} | Validation Perplexity: {math.exp(val_loss):7.3f}')
+            logger.info(f"Epoch: {epoch} | Time = {(end_time - start_time):.3f}s")
+            logger.info(f'Train Loss: {train_loss:.3f} | ' +
+                        f'Train Perplexity: {math.exp(train_loss):7.3f}')
+            logger.info(f'Validation Loss: {val_loss:.3f} | ' +
+                        f'Validation Perplexity: {math.exp(val_loss):7.3f}')
 
             train_epoch_loss.append(train_loss)
             val_epoch_loss.append(val_loss)
@@ -217,14 +221,14 @@ class TrainProgram(Program):
             # the CPU (where gpu_rank is None) or if we're using the GPU and the
             # gpu_rank is 0 (to avoid having multiple processed storing the model
             # when using multiple GPUs)
-            if val_loss < best_val_loss and gpu_rank in [None, 0]:
+            if epoch == num_epochs and gpu_rank in [None, 0]:
+                logger.info(f"Saving last epoch of model with loss of {val_loss:7.3f}")
+                model.save(last_epoch=True)
+            elif val_loss < best_val_loss and gpu_rank in [None, 0]:
                 logger.info(
                     f"Saving model with validation loss of {val_loss:7.3f}")
                 best_val_loss = val_loss
                 model.save()
-            elif epoch == num_epochs:
-                logger.info(f"Saving last epoch of model with loss of {val_loss:7.3f}")
-                model.save(last_epoch=True)
 
             if checkpoint and gpu_rank in [None, 0]:
                 model.save_checkpoint(epoch, train_epoch_loss, val_epoch_loss)

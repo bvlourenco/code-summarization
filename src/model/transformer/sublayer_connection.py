@@ -1,8 +1,5 @@
 import torch.nn as nn
 
-from model.transformer.multi_head_attention import MultiHeadAttention
-from model.transformer.position_wise_feed_forward_network import PositionWiseFeedForward
-
 
 class SublayerConnection(nn.Module):
     '''
@@ -20,7 +17,7 @@ class SublayerConnection(nn.Module):
         '''
         super(SublayerConnection, self).__init__()
         self.norm = nn.LayerNorm(d_model)
-        self.dropout = nn.Dropout(dropout) 
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, sublayer_type, sublayer):
         '''
@@ -38,7 +35,7 @@ class SublayerConnection(nn.Module):
             sublayer: The layer to be applied to input after the normalization.
                 It's an anonymous function that receives the input and returns it
                 after passing through the sublayer.
-        
+
         `seq_length` is the number of elements of the input.
 
         Returns:

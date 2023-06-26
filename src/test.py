@@ -1,8 +1,7 @@
-from datetime import datetime
 import logging
-import os
 import torch
 from args.parse_args import parse_test_args
+from logger.logger import configure_logger
 from train_test.test_program import TestProgram
 
 # Multiple calls to getLogger() with the same name will return a reference
@@ -10,28 +9,6 @@ from train_test.test_program import TestProgram
 # to every part where it’s needed.
 # Source: https://realpython.com/python-logging/
 logger = logging.getLogger('main_logger')
-
-
-def configure_logger():
-    '''
-    Configures the logger to write to both file and console.
-    '''
-    logger.setLevel(logging.INFO)
-    fmt = logging.Formatter('%(asctime)s: [ %(message)s ]',
-                            '%d/%m/%Y %I:%M:%S %p')
-    console = logging.StreamHandler()
-    console.setFormatter(fmt)
-    logger.addHandler(console)
-
-    if os.path.exists("../results/log.txt"):
-        mode = 'a'
-    else:
-        mode = 'w'
-    logfile = logging.FileHandler("../results/log_" +
-                                  datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
-                                  ".txt", mode)
-    logfile.setFormatter(fmt)
-    logger.addHandler(logfile)
 
 
 def main():
@@ -42,7 +19,7 @@ def main():
     '''
     args = parse_test_args()
 
-    configure_logger()
+    configure_logger(logger)
 
     torch.manual_seed(0)
     program = TestProgram(args)

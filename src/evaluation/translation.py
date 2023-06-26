@@ -167,6 +167,7 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
 
     # Adding <EOS> token
     best_sequence = torch.cat([best_sequence,
-                               torch.ones(1, 1).type_as(src.data).fill_(end_symbol_idx)], dim=0)
+                               torch.ones(1, 1).type_as(src.data).fill_(end_symbol_idx)], 
+                               dim=0)
 
     return best_sequence

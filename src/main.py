@@ -1,9 +1,8 @@
-from datetime import datetime
-import os
 import torch
 import logging
 from args.parse_args import parse_arguments
 from finetune.fine_tuning import fine_tune
+from logger.logger import configure_logger
 from train_test.train_program import TrainProgram
 
 # Multiple calls to getLogger() with the same name will return a reference
@@ -11,28 +10,6 @@ from train_test.train_program import TrainProgram
 # to every part where it’s needed.
 # Source: https://realpython.com/python-logging/
 logger = logging.getLogger('main_logger')
-
-
-def configure_logger():
-    '''
-    Configures the logger to write to both file and console.
-    '''
-    logger.setLevel(logging.INFO)
-    fmt = logging.Formatter('%(asctime)s: [ %(message)s ]',
-                            '%d/%m/%Y %I:%M:%S %p')
-    console = logging.StreamHandler()
-    console.setFormatter(fmt)
-    logger.addHandler(console)
-
-    if os.path.exists("../results/log.txt"):
-        mode = 'a'
-    else:
-        mode = 'w'
-    logfile = logging.FileHandler("../results/log_" + 
-                                  datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + 
-                                  ".txt", mode)
-    logfile.setFormatter(fmt)
-    logger.addHandler(logfile)
 
 
 def main():
@@ -44,7 +21,7 @@ def main():
     '''
     args = parse_arguments()
 
-    configure_logger()
+    configure_logger(logger)
 
     torch.manual_seed(0)
     if args.hyperparameter_tuning:
