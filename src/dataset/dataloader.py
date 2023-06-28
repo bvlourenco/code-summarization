@@ -11,6 +11,7 @@ def get_dataloader(dataset,
                    device,
                    max_src_length,
                    max_tgt_length, 
+                   src_vocab_size,
                    type,
                    world_size,
                    gpu_rank):
@@ -26,6 +27,7 @@ def get_dataloader(dataset,
         device: The device where the model and tensors are inserted (GPU or CPU).
         max_src_length (int): Maximum length of the source code.
         max_tgt_length (int): Maximum length of the summaries.
+        src_vocab_size (int): size of the source vocabulary.
         type (string): Indicates whether we are loading the training set or the
                        validation set.
                        Can be one of the following: "train", "evaluation"
@@ -71,7 +73,8 @@ def get_dataloader(dataset,
                       sampler=sampler,
                       collate_fn=CustomCollate(pad_idx, bos_idx, eos_idx, 
                                                device, max_src_length, 
-                                               max_tgt_length, type))
+                                               max_tgt_length, src_vocab_size, 
+                                               type))
 
 
 def create_dataloaders(source_code_texts,
@@ -85,6 +88,7 @@ def create_dataloaders(source_code_texts,
                        device,
                        max_src_length,
                        max_tgt_length,
+                       src_vocab_size,
                        world_size,
                        gpu_rank):
     '''
@@ -102,6 +106,7 @@ def create_dataloaders(source_code_texts,
         device: The device where the model and tensors are inserted (GPU or CPU).
         max_src_length (int): Maximum length of the source code.
         max_tgt_length (int): Maximum length of the summaries.
+        src_vocab_size (int): size of the source vocabulary.
         world_size (int): The number of GPUs available in the machine.
                           It has the value of -1 if no GPUs are avaiable.
         gpu_rank (int): The rank of the GPU.
@@ -117,7 +122,8 @@ def create_dataloaders(source_code_texts,
                                   summary_texts,
                                   source_vocab,
                                   target_vocab,
-                                  'train')
+                                  'train',
+                                  device)
     train_dataloader = get_dataloader(train_dataset,
                                       source_vocab,
                                       batch_size,
@@ -125,6 +131,7 @@ def create_dataloaders(source_code_texts,
                                       device,
                                       max_src_length,
                                       max_tgt_length,
+                                      src_vocab_size,
                                       'train',
                                       world_size,
                                       gpu_rank)
@@ -138,6 +145,7 @@ def create_dataloaders(source_code_texts,
                                                 device,
                                                 max_src_length,
                                                 max_tgt_length,
+                                                src_vocab_size,
                                                 world_size,
                                                 gpu_rank)
     return train_dataloader, val_dataloader
@@ -152,6 +160,7 @@ def load_evaluation_dataloader(code_texts,
                                device,
                                max_src_length,
                                max_tgt_length,
+                               src_vocab_size,
                                world_size,
                                gpu_rank):
     '''
@@ -167,6 +176,7 @@ def load_evaluation_dataloader(code_texts,
         device: The device where the model and tensors are inserted (GPU or CPU).
         max_src_length (int): Maximum length of the source code.
         max_tgt_length (int): Maximum length of the summaries.
+        src_vocab_size (int): size of the source vocabulary.
         world_size (int): The number of GPUs available in the machine.
                           It has the value of -1 if no GPUs are avaiable.
         gpu_rank (int): The rank of the GPU.
@@ -180,7 +190,8 @@ def load_evaluation_dataloader(code_texts,
                                        summary_texts,
                                        source_vocab,
                                        target_vocab,
-                                       'evaluation')
+                                       'evaluation',
+                                       device)
     return get_dataloader(evaluation_dataset,
                           source_vocab,
                           batch_size,
@@ -188,6 +199,7 @@ def load_evaluation_dataloader(code_texts,
                           device,
                           max_src_length,
                           max_tgt_length,
+                          src_vocab_size,
                           'evaluation',
                           world_size,
                           gpu_rank)

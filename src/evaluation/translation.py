@@ -28,9 +28,8 @@ def translate_tokens(tokens_idx, vocabulary):
             break
         elif token == "<BOS>":
             raise ValueError("Unexpected <BOS>")
-        elif token == "<UNK>":
-            token = "?"
-        translation += token + " "
+        else:
+            translation += token + " "
     
     if translation == "":
         translation = "<PAD>"
@@ -39,7 +38,14 @@ def translate_tokens(tokens_idx, vocabulary):
     return translation.strip()
 
 
-def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_len):
+def greedy_decode(model, 
+                  src, 
+                  device, 
+                  start_symbol_idx, 
+                  end_symbol_idx, 
+                  max_tgt_len,
+                  copy_attn,
+                  src_map):
     '''
     Creates a code comment given a code snippet using the greedy decoding
     strategy (where we generate one token at a time by greedily selecting the
@@ -52,6 +58,7 @@ def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_
         start_symbol_idx: The vocabulary start symbol index (<BOS> index)
         end_symbol_idx: The vocabulary end symbol index (<EOS> index)
         max_tgt_len (int): Maximum length of the summary.
+        TODO: FINISH ARGS!
 
     Returns:
         tgt: The predicted code comment token indexes. Shape: `(1, tgt_length)`
@@ -70,9 +77,15 @@ def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_
         # Essentially, we're running the decoder phasing of the model
         # to generate the next token
         tgt_mask = model.generate_tgt_mask(tgt)
-        dec_output = model.decode(src, src_mask, tgt, tgt_mask, enc_output)
-        # prob has shape: `(batch_size, tgt_vocab_size)`
-        prob = model.fc(dec_output[:, -1])
+        dec_output, dec_cross_attn_score = model.decode(src, src_mask, tgt, tgt_mask, enc_output)
+
+        if copy_attn:
+            # Getting the attention of the last head and only for the last target token
+            attn_last_head = dec_cross_attn_score[:, -1, -1, :]
+            prob = model.fc(dec_output[:, -1], attn_last_head, src_map)
+        else:
+            # prob has shape: `(batch_size, tgt_vocab_size)`
+            prob = model.fc(dec_output[:, -1])
 
         # Get the index of of the token with the
         # highest probability as the predicted next word.
@@ -81,6 +94,9 @@ def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_
         # Get the integer value present in the tensor. It represents
         # the index of the predicted token.
         next_word = next_word.item()
+
+        if next_word >= 30000:
+            next_word = 3
 
         # Adding the new predicted token to tgt
         tgt = torch.cat([tgt,

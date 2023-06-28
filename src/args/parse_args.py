@@ -50,6 +50,11 @@ def parse_arguments():
     parser.add_argument('--dropout', type=float, required=True,
                         help='Value of the dropout probability')
 
+    parser.add_argument('--copy_attn', type=str2bool, required=True,
+                        help='Uses a copy generator module in Transformer or not')
+    parser.add_argument('--force_copy', type=str2bool, required=True,
+                        help='Forces the use of copy mechanism in training or not')
+
     parser.add_argument('--learning_rate', type=float, required=True,
                         help='Value of the initial learning rate')
     parser.add_argument('--batch_size', type=int, required=True,

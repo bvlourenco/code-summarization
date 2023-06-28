@@ -25,6 +25,8 @@ function train_and_validate() {
     --num_layers 6 \
     --d_ff 2048 \
     --dropout 0.2 \
+    --copy_attn True \
+    --force_copy False \
     --learning_rate 0.0001 \
     --batch_size 32 \
     --num_workers 0 \
@@ -36,7 +38,8 @@ function train_and_validate() {
     --validation_filename ../data/python/validation_processed.json \
     --mode greedy \
     --checkpoint True \
-    --hyperparameter_tuning False
+    --hyperparameter_tuning False \
+    --debug_max_lines 32
 
 }
 
@@ -62,9 +65,10 @@ function test_model() {
     --batch_size 32 \
     --num_workers 0 \
     --test_filename ../data/python/test_processed.json \
-    --mode greedy
+    --mode greedy \
+    --debug_max_lines 32
 
 }
 
 train_and_validate
-test_model
+#test_model

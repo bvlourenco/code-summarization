@@ -50,6 +50,7 @@ class TestProgram(Program):
                                                      self.device,
                                                      self.max_src_length,
                                                      self.max_tgt_length,
+                                                     self.src_vocab_size,
                                                      self.world_size,
                                                      gpu_rank)
 

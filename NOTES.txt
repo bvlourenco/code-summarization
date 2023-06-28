@@ -34,6 +34,7 @@
 
     - (LATER) Deploying Pytorch in python via a REST API with Flask: https://pytorch.org/tutorials/intermediate/flask_rest_api_tutorial.html?highlight=transformer
     - (LATER) DO not load all dataset into a list (optional improvement)
+    - (LATER) Usar tensorboard para ter os gráficos todos bonitinhos
 
     General tutorial with Transformer model, training, evaluation and inference:
     https://pytorch.org/tutorials/beginner/translation_transformer.html?highlight=transformer

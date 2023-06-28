@@ -15,7 +15,15 @@ class CustomCollate:
     Source: https://towardsdatascience.com/custom-datasets-in-pytorch-part-2-text-machine-translation-71c41a3e994e
     '''
 
-    def __init__(self, pad_idx, bos_idx, eos_idx, device, max_src_length, max_tgt_length, type):
+    def __init__(self, 
+                 pad_idx, 
+                 bos_idx, 
+                 eos_idx, 
+                 device, 
+                 max_src_length, 
+                 max_tgt_length,
+                 src_vocab_size, 
+                 type):
         '''
         Args:
             pad_idx (int): index of the <PAD> token
@@ -24,6 +32,7 @@ class CustomCollate:
             device: The device where the model and tensors are inserted (GPU or CPU).
             max_src_length (int): Maximum length of the source code.
             max_tgt_length (int): Maximum length of the summaries.
+            src_vocab_size (int): size of the source vocabulary.
             type (string): Indicates whether we are working with the training 
                            set or the validation/testing set.
                            Can be one of the following: "train", "evaluation"
@@ -34,6 +43,7 @@ class CustomCollate:
         self.device = device
         self.max_src_length = max_src_length
         self.max_tgt_length = max_tgt_length
+        self.src_vocab_size = src_vocab_size
         self.type = type
 
     def call_evaluation(self, batch):
@@ -56,21 +66,46 @@ class CustomCollate:
         '''
         code_batch, summary_batch, code_idxs_batch, summary_idxs_batch = [], [], [], []
 
+        batch_size = len(batch)
+
+        # Maps a source code word to its respective index in the extended vocabulary
+        # (because of the copy mechanism)
+        src_map_batch = torch.zeros(batch_size, self.max_src_length, self.src_vocab_size, 
+                                    device=self.device)
+
+        # Alignment refers to the mapping between the target tokens and 
+        # their corresponding positions in the source sequence
+        alignment_batch = torch.zeros(batch_size, self.max_tgt_length, device=self.device).long()
+
         # for each code snippet
-        for (source_code, summary, code_idxs, summary_idxs) in batch:
+        for i, (source_code, summary, code_idxs, summary_idxs, alignment) in enumerate(batch):
+            # TODO: THIS CUT IS NOT IN A GOOD PLACE!
+            source_code = source_code[:self.max_src_length]
+            summary = summary[:self.max_tgt_length]
+            alignment = alignment[:self.max_tgt_length]
+            
+            alignment_batch[i, : len(alignment)] = alignment.clone().detach()
+
+            for j, t in enumerate(code_idxs):
+                src_map_batch[i, j, t] = 1
+
             code_batch.append(source_code)
             summary_batch.append(summary)
 
             # add padding
             code_idxs_batch.append(
-                pad(code_idxs, (0, self.max_src_length - len(code_idxs)), value=self.pad_idx))
+                pad(code_idxs, (0, self.max_src_length - len(code_idxs)), 
+                    value=self.pad_idx))
 
             # add padding
             summary_idxs_batch.append(
-                pad(summary_idxs, (0, self.max_tgt_length - len(summary_idxs)), value=self.pad_idx))
+                pad(summary_idxs, (0, self.max_tgt_length - len(summary_idxs)), 
+                    value=self.pad_idx))
 
-        return code_batch, summary_batch, torch.stack(code_idxs_batch), \
-            torch.stack(summary_idxs_batch)
+        return code_batch, summary_batch, \
+               torch.stack(code_idxs_batch).to(self.device), \
+               torch.stack(summary_idxs_batch).to(self.device), \
+               src_map_batch, alignment_batch
 
     def call_train(self, batch):
         '''
@@ -81,6 +116,7 @@ class CustomCollate:
 
         Returns:
             A Source Code Batch and a Summary Batch. 
+            src_map: TODO
             Shapes: `(batch_size, max_src_len)`
                     `(batch_size, max_tgt_len)`
 
@@ -88,17 +124,42 @@ class CustomCollate:
         '''
         code_batch, summary_batch = [], []
 
+        batch_size = len(batch)
+
+        # Maps a source code word to its respective index in the extended vocabulary
+        # (because of the copy mechanism)
+        src_map_batch = torch.zeros(batch_size, self.max_src_length, self.src_vocab_size, 
+                                    device=self.device)
+
+        # Alignment refers to the mapping between the target tokens and 
+        # their corresponding positions in the source sequence
+        alignment_batch = torch.zeros(batch_size, self.max_tgt_length, device=self.device).long()
+
         # for each code snippet
-        for (source_code, summary) in batch:
+        for i, (source_code, summary, alignment) in enumerate(batch):
+            # TODO: THIS CUT IS NOT IN A GOOD PLACE!
+            source_code = source_code[:self.max_src_length]
+            summary = summary[:self.max_tgt_length]
+            alignment = alignment[:self.max_tgt_length]
+            
+            alignment_batch[i, : len(alignment)] = alignment.clone().detach()
+
+            for j, t in enumerate(source_code):
+                src_map_batch[i, j, t] = 1
+
             # add padding
             code_batch.append(
-                pad(source_code, (0, self.max_src_length - len(source_code)), value=self.pad_idx))
+                pad(source_code, (0, self.max_src_length - len(source_code)), 
+                    value=self.pad_idx))
 
             # add padding
             summary_batch.append(
-                pad(summary, (0, self.max_tgt_length - len(summary)), value=self.pad_idx))
+                pad(summary, (0, self.max_tgt_length - len(summary)), 
+                    value=self.pad_idx))
 
-        return torch.stack(code_batch), torch.stack(summary_batch)
+        return torch.stack(code_batch).to(self.device), \
+               torch.stack(summary_batch).to(self.device), \
+               src_map_batch, alignment_batch
 
     def __call__(self, batch):
         '''
@@ -114,6 +175,7 @@ class CustomCollate:
             Otherwise (if this represents the validation or testing set):
                 batch: Contains source code, summaries, source code numericalized 
                        and summaries numericalized.
+            TODO: Refactor comment
 
         Returns:
             If this represents the training set:

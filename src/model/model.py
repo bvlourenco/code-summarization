@@ -13,6 +13,8 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
 from tqdm import tqdm
 from evaluation.translation import beam_search, greedy_decode, translate_tokens
+from model.modules.collapse_copy_scores import collapse_copy_scores
+from model.modules.copy_generator_loss import CopyGeneratorLoss
 from model.transformer.transformer_model import Transformer
 from rouge_score import rouge_scorer
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -45,9 +47,12 @@ class Model:
                  learning_rate,
                  label_smoothing,
                  pad_idx,
+                 unk_idx,
                  device,
                  gpu_rank,
-                 init_type):
+                 init_type,
+                 copy_attn,
+                 force_copy):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -64,12 +69,19 @@ class Model:
             label_smoothing (int): Value of label smoothing to be applied in 
                                    loss function.
             pad_idx (int): index of the <PAD> token
+            unk_idx (int): index of the <UNK> token
             device: The device where the model and tensors are inserted (GPU or CPU).
             gpu_rank (int): The rank of the GPU.
                             It has the value of None if no GPUs are avaiable or
                             only 1 GPU is available.
             init_type (string): The weight initialization technique to be used
                                 with the Transformer architecture.
+            copy_attn (bool): Tells whether we want to use a copy generator in the
+                              Transformer architecture or not (to copy source code tokens
+                              to the summary).
+            force_copy (bool): Tells whether we want to encourage the model to use
+                               the copy mechanism in training or let him decide to use
+                               or not.
         '''
         self.model = Transformer(src_vocab_size,
                                  tgt_vocab_size,
@@ -81,7 +93,9 @@ class Model:
                                  max_tgt_length,
                                  dropout,
                                  device,
-                                 init_type)
+                                 init_type,
+                                 copy_attn,
+                                 pad_idx)
 
         # Passing the model and all its layers to GPU if available
         self.model = self.model.to(device)
@@ -95,9 +109,16 @@ class Model:
         # Optimizes the model. TODO: Try to fix this!
         # self.model = torch.compile(self.model)
 
-        # Function used to compute the loss. ignore_index is the padding token index
-        self.criterion = nn.CrossEntropyLoss(ignore_index=pad_idx,
-                                             label_smoothing=label_smoothing)
+        if copy_attn:
+            self.criterion = CopyGeneratorLoss(tgt_vocab_size,
+                                               force_copy,
+                                               unk_idx,
+                                               pad_idx)
+        else:
+            # Function used to compute the loss. ignore_index is the padding token index
+            self.criterion = nn.CrossEntropyLoss(ignore_index=pad_idx,
+                                                 label_smoothing=label_smoothing)
+        self.copy_attn = copy_attn
 
         # TODO: Test with SGD optimizer
         self.optimizer = optim.Adam(self.model.parameters(),
@@ -144,7 +165,7 @@ class Model:
             model_size ** (-0.5) * min(step ** (-0.5), step * warmup ** (-1.5))
         )
 
-    def train_epoch(self, train_dataloader, tgt_vocab_size, grad_clipping):
+    def train_epoch(self, train_dataloader, tgt_vocab_size, grad_clipping, source_vocab, tgt_vocab):
         '''
         Trains the model during one epoch, using the examples of the dataset for training.
         Computes the loss during this epoch.
@@ -164,25 +185,36 @@ class Model:
         self.model.train()
         losses = 0
 
-        for src, tgt in tqdm(train_dataloader, desc="Training"):
-            # Passing vectors to GPU if it's available
-            src = src.to(self.device)
-            tgt = tgt.to(self.device)
-
+        for src, tgt, src_map, alignment in tqdm(train_dataloader, desc="Training"):
             # Zeroing the gradients of transformer parameters
             self.optimizer.zero_grad()
 
             # Slicing the last element of tgt_data because it is used to compute the
             # loss.
-            output = self.model(src, tgt[:, :-1])
+            output = self.model(src, tgt[:, :-1], src_map)
 
-            # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
-            # - tgt_data is reshaped using view() method in shape (batch_size * tgt_len)
-            # - criterion(prediction_labels, target_labels)
-            # - tgt[:, 1:] removes the first token from the target sequence since we are training the
-            # model to predict the next word based on previous words.
-            loss = self.criterion(output.contiguous().view(-1, tgt_vocab_size),
-                                  tgt[:, 1:].contiguous().view(-1))
+            if self.copy_attn:
+                batch_size = src.shape[0]
+                output = collapse_copy_scores(output,
+                                              source_vocab,
+                                              tgt_vocab,
+                                              source_vocab.token_to_idx['<UNK>'],
+                                              batch_size,
+                                              self.device)
+
+                # output.shape[-1] has the dimension of the extra vocab
+                output = output.contiguous().view(-1, output.shape[-1])
+                target = tgt[:, 1:].contiguous().view(-1)
+                alignment = alignment[:, 1:].contiguous().view(-1)
+                loss = self.criterion(output, alignment, target).sum()
+            else:
+                # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
+                # - tgt_data is reshaped using view() method in shape (batch_size * tgt_len)
+                # - criterion(prediction_labels, target_labels)
+                # - tgt[:, 1:] removes the first token from the target sequence since we are training the
+                # model to predict the next word based on previous words.
+                loss = self.criterion(output.contiguous().view(-1, tgt_vocab_size),
+                                      tgt[:, 1:].contiguous().view(-1))
 
             # Computing gradients of loss through backpropagation
             loss.backward()
@@ -198,11 +230,12 @@ class Model:
 
             losses += loss.item()
 
-        return losses / len(list(train_dataloader))
+        return losses / len(train_dataloader)
 
     def validate(self,
                  val_dataloader,
                  mode,
+                 source_vocab,
                  target_vocab,
                  tgt_vocab_size,
                  max_tgt_length,
@@ -248,12 +281,10 @@ class Model:
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
-            for code, summary, src, tgt in tqdm(val_dataloader, desc="Validating"):
-                src = src.to(self.device)
-                tgt = tgt.to(self.device)
-
+            for code, summary, src, tgt, src_map, alignment in tqdm(val_dataloader, desc="Validating"):
                 if mode in ['beam', 'greedy']:
                     metrics = self.translate_evaluate(src,
+                                                      src_map,
                                                       target_vocab,
                                                       max_tgt_length,
                                                       code,
@@ -262,19 +293,35 @@ class Model:
                                                       scorer,
                                                       mode,
                                                       beam_size,
-                                                      metrics)
+                                                      metrics,
+                                                      self.copy_attn)
 
                 # Slicing the last element of tgt_data because it is used to compute the
                 # loss.
-                output = self.model(src, tgt[:, :-1])
+                output = self.model(src, tgt[:, :-1], src_map)
 
-                # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
-                # - tgt_data is reshaped using view() method in shape (batch_size * tgt_len)
-                # - criterion(prediction_labels, target_labels)
-                # - tgt[:, 1:] removes the first token from the target sequence since we are training the
-                # model to predict the next word based on previous words.
-                loss = self.criterion(output.contiguous().view(-1, tgt_vocab_size),
-                                      tgt[:, 1:].contiguous().view(-1))
+                if self.copy_attn:
+                    batch_size = src.shape[0]
+                    output = collapse_copy_scores(output,
+                                                  source_vocab,
+                                                  target_vocab,
+                                                  source_vocab.token_to_idx['<UNK>'],
+                                                  batch_size,
+                                                  self.device)
+                
+                    # output.shape[-1] has the dimension of the extra vocab
+                    output = output.contiguous().view(-1, output.shape[-1])
+                    target = tgt[:, 1:].contiguous().view(-1)
+                    alignment = alignment[:, 1:].contiguous().view(-1)
+                    loss = self.criterion(output, alignment, target).sum()
+                else:
+                    # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
+                    # - tgt_data is reshaped using view() method in shape (batch_size * tgt_len)
+                    # - criterion(prediction_labels, target_labels)
+                    # - tgt[:, 1:] removes the first token from the target sequence since we are training the
+                    # model to predict the next word based on previous words.
+                    loss = self.criterion(output.contiguous().view(-1, tgt_vocab_size),
+                                          tgt[:, 1:].contiguous().view(-1))
 
                 losses += loss.item()
 
@@ -282,7 +329,7 @@ class Model:
             log.close()
             Model.compute_avg_metrics(metrics)
 
-        return losses / len(list(val_dataloader))
+        return losses / len(val_dataloader)
 
     def test(self,
              test_dataloader,
@@ -320,11 +367,14 @@ class Model:
         with torch.no_grad():
             with open('../results/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                       '_gpu_' + str(self.gpu_rank) + '.json', 'w') as log:
-                for code, summary, src, tgt in tqdm(test_dataloader, desc="Testing"):
+                for code, summary, src, tgt, src_map, alignment in tqdm(test_dataloader, desc="Testing"):
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)
+                    src_map = src_map.to(self.device)
+                    alignment = alignment.to(self.device)
 
                     metrics = self.translate_evaluate(src,
+                                                      src_map,
                                                       target_vocab,
                                                       max_tgt_length,
                                                       code,
@@ -333,12 +383,14 @@ class Model:
                                                       scorer,
                                                       mode,
                                                       beam_size,
-                                                      metrics)
+                                                      metrics,
+                                                      self.copy_attn)
 
         Model.compute_avg_metrics(metrics)
 
     def translate_evaluate(self,
                            src,
+                           src_map,
                            target_vocab,
                            max_tgt_length,
                            code,
@@ -347,7 +399,8 @@ class Model:
                            scorer,
                            mode,
                            beam_size,
-                           metrics):
+                           metrics,
+                           copy_attn):
         '''
         Translates a code snippet (giving its respective summary) and also
         computes the evaluation metrics for the sentence and adds it to the
@@ -371,11 +424,13 @@ class Model:
             metrics: A dictionary containing the number of pairs 
                      <code snippet, summary> and the sum for each evaluation 
                      metric. 
+            TODO: FINISH ARGS.
         '''
         batch_size = src.shape[0]
 
         bleu, meteor, rouge_l, \
             precision, recall, f1 = self.translate_sentence(src,
+                                                            src_map,
                                                             target_vocab,
                                                             max_tgt_length,
                                                             code,
@@ -383,7 +438,8 @@ class Model:
                                                             log,
                                                             scorer,
                                                             mode,
-                                                            beam_size)
+                                                            beam_size,
+                                                            copy_attn)
 
         # Performing weighted average of metrics
         metrics["sum_bleu"] += bleu * batch_size
@@ -429,6 +485,7 @@ class Model:
 
     def translate_sentence(self,
                            src,
+                           src_map,
                            target_vocab,
                            max_tgt_length,
                            code,
@@ -436,7 +493,8 @@ class Model:
                            log,
                            scorer,
                            mode,
-                           beam_size):
+                           beam_size,
+                           copy_attn):
         '''
         Produces the code comment given a code snippet step by step and evaluates
         the generated comment against the reference summary.
@@ -455,6 +513,7 @@ class Model:
                            Can be one of the following: "loss", "greedy" or "beam"
             beam_size (int): Number of elements to store during beam search
                              Only applicable if `mode == 'beam'`
+            TODO: FINISH ARGS.
 
         Returns:
             The average BLEU, METEOR, ROUGE-L F-measure, Precision, Recall and 
@@ -478,7 +537,9 @@ class Model:
                                               self.device,
                                               start_symbol_idx,
                                               end_symbol_idx,
-                                              max_tgt_length)
+                                              max_tgt_length,
+                                              copy_attn,
+                                              src_map[i])
             elif mode == 'beam':
                 tgt_preds_idx = beam_search(self.model,
                                             src[i].unsqueeze(0),

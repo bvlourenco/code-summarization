@@ -3,6 +3,7 @@ from prettytable import PrettyTable
 import torch
 import torch.nn as nn
 from evaluation.graphs import display_attention
+from model.modules.copy_generator import CopyGenerator
 
 from model.transformer.embeddings import Embeddings
 from model.transformer.positional_encoding import PositionalEncoding
@@ -37,7 +38,9 @@ class Transformer(nn.Module):
                  max_tgt_length,
                  dropout,
                  device,
-                 init_type):
+                 init_type,
+                 copy_attn,
+                 pad_idx):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -53,6 +56,10 @@ class Transformer(nn.Module):
             device: The device where the model and tensors are inserted (GPU or CPU).
             init_type (string): The weight initialization technique to be used
                                 with the Transformer architecture.
+            copy_attn (bool): Tells whether we want to use a copy generator in the
+                              Transformer architecture or not (to copy source code tokens
+                              to the summary).
+            pad_idx (int): index of the <PAD> token
 
         Note: The log-softmax function is not applied here due to the later use 
               of CrossEntropyLoss, which requires the inputs to be unnormalized 
@@ -74,9 +81,13 @@ class Transformer(nn.Module):
             [DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
         self.norm2 = nn.LayerNorm(d_model)
 
-        # Produce a probability distribution over output words,
-        self.fc = nn.Linear(d_model, tgt_vocab_size)
-
+        if copy_attn:
+            self.fc = CopyGenerator(d_model, tgt_vocab_size, pad_idx)
+        else:
+            # Produce a probability distribution over output words,
+            self.fc = nn.Linear(d_model, tgt_vocab_size)
+        
+        self.copy_attn = copy_attn
         self.device = device
 
         self.init_weights(init_type)
@@ -225,8 +236,10 @@ class Transformer(nn.Module):
                                  the last layer decoder multi-head attentions.
 
         Returns:
-            The resulting decoding from the last layer. 
-            Shape: `(batch_size, tgt_seq_length, d_model)`
+            - The resulting decoding from the last layer. 
+              Shape: `(batch_size, tgt_seq_length, d_model)`
+            - The attention scores between the decoder input and the encoder output
+              (to be used in the copy generator). Shape: `(batch_size, num_heads, query_len, key_len)`
         '''
         tgt_embedded = self.decoder_positional_encoding(
             self.decoder_embedding(tgt))
@@ -246,13 +259,14 @@ class Transformer(nn.Module):
             display_attention(
                 src[0], tgt[0], dec_cross_attn_score[0], "decoder_cross_attn")
 
-        return dec_output
+        return dec_output, dec_cross_attn_score
 
-    def forward(self, src, tgt, display_attn=False):
+    def forward(self, src, tgt, src_map=None, display_attn=False):
         '''
         Args:
             src: The encoder input. Shape: `(batch_size, max_src_len)`
             tgt: The decoder input. Shape: `(batch_size, max_tgt_len)`
+            src_map: TODO
             display_attn (bool): Tells whether we want to save the attention of
                                  the last layer encoder and decoder 
                                  multi-head attentions.
@@ -266,8 +280,17 @@ class Transformer(nn.Module):
 
         enc_output = self.encode(src, src_mask, display_attn)
 
-        dec_output = self.decode(
-            src, src_mask, tgt, tgt_mask, enc_output, display_attn)
+        dec_output, dec_cross_attn_score = self.decode(src, 
+                                                       src_mask, 
+                                                       tgt, 
+                                                       tgt_mask, 
+                                                       enc_output, 
+                                                       display_attn)
 
-        output = self.fc(dec_output)
+        if self.copy_attn:
+            attn_last_head = dec_cross_attn_score[:, -1, :, :]
+            output = self.fc(dec_output, attn_last_head, src_map)
+        else:
+            output = self.fc(dec_output)
+    
         return output

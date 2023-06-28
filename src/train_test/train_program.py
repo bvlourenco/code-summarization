@@ -41,6 +41,8 @@ class TrainProgram(Program):
         self.validation_filename = args.validation_filename
         self.checkpoint = args.checkpoint
         self.trial_number = trial_number
+        self.copy_attn = args.copy_attn
+        self.force_copy = args.force_copy
 
     def execute_operation(self, gpu_rank=None):
         '''
@@ -82,6 +84,7 @@ class TrainProgram(Program):
                                                               self.device,
                                                               self.max_src_length,
                                                               self.max_tgt_length,
+                                                              self.src_vocab_size,
                                                               self.world_size,
                                                               gpu_rank)
 
@@ -102,9 +105,12 @@ class TrainProgram(Program):
                       self.learning_rate,
                       self.label_smoothing,
                       source_vocab.token_to_idx['<PAD>'],
+                      source_vocab.token_to_idx['<UNK>'],
                       model_device,
                       gpu_rank,
-                      self.init_type)
+                      self.init_type,
+                      self.copy_attn,
+                      self.force_copy)
 
         self.train_validate_model(model,
                                   self.num_epochs,
@@ -114,6 +120,7 @@ class TrainProgram(Program):
                                   self.gradient_clipping,
                                   self.mode,
                                   self.beam_size,
+                                  source_vocab,
                                   target_vocab,
                                   self.max_tgt_length,
                                   self.checkpoint,
@@ -130,6 +137,7 @@ class TrainProgram(Program):
                              gradient_clipping,
                              mode,
                              beam_size,
+                             source_vocab,
                              target_vocab,
                              max_tgt_length,
                              checkpoint,
@@ -170,6 +178,7 @@ class TrainProgram(Program):
                                 it is the number of trial that are we are doing 
                                 using optuna. 
                                 Otherwise, it is None.
+            TODO: FINISH ARGS.
 
         Source: https://pytorch.org/tutorials/beginner/translation_transformer.html?highlight=transformer
         '''
@@ -177,6 +186,7 @@ class TrainProgram(Program):
         # Load model checkpoint (loading model parameters and optimizer state)
         # if the checkpoint exists
         if os.path.isfile('../results/model_weights_checkpoint.pth'):
+            logger.info('Found a checkpoint. Loading...')
             start_epoch, train_epoch_loss, val_epoch_loss = model.load_checkpoint(
                 gpu_rank)
             best_val_loss = min(val_epoch_loss)
@@ -198,9 +208,12 @@ class TrainProgram(Program):
             start_time = timer()
             train_loss = model.train_epoch(train_dataloader,
                                            tgt_vocab_size,
-                                           gradient_clipping)
+                                           gradient_clipping,
+                                           source_vocab,
+                                           target_vocab)
             val_loss = model.validate(val_dataloader,
                                       mode,
+                                      source_vocab,
                                       target_vocab,
                                       tgt_vocab_size,
                                       max_tgt_length,
@@ -210,9 +223,9 @@ class TrainProgram(Program):
 
             logger.info(f"Epoch: {epoch} | Time = {(end_time - start_time):.3f}s")
             logger.info(f'Train Loss: {train_loss:.3f} | ' +
-                        f'Train Perplexity: {math.exp(train_loss):7.3f}')
+                        f'Train Perplexity: {train_loss:7.3f}')
             logger.info(f'Validation Loss: {val_loss:.3f} | ' +
-                        f'Validation Perplexity: {math.exp(val_loss):7.3f}')
+                        f'Validation Perplexity: {val_loss:7.3f}')
 
             train_epoch_loss.append(train_loss)
             val_epoch_loss.append(val_loss)
