@@ -64,4 +64,6 @@ class CopyGeneratorLoss(nn.Module):
 
         # computing the NLLLoss
         loss = -probs.log()
+        # Drop padding.
+        loss[target == self.ignore_index] = 0
         return loss

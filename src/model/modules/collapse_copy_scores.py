@@ -2,6 +2,7 @@ import torch
 
 
 def collapse_copy_scores(scores,
+                         src,
                          source_vocab,
                          tgt_vocab,
                          unk_idx,
@@ -29,11 +30,17 @@ def collapse_copy_scores(scores,
         # Store the target word indices corresponding to the ambiguous source words
         fill = []
 
-        # Iterate over the source vocabulary, passing through all indices
+        # Iterate over the source vocabulary of the current code snippet.
         # If the index corresponds to the <UNK> token, we ignore.
         # Maps each source word sw to its corresponding target index ti
         # using the tgt_vocab.
-        for i in range(len(source_vocab)):
+        for i in src[b]:
+            i = i.item()
+
+            # TODO: REFACTOR. Reaching padding
+            if i == 0:
+                break
+            
             if i == unk_idx:
                 continue
 
@@ -68,6 +75,4 @@ def collapse_copy_scores(scores,
             # Fills the columns specified by the `blank` indices in the score
             # tensor with a small value (1e-10 in this case).
             score.index_fill_(1, blank, 1e-10)
-
-            scores[b] = score
     return scores

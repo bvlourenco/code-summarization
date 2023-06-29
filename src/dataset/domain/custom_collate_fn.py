@@ -79,14 +79,11 @@ class CustomCollate:
 
         # for each code snippet
         for i, (source_code, summary, code_idxs, summary_idxs, alignment) in enumerate(batch):
-            # TODO: THIS CUT IS NOT IN A GOOD PLACE!
-            source_code = source_code[:self.max_src_length]
-            summary = summary[:self.max_tgt_length]
-            alignment = alignment[:self.max_tgt_length]
-            
+            alignment = alignment[:self.max_tgt_length]     
+
             alignment_batch[i, : len(alignment)] = alignment.clone().detach()
 
-            for j, t in enumerate(code_idxs):
+            for j, t in enumerate(code_idxs[:self.max_src_length]):
                 src_map_batch[i, j, t] = 1
 
             code_batch.append(source_code)
@@ -137,14 +134,11 @@ class CustomCollate:
 
         # for each code snippet
         for i, (source_code, summary, alignment) in enumerate(batch):
-            # TODO: THIS CUT IS NOT IN A GOOD PLACE!
-            source_code = source_code[:self.max_src_length]
-            summary = summary[:self.max_tgt_length]
-            alignment = alignment[:self.max_tgt_length]
-            
+            alignment = alignment[:self.max_tgt_length]     
+
             alignment_batch[i, : len(alignment)] = alignment.clone().detach()
 
-            for j, t in enumerate(source_code):
+            for j, t in enumerate(source_code[:self.max_src_length]):
                 src_map_batch[i, j, t] = 1
 
             # add padding

@@ -39,7 +39,6 @@ function train_and_validate() {
     --mode greedy \
     --checkpoint True \
     --hyperparameter_tuning False
-
 }
 
 function test_model() {

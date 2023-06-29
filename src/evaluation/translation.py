@@ -1,5 +1,7 @@
 import torch
 
+from model.modules.collapse_copy_scores import collapse_copy_scores
+
 
 def translate_tokens(tokens_idx, source_vocab, target_vocab):
     '''
@@ -54,7 +56,9 @@ def greedy_decode(model,
                   end_symbol_idx, 
                   max_tgt_len,
                   copy_attn,
-                  src_map):
+                  src_map,
+                  source_vocab,
+                  target_vocab):
     '''
     Creates a code comment given a code snippet using the greedy decoding
     strategy (where we generate one token at a time by greedily selecting the
@@ -91,10 +95,22 @@ def greedy_decode(model,
         if copy_attn:
             # Getting the attention of the last head and only for the last target token
             attn_last_head = dec_cross_attn_score[:, -1, -1, :]
-            attn = attn_last_head.contiguous().view(-1, attn_last_head.shape[-1])
+            # attn = attn_last_head.contiguous().view(-1, attn_last_head.shape[-1])
             # dec_output[:, -1] -> Selects only the output for the last token
-            hidden = dec_output[:, -1].contiguous().view(-1, dec_output.shape[-1])
-            prob = model.fc(hidden, attn, src_map)
+            # hidden = dec_output[:, -1].contiguous().view(-1, dec_output.shape[-1])
+            prob = model.fc(dec_output[:, -1], attn_last_head, src_map)
+
+            batch_size = 1
+            prob = prob.view(-1, batch_size, prob.size(-1))
+            prob = prob.transpose(0, 1).contiguous()
+            prob = collapse_copy_scores(prob,
+                                        src,
+                                        source_vocab,
+                                        target_vocab,
+                                        source_vocab.token_to_idx['<UNK>'],
+                                        batch_size,
+                                        device)
+            prob = prob.view(-1, prob.size(-1))
         else:
             # prob has shape: `(batch_size, tgt_vocab_size)`
             prob = model.fc(dec_output[:, -1])

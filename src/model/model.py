@@ -198,6 +198,7 @@ class Model:
                 output = output.view(-1, batch_size, output.size(-1))
                 output = output.transpose(0, 1).contiguous()
                 output = collapse_copy_scores(output,
+                                              src,
                                               source_vocab,
                                               tgt_vocab,
                                               source_vocab.token_to_idx['<UNK>'],
@@ -308,6 +309,7 @@ class Model:
                     output = output.view(-1, batch_size, output.size(-1))
                     output = output.transpose(0, 1).contiguous()
                     output = collapse_copy_scores(output,
+                                                  src,
                                                   source_vocab,
                                                   target_vocab,
                                                   source_vocab.token_to_idx['<UNK>'],
@@ -549,7 +551,9 @@ class Model:
                                               end_symbol_idx,
                                               max_tgt_length,
                                               copy_attn,
-                                              src_map[i].unsqueeze(0))
+                                              src_map[i].unsqueeze(0),
+                                              source_vocab,
+                                              target_vocab)
             elif mode == 'beam':
                 tgt_preds_idx = beam_search(self.model,
                                             src[i].unsqueeze(0),
