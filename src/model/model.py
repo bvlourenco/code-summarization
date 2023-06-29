@@ -195,6 +195,8 @@ class Model:
 
             if self.copy_attn:
                 batch_size = src.shape[0]
+                output = output.view(-1, batch_size, output.size(-1))
+                output = output.transpose(0, 1).contiguous()
                 output = collapse_copy_scores(output,
                                               source_vocab,
                                               tgt_vocab,
@@ -203,10 +205,10 @@ class Model:
                                               self.device)
 
                 # output.shape[-1] has the dimension of the extra vocab
-                output = output.contiguous().view(-1, output.shape[-1])
+                scores = output.contiguous().view(-1, output.shape[-1])
                 target = tgt[:, 1:].contiguous().view(-1)
                 alignment = alignment[:, 1:].contiguous().view(-1)
-                loss = self.criterion(output, alignment, target).sum()
+                loss = self.criterion(scores, alignment, target).mean()
             else:
                 # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
                 # - tgt_data is reshaped using view() method in shape (batch_size * tgt_len)
@@ -285,6 +287,7 @@ class Model:
                 if mode in ['beam', 'greedy']:
                     metrics = self.translate_evaluate(src,
                                                       src_map,
+                                                      source_vocab,
                                                       target_vocab,
                                                       max_tgt_length,
                                                       code,
@@ -302,6 +305,8 @@ class Model:
 
                 if self.copy_attn:
                     batch_size = src.shape[0]
+                    output = output.view(-1, batch_size, output.size(-1))
+                    output = output.transpose(0, 1).contiguous()
                     output = collapse_copy_scores(output,
                                                   source_vocab,
                                                   target_vocab,
@@ -313,7 +318,7 @@ class Model:
                     output = output.contiguous().view(-1, output.shape[-1])
                     target = tgt[:, 1:].contiguous().view(-1)
                     alignment = alignment[:, 1:].contiguous().view(-1)
-                    loss = self.criterion(output, alignment, target).sum()
+                    loss = self.criterion(output, alignment, target).mean()
                 else:
                     # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
                     # - tgt_data is reshaped using view() method in shape (batch_size * tgt_len)
@@ -333,6 +338,7 @@ class Model:
 
     def test(self,
              test_dataloader,
+             source_vocab,
              target_vocab,
              max_tgt_length,
              mode,
@@ -375,6 +381,7 @@ class Model:
 
                     metrics = self.translate_evaluate(src,
                                                       src_map,
+                                                      source_vocab,
                                                       target_vocab,
                                                       max_tgt_length,
                                                       code,
@@ -391,6 +398,7 @@ class Model:
     def translate_evaluate(self,
                            src,
                            src_map,
+                           source_vocab,
                            target_vocab,
                            max_tgt_length,
                            code,
@@ -431,6 +439,7 @@ class Model:
         bleu, meteor, rouge_l, \
             precision, recall, f1 = self.translate_sentence(src,
                                                             src_map,
+                                                            source_vocab,
                                                             target_vocab,
                                                             max_tgt_length,
                                                             code,
@@ -486,6 +495,7 @@ class Model:
     def translate_sentence(self,
                            src,
                            src_map,
+                           source_vocab,
                            target_vocab,
                            max_tgt_length,
                            code,
@@ -532,14 +542,14 @@ class Model:
             # Performing an unsqueeze on src[i] will make its shape (1, max_src_length)
             # which is the correct shape since batch_size = 1 in this case
             if mode == 'greedy':
-                tgt_preds_idx = greedy_decode(self.model,
+                tgt_preds_idx = greedy_decode(self.get_model(),
                                               src[i].unsqueeze(0),
                                               self.device,
                                               start_symbol_idx,
                                               end_symbol_idx,
                                               max_tgt_length,
                                               copy_attn,
-                                              src_map[i])
+                                              src_map[i].unsqueeze(0))
             elif mode == 'beam':
                 tgt_preds_idx = beam_search(self.model,
                                             src[i].unsqueeze(0),
@@ -557,7 +567,7 @@ class Model:
             # Translating the indexes of tokens to the textual
             # representation of tokens Replacing <BOS> and <EOS>
             # with empty string
-            tgt_pred_tokens = translate_tokens(tgt_preds_idx[0], target_vocab)
+            tgt_pred_tokens = translate_tokens(tgt_preds_idx[0], source_vocab, target_vocab)
 
             # Getting tokens of the reference and prediction to
             # compute METEOR

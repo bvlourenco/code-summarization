@@ -68,4 +68,6 @@ def collapse_copy_scores(scores,
             # Fills the columns specified by the `blank` indices in the score
             # tensor with a small value (1e-10 in this case).
             score.index_fill_(1, blank, 1e-10)
+
+            scores[b] = score
     return scores

@@ -13,7 +13,7 @@ class CopyGeneratorLoss(nn.Module):
                  vocab_size, 
                  force_copy, 
                  unk_index, 
-                 ignore_index, 
+                 ignore_index,
                  eps=1e-20
                 ):
         super(CopyGeneratorLoss, self).__init__()
@@ -64,6 +64,4 @@ class CopyGeneratorLoss(nn.Module):
 
         # computing the NLLLoss
         loss = -probs.log()
-        # Drop padding. Ignore padding when computing the loss.
-        loss[target == self.ignore_index] = 0
         return loss

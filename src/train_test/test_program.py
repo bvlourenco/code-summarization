@@ -77,6 +77,7 @@ class TestProgram(Program):
 
         model.load(gpu_rank)
         model.test(test_dataloader,
+                   source_vocab,
                    target_vocab,
                    self.max_tgt_length,
                    self.mode,

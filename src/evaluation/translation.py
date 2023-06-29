@@ -1,7 +1,7 @@
 import torch
 
 
-def translate_tokens(tokens_idx, vocabulary):
+def translate_tokens(tokens_idx, source_vocab, target_vocab):
     '''
     Given a list of token predictions where each token is a number, it translates
     each token from a number to its respective string.
@@ -18,11 +18,20 @@ def translate_tokens(tokens_idx, vocabulary):
     translation = ""
     # tokens_idx[1:] -> Ignoring the first token, which is <BOS>
     for token_idx in tokens_idx[1:]:
-        # Token not in vocabulary -> Unknown token
-        if token_idx.item() not in vocabulary.idx_to_token:
-            token = "<UNK>"
+
+        token_idx_num = token_idx.item()
+
+        # Because of copy attention, 
+        if token_idx_num >= len(target_vocab.idx_to_token):
+            token_idx_norm = token_idx_num - len(target_vocab.idx_to_token)
+            if token_idx_norm in source_vocab.idx_to_token:
+                token = source_vocab.idx_to_token[token_idx_norm]
+            elif token_idx_norm in target_vocab.idx_to_token:
+                token = target_vocab.idx_to_token[token_idx_norm]
+            else:
+                token = "<UNK>"
         else:
-            token = vocabulary.idx_to_token[token_idx.item()]
+            token = target_vocab.idx_to_token[token_idx_num]
         
         if token in ["<EOS>", "<PAD>"]:
             break
@@ -82,7 +91,10 @@ def greedy_decode(model,
         if copy_attn:
             # Getting the attention of the last head and only for the last target token
             attn_last_head = dec_cross_attn_score[:, -1, -1, :]
-            prob = model.fc(dec_output[:, -1], attn_last_head, src_map)
+            attn = attn_last_head.contiguous().view(-1, attn_last_head.shape[-1])
+            # dec_output[:, -1] -> Selects only the output for the last token
+            hidden = dec_output[:, -1].contiguous().view(-1, dec_output.shape[-1])
+            prob = model.fc(hidden, attn, src_map)
         else:
             # prob has shape: `(batch_size, tgt_vocab_size)`
             prob = model.fc(dec_output[:, -1])
@@ -95,7 +107,7 @@ def greedy_decode(model,
         # the index of the predicted token.
         next_word = next_word.item()
 
-        if next_word >= 30000:
+        if next_word > 30000:
             next_word = 3
 
         # Adding the new predicted token to tgt

@@ -38,8 +38,7 @@ function train_and_validate() {
     --validation_filename ../data/python/validation_processed.json \
     --mode greedy \
     --checkpoint True \
-    --hyperparameter_tuning False \
-    --debug_max_lines 32
+    --hyperparameter_tuning False
 
 }
 

@@ -289,7 +289,9 @@ class Transformer(nn.Module):
 
         if self.copy_attn:
             attn_last_head = dec_cross_attn_score[:, -1, :, :]
-            output = self.fc(dec_output, attn_last_head, src_map)
+            attn = attn_last_head.contiguous().view(-1, attn_last_head.shape[-1])
+            hidden = dec_output.contiguous().view(-1, dec_output.shape[-1])
+            output = self.fc(hidden, attn, src_map)
         else:
             output = self.fc(dec_output)
     

@@ -59,6 +59,8 @@ class CopyGenerator(nn.Module):
                each source word to an index in `tgt_dict` if it known, or
                else to an extra word.
         """
+        _, slen = attn.size()
+        batch, _, cvocab = src_map.size()
 
         # Original probabilities.
         logits = self.linear(hidden)
@@ -79,11 +81,12 @@ class CopyGenerator(nn.Module):
         # Computes the copy probabilities for each target word by aggregating
         # the attention weights over the source sequence.
         # Represents the probabilities of copying each word from the source
-        copy_prob = torch.matmul(mul_attn, src_map)
+        copy_prob = torch.bmm(mul_attn.view(-1, batch, slen).transpose(0, 1), src_map)
+        copy_prob = copy_prob.contiguous().view(-1, cvocab)
 
         # Represents the distribution over the target dictionary extended by
         # the dynamic dictionary implied by copying source words.
         # Combines the probabilities of generating words from the target
         # vocabulary (out_prob) and copying words from the source sequence
         # (copy_prob).
-        return torch.cat([out_prob, copy_prob], -1)
+        return torch.cat([out_prob, copy_prob], 1)
