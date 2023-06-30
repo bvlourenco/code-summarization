@@ -70,7 +70,8 @@ class CustomCollate:
 
         # Maps a source code word to its respective index in the extended vocabulary
         # (because of the copy mechanism)
-        src_map_batch = torch.zeros(batch_size, self.max_src_length, self.src_vocab_size, 
+        extra_vocab_size = max([max(code_idxs) for _, _, code_idxs, _, _ in batch]) + 1
+        src_map_batch = torch.zeros(batch_size, self.max_src_length, extra_vocab_size, 
                                     device=self.device)
 
         # Alignment refers to the mapping between the target tokens and 
@@ -125,7 +126,8 @@ class CustomCollate:
 
         # Maps a source code word to its respective index in the extended vocabulary
         # (because of the copy mechanism)
-        src_map_batch = torch.zeros(batch_size, self.max_src_length, self.src_vocab_size, 
+        extra_vocab_size = max([max(source_code) for source_code, _, _ in batch]) + 1
+        src_map_batch = torch.zeros(batch_size, self.max_src_length, extra_vocab_size, 
                                     device=self.device)
 
         # Alignment refers to the mapping between the target tokens and 

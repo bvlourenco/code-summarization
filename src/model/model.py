@@ -52,7 +52,8 @@ class Model:
                  gpu_rank,
                  init_type,
                  copy_attn,
-                 force_copy):
+                 force_copy,
+                 len_tgt):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -110,7 +111,7 @@ class Model:
         # self.model = torch.compile(self.model)
 
         if copy_attn:
-            self.criterion = CopyGeneratorLoss(tgt_vocab_size,
+            self.criterion = CopyGeneratorLoss(len_tgt,
                                                force_copy,
                                                unk_idx,
                                                pad_idx)
@@ -202,6 +203,9 @@ class Model:
                                               source_vocab,
                                               tgt_vocab,
                                               source_vocab.token_to_idx['<UNK>'],
+                                              source_vocab.token_to_idx['<BOS>'],
+                                              source_vocab.token_to_idx['<EOS>'],
+                                              source_vocab.token_to_idx['<PAD>'],
                                               batch_size,
                                               self.device)
 
@@ -313,6 +317,9 @@ class Model:
                                                   source_vocab,
                                                   target_vocab,
                                                   source_vocab.token_to_idx['<UNK>'],
+                                                  source_vocab.token_to_idx['<BOS>'],
+                                                  source_vocab.token_to_idx['<EOS>'],
+                                                  source_vocab.token_to_idx['<PAD>'],
                                                   batch_size,
                                                   self.device)
                 

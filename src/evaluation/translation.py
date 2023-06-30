@@ -108,6 +108,9 @@ def greedy_decode(model,
                                         source_vocab,
                                         target_vocab,
                                         source_vocab.token_to_idx['<UNK>'],
+                                        source_vocab.token_to_idx['<BOS>'],
+                                        source_vocab.token_to_idx['<EOS>'],
+                                        source_vocab.token_to_idx['<PAD>'],
                                         batch_size,
                                         device)
             prob = prob.view(-1, prob.size(-1))

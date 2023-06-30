@@ -110,7 +110,8 @@ class TrainProgram(Program):
                       gpu_rank,
                       self.init_type,
                       self.copy_attn,
-                      self.force_copy)
+                      self.force_copy,
+                      len(target_vocab))
 
         self.train_validate_model(model,
                                   self.num_epochs,

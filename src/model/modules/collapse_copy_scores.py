@@ -6,6 +6,9 @@ def collapse_copy_scores(scores,
                          source_vocab,
                          tgt_vocab,
                          unk_idx,
+                         bos_idx,
+                         eos_idx,
+                         pad_idx,
                          batch_size,
                          device
                          ):
@@ -37,11 +40,9 @@ def collapse_copy_scores(scores,
         for i in src[b]:
             i = i.item()
 
-            # TODO: REFACTOR. Reaching padding
-            if i == 0:
+            if i == eos_idx:
                 break
-            
-            if i == unk_idx:
+            elif i == unk_idx or i == pad_idx or i == bos_idx:
                 continue
 
             sw = source_vocab.idx_to_token[i]
