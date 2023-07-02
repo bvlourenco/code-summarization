@@ -86,6 +86,13 @@ def greedy_decode(model,
     tgt = torch.ones(1, 1).fill_(start_symbol_idx).type(torch.long).to(device)
 
     for _ in range(max_tgt_len - 2):
+
+        if copy_attn:
+            # Turn any copied words into UNKs.
+            tgt = tgt.masked_fill(
+                tgt.gt(len(target_vocab) - 1), target_vocab.token_to_idx['<UNK>']
+            )
+            
         # Generate probabilities for the next token
         # Essentially, we're running the decoder phasing of the model
         # to generate the next token

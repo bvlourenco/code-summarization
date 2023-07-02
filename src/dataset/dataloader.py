@@ -12,6 +12,7 @@ def get_dataloader(dataset,
                    max_src_length,
                    max_tgt_length, 
                    src_vocab_size,
+                   tgt_vocab_size,
                    type,
                    world_size,
                    gpu_rank):
@@ -28,6 +29,7 @@ def get_dataloader(dataset,
         max_src_length (int): Maximum length of the source code.
         max_tgt_length (int): Maximum length of the summaries.
         src_vocab_size (int): size of the source vocabulary.
+        tgt_vocab_size (int): size of the target vocabulary.
         type (string): Indicates whether we are loading the training set or the
                        validation set.
                        Can be one of the following: "train", "evaluation"
@@ -74,7 +76,7 @@ def get_dataloader(dataset,
                       collate_fn=CustomCollate(pad_idx, bos_idx, eos_idx, 
                                                device, max_src_length, 
                                                max_tgt_length, src_vocab_size, 
-                                               type))
+                                               tgt_vocab_size, type))
 
 
 def create_dataloaders(source_code_texts,
@@ -89,6 +91,7 @@ def create_dataloaders(source_code_texts,
                        max_src_length,
                        max_tgt_length,
                        src_vocab_size,
+                       tgt_vocab_size,
                        world_size,
                        gpu_rank):
     '''
@@ -107,6 +110,7 @@ def create_dataloaders(source_code_texts,
         max_src_length (int): Maximum length of the source code.
         max_tgt_length (int): Maximum length of the summaries.
         src_vocab_size (int): size of the source vocabulary.
+        tgt_vocab_size (int): size of the target vocabulary.
         world_size (int): The number of GPUs available in the machine.
                           It has the value of -1 if no GPUs are avaiable.
         gpu_rank (int): The rank of the GPU.
@@ -132,6 +136,7 @@ def create_dataloaders(source_code_texts,
                                       max_src_length,
                                       max_tgt_length,
                                       src_vocab_size,
+                                      tgt_vocab_size,
                                       'train',
                                       world_size,
                                       gpu_rank)
@@ -146,6 +151,7 @@ def create_dataloaders(source_code_texts,
                                                 max_src_length,
                                                 max_tgt_length,
                                                 src_vocab_size,
+                                                tgt_vocab_size,
                                                 world_size,
                                                 gpu_rank)
     return train_dataloader, val_dataloader
@@ -161,6 +167,7 @@ def load_evaluation_dataloader(code_texts,
                                max_src_length,
                                max_tgt_length,
                                src_vocab_size,
+                               tgt_vocab_size,
                                world_size,
                                gpu_rank):
     '''
@@ -177,6 +184,7 @@ def load_evaluation_dataloader(code_texts,
         max_src_length (int): Maximum length of the source code.
         max_tgt_length (int): Maximum length of the summaries.
         src_vocab_size (int): size of the source vocabulary.
+        tgt_vocab_size (int): size of the target vocabulary.
         world_size (int): The number of GPUs available in the machine.
                           It has the value of -1 if no GPUs are avaiable.
         gpu_rank (int): The rank of the GPU.
@@ -200,6 +208,7 @@ def load_evaluation_dataloader(code_texts,
                           max_src_length,
                           max_tgt_length,
                           src_vocab_size,
+                          tgt_vocab_size,
                           'evaluation',
                           world_size,
                           gpu_rank)

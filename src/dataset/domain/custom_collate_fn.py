@@ -22,7 +22,8 @@ class CustomCollate:
                  device, 
                  max_src_length, 
                  max_tgt_length,
-                 src_vocab_size, 
+                 src_vocab_size,
+                 tgt_vocab_size, 
                  type):
         '''
         Args:
@@ -33,6 +34,7 @@ class CustomCollate:
             max_src_length (int): Maximum length of the source code.
             max_tgt_length (int): Maximum length of the summaries.
             src_vocab_size (int): size of the source vocabulary.
+            tgt_vocab_size (int): size of the target vocabulary.
             type (string): Indicates whether we are working with the training 
                            set or the validation/testing set.
                            Can be one of the following: "train", "evaluation"
@@ -44,6 +46,7 @@ class CustomCollate:
         self.max_src_length = max_src_length
         self.max_tgt_length = max_tgt_length
         self.src_vocab_size = src_vocab_size
+        self.tgt_vocab_size = tgt_vocab_size
         self.type = type
 
     def call_evaluation(self, batch):
@@ -70,7 +73,7 @@ class CustomCollate:
 
         # Maps a source code word to its respective index in the extended vocabulary
         # (because of the copy mechanism)
-        extra_vocab_size = max([max(code_idxs) for _, _, code_idxs, _, _ in batch]) + 1
+        extra_vocab_size = self.src_vocab_size + self.tgt_vocab_size
         src_map_batch = torch.zeros(batch_size, self.max_src_length, extra_vocab_size, 
                                     device=self.device)
 
@@ -80,11 +83,15 @@ class CustomCollate:
 
         # for each code snippet
         for i, (source_code, summary, code_idxs, summary_idxs, alignment) in enumerate(batch):
+            # source_code = source_code[:self.max_src_length]
+            # summary = summary[:self.max_tgt_length]
+            code_idxs = code_idxs[:self.max_src_length]
+            summary_idxs = summary_idxs[:self.max_tgt_length]
             alignment = alignment[:self.max_tgt_length]     
 
             alignment_batch[i, : len(alignment)] = alignment.clone().detach()
 
-            for j, t in enumerate(code_idxs[:self.max_src_length]):
+            for j, t in enumerate(code_idxs):
                 src_map_batch[i, j, t] = 1
 
             code_batch.append(source_code)
@@ -126,7 +133,7 @@ class CustomCollate:
 
         # Maps a source code word to its respective index in the extended vocabulary
         # (because of the copy mechanism)
-        extra_vocab_size = max([max(source_code) for source_code, _, _ in batch]) + 1
+        extra_vocab_size = self.src_vocab_size
         src_map_batch = torch.zeros(batch_size, self.max_src_length, extra_vocab_size, 
                                     device=self.device)
 
@@ -136,11 +143,13 @@ class CustomCollate:
 
         # for each code snippet
         for i, (source_code, summary, alignment) in enumerate(batch):
+            source_code = source_code[:self.max_src_length]
+            summary = summary[:self.max_tgt_length]
             alignment = alignment[:self.max_tgt_length]     
 
             alignment_batch[i, : len(alignment)] = alignment.clone().detach()
 
-            for j, t in enumerate(source_code[:self.max_src_length]):
+            for j, t in enumerate(source_code):
                 src_map_batch[i, j, t] = 1
 
             # add padding
