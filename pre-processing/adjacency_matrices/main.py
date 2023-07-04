@@ -88,11 +88,11 @@ def read_file(f, must_process, language, parser, log_file, filename):
     in_statement_file = open('files/in_statement/' +
                              filename_no_extension + '_' + language + '.txt', 'w')
     data_flow_file = open('files/data_flow/' +
-                          filename_no_extension + '_' + language + '.txt', 'wb')
+                          filename_no_extension + '_' + language + '.pkl', 'wb')
     control_flow_file = open('files/control_flow/' +
-                             filename_no_extension + '_' + language + '.txt', 'wb')
+                             filename_no_extension + '_' + language + '.pkl', 'wb')
     ast_adjacency_matrix_file = open(
-        'files/ast_adjacency_matrix/' + filename_no_extension + '_' + language + '.txt', 'wb')
+        'files/ast_adjacency_matrix/' + filename_no_extension + '_' + language + '.pkl', 'wb')
 
     num_lines = sum(1 for _ in open(filename, 'r'))
 
