@@ -19,6 +19,12 @@ class TestProgram(Program):
         super(TestProgram, self).__init__(args)
         self.test_filename = args.test_filename
 
+        self.test_token_matrix = args.test_token_matrix
+        self.test_statement_matrix = args.test_statement_matrix
+        self.test_data_flow_matrix = args.test_data_flow_matrix
+        self.test_control_flow_matrix = args.test_control_flow_matrix
+        self.test_ast_matrix = args.test_ast_matrix
+
     def execute_operation(self, gpu_rank=None):
         '''
         Executes the operation necessary to test the model:

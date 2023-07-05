@@ -5,6 +5,7 @@ import torch.nn as nn
 from evaluation.graphs import display_attention
 
 from model.transformer.embeddings import Embeddings
+from model.transformer.hierarchical_structure_variant_attention import compute_heads_distribution
 from model.transformer.positional_encoding import PositionalEncoding
 from model.transformer.encoder_layer import EncoderLayer
 from model.transformer.decoder_layer import DecoderLayer
@@ -73,6 +74,9 @@ class Transformer(nn.Module):
         self.decoder_layers = nn.ModuleList(
             [DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
         self.norm2 = nn.LayerNorm(d_model)
+
+        self.num_heads = num_heads
+        self.num_layers = num_layers
 
         # Produce a probability distribution over output words,
         self.fc = nn.Linear(d_model, tgt_vocab_size)
@@ -175,7 +179,15 @@ class Transformer(nn.Module):
         tgt_mask = tgt_mask & nopeak_mask
         return tgt_mask
 
-    def encode(self, src, src_mask, display_attn=False):
+    def encode(self, 
+               src, 
+               src_mask, 
+               token, 
+               statement, 
+               data_flow, 
+               control_flow, 
+               ast, 
+               display_attn=False):
         '''
         Encodes the input and returns the result of the last encoder layer.
 
@@ -183,6 +195,11 @@ class Transformer(nn.Module):
             src: The encoder input. Shape: `(batch_size, max_src_len)`
             src_mask: The encoder input mask (to avoid paying attention to padding).
                       Shape: `(batch_size, 1, 1, src_len)`
+            token: The token adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
+            statement: The statement adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
+            data_flow: The data flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
+            control_flow: The control flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
+            ast: The ast adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
             display_attn (bool): Tells whether we want to save the attention of
                                  the last layer encoder multi-head attention.
 
@@ -190,11 +207,21 @@ class Transformer(nn.Module):
             The resulting encoding from the last layer. 
             Shape: `(batch_size, max_src_len, d_model)`
         '''
-        src_embedded = self.encoder_positional_encoding(
-            self.encoder_embedding(src))
+        src_embedded = self.encoder_positional_encoding(self.encoder_embedding(src))
         enc_output = src_embedded
-        for enc_layer in self.encoder_layers:
-            enc_output, enc_attn_score = enc_layer(enc_output, src_mask)
+
+        # Used in multi-head attention to denote we're using a standard head attention
+        zero_matrix = torch.zeros(token.shape[0], token.shape[1], token.shape[2], 
+                                  device=self.device)
+
+        for layer_idx, enc_layer in enumerate(self.encoder_layers):
+            heads_distribution = compute_heads_distribution(self.num_heads, 
+                                                            self.num_layers, 
+                                                            layer_idx)
+            enc_output, enc_attn_score = enc_layer(enc_output, token, statement, 
+                                                   data_flow, control_flow, ast, 
+                                                   zero_matrix, heads_distribution,
+                                                   src_mask)
         # Final encoder layer normalization according to Pre-LN
         enc_output = self.norm1(enc_output)
 
@@ -248,11 +275,17 @@ class Transformer(nn.Module):
 
         return dec_output
 
-    def forward(self, src, tgt, display_attn=False):
+    def forward(self, src, tgt, token, statement, data_flow, control_flow, ast, 
+                display_attn=False):
         '''
         Args:
             src: The encoder input. Shape: `(batch_size, max_src_len)`
             tgt: The decoder input. Shape: `(batch_size, max_tgt_len)`
+            token: The token adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
+            statement: The statement adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
+            data_flow: The data flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
+            control_flow: The control flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
+            ast: The ast adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
             display_attn (bool): Tells whether we want to save the attention of
                                  the last layer encoder and decoder 
                                  multi-head attentions.
@@ -264,10 +297,11 @@ class Transformer(nn.Module):
         src_mask = self.generate_src_mask(src)
         tgt_mask = self.generate_tgt_mask(tgt)
 
-        enc_output = self.encode(src, src_mask, display_attn)
+        enc_output = self.encode(src, src_mask, token, statement, data_flow, 
+                                 control_flow, ast, display_attn)
 
-        dec_output = self.decode(
-            src, src_mask, tgt, tgt_mask, enc_output, display_attn)
+        dec_output = self.decode(src, src_mask, tgt, tgt_mask, 
+                                 enc_output, display_attn)
 
         output = self.fc(dec_output)
         return output

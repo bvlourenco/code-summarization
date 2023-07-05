@@ -76,6 +76,41 @@ def parse_arguments():
                         help="Filename of the training set. Each line is a \
                               JSON object with structure: \
                               {original_string: code, docstring: summary}")
+    
+    parser.add_argument('--train_token_matrix', type=str, required=True,
+                        help='Filename of the training set with the \
+                            token adjacency matrices (represented as a \
+                            list of numbers).')
+    parser.add_argument('--train_statement_matrix', type=str, required=True,
+                        help='Filename of the training set with the \
+                            statement adjacency matrices (represented as a \
+                            list of numbers).')
+    parser.add_argument('--train_data_flow_matrix', type=str, required=True,
+                        help='Filename of the training set with the \
+                            data flow adjacency matrices.')
+    parser.add_argument('--train_control_flow_matrix', type=str, required=True,
+                        help='Filename of the training set with the \
+                            control flow adjacency matrices.')
+    parser.add_argument('--train_ast_matrix', type=str, required=True,
+                        help='Filename of the training set with the \
+                            AST adjacency matrices.')
+    parser.add_argument('--validation_token_matrix', type=str, required=True,
+                        help='Filename of the validation set with the \
+                            token adjacency matrices (represented as a \
+                            list of numbers).')
+    parser.add_argument('--validation_statement_matrix', type=str, required=True,
+                        help='Filename of the validation set with the \
+                            statement adjacency matrices (represented as a \
+                            list of numbers).')
+    parser.add_argument('--validation_data_flow_matrix', type=str, required=True,
+                        help='Filename of the validation set with the \
+                            data flow adjacency matrices.')
+    parser.add_argument('--validation_control_flow_matrix', type=str, required=True,
+                        help='Filename of the validation set with the \
+                            control flow adjacency matrices.')
+    parser.add_argument('--validation_ast_matrix', type=str, required=True,
+                        help='Filename of the validation set with the \
+                            AST adjacency matrices.')
 
     parser.add_argument('--mode', type=str, required=True,
                         choices=['beam', 'greedy', 'loss'],
@@ -116,6 +151,24 @@ def parse_test_args():
                         help="Filename of the training set. Each line is a \
                               JSON object with structure: \
                               {original_string: code, docstring: summary}")
+    
+    parser.add_argument('--test_token_matrix', type=str, required=True,
+                        help='Filename of the testing set with the \
+                            token adjacency matrices (represented as a \
+                            list of numbers).')
+    parser.add_argument('--test_statement_matrix', type=str, required=True,
+                        help='Filename of the testing set with the \
+                            statement adjacency matrices (represented as a \
+                            list of numbers).')
+    parser.add_argument('--test_data_flow_matrix', type=str, required=True,
+                        help='Filename of the testing set with the \
+                            data flow adjacency matrices.')
+    parser.add_argument('--test_control_flow_matrix', type=str, required=True,
+                        help='Filename of the testing set with the \
+                            control flow adjacency matrices.')
+    parser.add_argument('--test_ast_matrix', type=str, required=True,
+                        help='Filename of the testing set with the \
+                            AST adjacency matrices.')
 
     parser.add_argument('--d_model', type=int, required=True,
                         help='Dimensionality of the model')

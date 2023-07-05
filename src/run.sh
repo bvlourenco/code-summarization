@@ -34,6 +34,16 @@ function train_and_validate() {
     --init_type xavier \
     --train_filename ../data/python/train_processed.json \
     --validation_filename ../data/python/validation_processed.json \
+    --train_token_matrix ../data/python/train_processed_python_token.txt \
+    --train_statement_matrix ../data/python/train_processed_python_statement.txt \
+    --train_data_flow_matrix ../data/python/train_processed_python_df.pkl \
+    --train_control_flow_matrix ../data/python/train_processed_python_cf.pkl \
+    --train_ast_matrix ../data/python/train_processed_python_ast.pkl \
+    --validation_token_matrix ../data/python/validation_processed_python_token.txt \
+    --validation_statement_matrix ../data/python/validation_processed_python_statement.txt \
+    --validation_data_flow_matrix ../data/python/validation_processed_python_df.pkl \
+    --validation_control_flow_matrix ../data/python/validation_processed_python_cf.pkl \
+    --validation_ast_matrix ../data/python/validation_processed_python_ast.pkl \
     --mode greedy \
     --checkpoint True \
     --hyperparameter_tuning False
@@ -62,9 +72,14 @@ function test_model() {
     --batch_size 32 \
     --num_workers 0 \
     --test_filename ../data/python/test_processed.json \
+    --test_token_matrix ../data/python/test_processed_python_token.txt \
+    --test_statement_matrix ../data/python/test_processed_python_statement.txt \
+    --test_data_flow_matrix ../data/python/test_processed_python_df.pkl \
+    --test_control_flow_matrix ../data/python/test_processed_python_cf.pkl \
+    --test_ast_matrix ../data/python/test_processed_python_ast.pkl \
     --mode greedy
 
 }
 
 train_and_validate
-test_model
+#test_model

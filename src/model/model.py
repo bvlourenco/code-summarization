@@ -164,17 +164,24 @@ class Model:
         self.model.train()
         losses = 0
 
-        for src, tgt in tqdm(train_dataloader, desc="Training"):
+        for src, tgt, token, statement, data_flow, \
+            control_flow, ast in tqdm(train_dataloader, desc="Training"):
             # Passing vectors to GPU if it's available
             src = src.to(self.device)
             tgt = tgt.to(self.device)
+            token = token.to(self.device)
+            statement = statement.to(self.device)
+            data_flow = data_flow.to(self.device)
+            control_flow = control_flow.to(self.device)
+            ast = ast.to(self.device)
 
             # Zeroing the gradients of transformer parameters
             self.optimizer.zero_grad()
 
             # Slicing the last element of tgt_data because it is used to compute the
             # loss.
-            output = self.model(src, tgt[:, :-1])
+            output = self.model(src, tgt[:, :-1], token, statement, 
+                                data_flow, control_flow, ast)
 
             # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
             # - tgt_data is reshaped using view() method in shape (batch_size * tgt_len)
@@ -248,13 +255,24 @@ class Model:
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
-            for code, summary, src, tgt in tqdm(val_dataloader, desc="Validating"):
+            for code, summary, src, tgt, token, statement, data_flow, \
+                control_flow, ast in tqdm(val_dataloader, desc="Validating"):
                 src = src.to(self.device)
                 tgt = tgt.to(self.device)
+                token = token.to(self.device)
+                statement = statement.to(self.device)
+                data_flow = data_flow.to(self.device)
+                control_flow = control_flow.to(self.device)
+                ast = ast.to(self.device)
 
                 if mode in ['beam', 'greedy']:
                     metrics = self.translate_evaluate(src,
                                                       target_vocab,
+                                                      token, 
+                                                      statement, 
+                                                      data_flow, 
+                                                      control_flow, 
+                                                      ast,
                                                       max_tgt_length,
                                                       code,
                                                       summary,
@@ -266,7 +284,8 @@ class Model:
 
                 # Slicing the last element of tgt_data because it is used to compute the
                 # loss.
-                output = self.model(src, tgt[:, :-1])
+                output = self.model(src, tgt[:, :-1], token, statement, 
+                                    data_flow, control_flow, ast)
 
                 # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
                 # - tgt_data is reshaped using view() method in shape (batch_size * tgt_len)
@@ -340,6 +359,11 @@ class Model:
     def translate_evaluate(self,
                            src,
                            target_vocab,
+                           token, 
+                           statement, 
+                           data_flow, 
+                           control_flow, 
+                           ast,
                            max_tgt_length,
                            code,
                            summary,
@@ -371,12 +395,18 @@ class Model:
             metrics: A dictionary containing the number of pairs 
                      <code snippet, summary> and the sum for each evaluation 
                      metric. 
+            TODO: FINISH COMMENTS.
         '''
         batch_size = src.shape[0]
 
         bleu, meteor, rouge_l, \
             precision, recall, f1 = self.translate_sentence(src,
                                                             target_vocab,
+                                                            token, 
+                                                            statement, 
+                                                            data_flow, 
+                                                            control_flow, 
+                                                            ast,
                                                             max_tgt_length,
                                                             code,
                                                             summary,
@@ -430,6 +460,11 @@ class Model:
     def translate_sentence(self,
                            src,
                            target_vocab,
+                           token, 
+                           statement, 
+                           data_flow, 
+                           control_flow, 
+                           ast,
                            max_tgt_length,
                            code,
                            summary,
@@ -455,7 +490,8 @@ class Model:
                            Can be one of the following: "loss", "greedy" or "beam"
             beam_size (int): Number of elements to store during beam search
                              Only applicable if `mode == 'beam'`
-
+            
+            TODO: FINISH COMMENTS.
         Returns:
             The average BLEU, METEOR, ROUGE-L F-measure, Precision, Recall and 
             F1-score of the predicted sentence relative to the reference. 
@@ -475,6 +511,11 @@ class Model:
             if mode == 'greedy':
                 tgt_preds_idx = greedy_decode(self.model,
                                               src[i].unsqueeze(0),
+                                              token[i].unsqueeze(0), 
+                                              statement[i].unsqueeze(0), 
+                                              data_flow[i].unsqueeze(0), 
+                                              control_flow[i].unsqueeze(0), 
+                                              ast[i].unsqueeze(0),
                                               self.device,
                                               start_symbol_idx,
                                               end_symbol_idx,

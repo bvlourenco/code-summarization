@@ -1,6 +1,8 @@
 import torch
 from torch.nn.functional import pad
 
+from dataset.build_local_matrices import build_local_matrix
+
 
 class CustomCollate:
     '''
@@ -55,11 +57,18 @@ class CustomCollate:
         Source: https://medium.com/@hunter-j-phillips/putting-it-all-together-the-implemented-transformer-bfb11ac1ddfe
         '''
         code_batch, summary_batch, code_idxs_batch, summary_idxs_batch = [], [], [], []
+        token_batch, statement_batch, data_flow_batch, control_flow_batch, ast_batch = [], [], [], [], []
 
         # for each code snippet
-        for (source_code, summary, code_idxs, summary_idxs) in batch:
+        for (source_code, summary, code_idxs, summary_idxs, token_matrix, \
+             statement_matrix, data_flow_matrix, control_flow_matrix, ast_matrix) in batch:
             code_batch.append(source_code)
             summary_batch.append(summary)
+            token_batch.append(token_matrix)
+            statement_batch.append(statement_matrix)
+            data_flow_batch.append(data_flow_matrix)
+            control_flow_batch.append(control_flow_matrix)
+            ast_batch.append(ast_matrix)
 
             # add padding
             code_idxs_batch.append(
@@ -70,7 +79,12 @@ class CustomCollate:
                 pad(summary_idxs, (0, self.max_tgt_length - len(summary_idxs)), value=self.pad_idx))
 
         return code_batch, summary_batch, torch.stack(code_idxs_batch), \
-            torch.stack(summary_idxs_batch)
+            torch.stack(summary_idxs_batch), \
+            build_local_matrix(token_batch, 'token'), \
+            build_local_matrix(statement_batch, 'statement'), \
+            torch.stack(data_flow_batch), \
+            torch.stack(control_flow_batch), \
+            torch.stack(ast_batch)
 
     def call_train(self, batch):
         '''
@@ -87,9 +101,17 @@ class CustomCollate:
         Source: https://medium.com/@hunter-j-phillips/putting-it-all-together-the-implemented-transformer-bfb11ac1ddfe
         '''
         code_batch, summary_batch = [], []
+        token_batch, statement_batch, data_flow_batch, control_flow_batch, ast_batch = [], [], [], [], []
 
         # for each code snippet
-        for (source_code, summary) in batch:
+        for (source_code, summary, token_matrix, statement_matrix, \
+             data_flow_matrix, control_flow_matrix, ast_matrix) in batch:
+            token_batch.append(token_matrix)
+            statement_batch.append(statement_matrix)
+            data_flow_batch.append(data_flow_matrix)
+            control_flow_batch.append(control_flow_matrix)
+            ast_batch.append(ast_matrix)
+
             # add padding
             code_batch.append(
                 pad(source_code, (0, self.max_src_length - len(source_code)), value=self.pad_idx))
@@ -98,7 +120,12 @@ class CustomCollate:
             summary_batch.append(
                 pad(summary, (0, self.max_tgt_length - len(summary)), value=self.pad_idx))
 
-        return torch.stack(code_batch), torch.stack(summary_batch)
+        return torch.stack(code_batch), torch.stack(summary_batch), \
+               build_local_matrix(token_batch, 'token'), \
+               build_local_matrix(statement_batch, 'statement'), \
+               torch.stack(data_flow_batch), \
+               torch.stack(control_flow_batch), \
+               torch.stack(ast_batch)
 
     def __call__(self, batch):
         '''
@@ -117,16 +144,28 @@ class CustomCollate:
 
         Returns:
             If this represents the training set:
-                A Source Code Batch and a Summary Batch. 
+                A Source Code Batch, a Summary Batch and a token, statement, 
+                data flow, control flow and ast adjancency matrices batch. 
                 Shapes: `(batch_size, max_src_len)`
                         `(batch_size, max_tgt_len)`
+                        `(batch_size, max_src_len, max_src_len)`
+                        `(batch_size, max_src_len, max_src_len)`
+                        `(batch_size, max_src_len, max_src_len)`
+                        `(batch_size, max_src_len, max_src_len)`
+                        `(batch_size, max_src_len, max_src_len)`
             Otherwise (if this represents the validation or testing set):
                 A Source Code Batch, a Summary Batch, a source code batch numericalized
-                and a summary batch numericalized. 
+                , a summary batch numericalized and a token, statement, data flow,
+                control flow and ast adjancency matrices batch. 
                 Shapes: `(batch_size, max_src_len)`
                         `(batch_size, max_tgt_len)`
                         `(batch_size, max_src_len)`
                         `(batch_size, max_tgt_len)`
+                        `(batch_size, max_src_len, max_src_len)`
+                        `(batch_size, max_src_len, max_src_len)`
+                        `(batch_size, max_src_len, max_src_len)`
+                        `(batch_size, max_src_len, max_src_len)`
+                        `(batch_size, max_src_len, max_src_len)`
         '''
         if self.type == 'train':
             return self.call_train(batch)

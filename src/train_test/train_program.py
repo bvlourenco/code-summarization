@@ -3,7 +3,7 @@ import math
 import os
 from dataset.build_vocab import create_vocabulary
 from dataset.dataloader import create_dataloaders
-from dataset.load_dataset import load_dataset_file
+from dataset.load_dataset import load_dataset_file, load_local_matrices, load_matrices
 from evaluation.graphs import create_loss_plot
 from model.model import Model
 from train_test.program import Program
@@ -40,6 +40,19 @@ class TrainProgram(Program):
         self.train_filename = args.train_filename
         self.validation_filename = args.validation_filename
         self.checkpoint = args.checkpoint
+
+        self.train_token_matrix = args.train_token_matrix
+        self.train_statement_matrix = args.train_statement_matrix
+        self.train_data_flow_matrix = args.train_data_flow_matrix
+        self.train_control_flow_matrix = args.train_control_flow_matrix
+        self.train_ast_matrix = args.train_ast_matrix
+
+        self.validation_token_matrix = args.validation_token_matrix
+        self.validation_statement_matrix = args.validation_statement_matrix
+        self.validation_data_flow_matrix = args.validation_data_flow_matrix
+        self.validation_control_flow_matrix = args.validation_control_flow_matrix
+        self.validation_ast_matrix = args.validation_ast_matrix
+
         self.trial_number = trial_number
 
     def execute_operation(self, gpu_rank=None):
@@ -65,6 +78,26 @@ class TrainProgram(Program):
                                                               'validation',
                                                               32)
 
+        train_token_matrices, train_statement_matrices, \
+        train_data_flow_matrices, train_control_flow_matrices, \
+        train_ast_matrices = load_matrices(self.train_token_matrix,
+                                           self.train_statement_matrix,
+                                           self.train_data_flow_matrix,
+                                           self.train_control_flow_matrix,
+                                           self.train_ast_matrix,
+                                           'train',
+                                           self.debug_max_lines)
+        
+        val_token_matrices, val_statement_matrices, \
+        val_data_flow_matrices, val_control_flow_matrices, \
+        val_ast_matrices = load_matrices(self.validation_token_matrix,
+                                         self.validation_statement_matrix,
+                                         self.validation_data_flow_matrix,
+                                         self.validation_control_flow_matrix,
+                                         self.validation_ast_matrix,
+                                         'validation',
+                                         self.debug_max_lines)
+
         source_vocab, target_vocab = create_vocabulary(train_code_texts,
                                                        train_summary_texts,
                                                        self.freq_threshold,
@@ -73,8 +106,18 @@ class TrainProgram(Program):
 
         train_dataloader, val_dataloader = create_dataloaders(train_code_texts,
                                                               train_summary_texts,
+                                                              train_token_matrices,
+                                                              train_statement_matrices,
+                                                              train_data_flow_matrices,
+                                                              train_control_flow_matrices,
+                                                              train_ast_matrices,
                                                               val_code_texts,
                                                               val_summary_texts,
+                                                              val_token_matrices,
+                                                              val_statement_matrices,
+                                                              val_data_flow_matrices,
+                                                              val_control_flow_matrices,
+                                                              val_ast_matrices,
                                                               source_vocab,
                                                               target_vocab,
                                                               self.batch_size,
@@ -208,7 +251,8 @@ class TrainProgram(Program):
                                       beam_size)
             end_time = timer()
 
-            logger.info(f"Epoch: {epoch} | Time = {(end_time - start_time):.3f}s")
+            logger.info(
+                f"Epoch: {epoch} | Time = {(end_time - start_time):.3f}s")
             logger.info(f'Train Loss: {train_loss:.3f} | ' +
                         f'Train Perplexity: {math.exp(train_loss):7.3f}')
             logger.info(f'Validation Loss: {val_loss:.3f} | ' +
@@ -222,7 +266,8 @@ class TrainProgram(Program):
             # gpu_rank is 0 (to avoid having multiple processed storing the model
             # when using multiple GPUs)
             if epoch == num_epochs and gpu_rank in [None, 0]:
-                logger.info(f"Saving last epoch of model with loss of {val_loss:7.3f}")
+                logger.info(
+                    f"Saving last epoch of model with loss of {val_loss:7.3f}")
                 model.save(last_epoch=True)
             elif val_loss < best_val_loss and gpu_rank in [None, 0]:
                 logger.info(

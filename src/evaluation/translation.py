@@ -39,7 +39,17 @@ def translate_tokens(tokens_idx, vocabulary):
     return translation.strip()
 
 
-def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_len):
+def greedy_decode(model, 
+                  src, 
+                  token, 
+                  statement, 
+                  data_flow, 
+                  control_flow, 
+                  ast,
+                  device, 
+                  start_symbol_idx, 
+                  end_symbol_idx, 
+                  max_tgt_len):
     '''
     Creates a code comment given a code snippet using the greedy decoding
     strategy (where we generate one token at a time by greedily selecting the
@@ -53,13 +63,21 @@ def greedy_decode(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_
         end_symbol_idx: The vocabulary end symbol index (<EOS> index)
         max_tgt_len (int): Maximum length of the summary.
 
+        TODO: FINISH COMMENTS.
+
     Returns:
         tgt: The predicted code comment token indexes. Shape: `(1, tgt_length)`
 
     Source: https://pytorch.org/tutorials/beginner/translation_transformer.html?highlight=transformer
     '''
     src_mask = model.generate_src_mask(src)
-    enc_output = model.encode(src, src_mask).to(device)
+    enc_output = model.encode(src, 
+                              src_mask, 
+                              token, 
+                              statement, 
+                              data_flow, 
+                              control_flow, 
+                              ast).to(device)
 
     # Initializes the target sequence with <BOS> symbol
     # Will be further expland to include the predicted tokens
