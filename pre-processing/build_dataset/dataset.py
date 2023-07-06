@@ -4,7 +4,6 @@ import code_tokenize as ctok
 import json
 import re
 from tqdm import tqdm
-from tokenization import tokenize_with_camel_case, tokenize_with_snake_case
 
 
 DOCSTRING_REGEX_TOKENIZER = re.compile(
@@ -86,6 +85,16 @@ def parse_arguments():
     return args
 
 
+def tokenize_with_camel_case(token):
+    matches = re.finditer(
+        '.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', token)
+    return [m.group(0) for m in matches]
+
+
+def tokenize_with_snake_case(token):
+    return token.split('_')
+
+
 def tokenize_code(code_snippet, language, camel_case=True, snake_case=True):
     code_tokens = ctok.tokenize(
         code_snippet, lang=language, syntax_error="ignore")
@@ -124,10 +133,10 @@ def main():
     args = parse_arguments()
 
     # Cleaning file
-    open('../data/' + args.language + "/" +
+    open('../../data/' + args.language + "/" +
          args.type + '_processed.json', 'w').close()
 
-    dataset = open('../data/' + args.language + "/" +
+    dataset = open('../../data/' + args.language + "/" +
                    args.type + '_processed.json', 'w')
 
     if args.language == 'python':

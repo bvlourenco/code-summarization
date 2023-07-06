@@ -1,7 +1,6 @@
-import re
 import numpy as np
-from flow.utils import build_flow
 from ast_matrix.ast_adjacency_matrix import get_AST_adjacency_matrix
+from flow.build_flow import build_flow
 from scipy import sparse
 import code_tokenize as ctok
 from tokenization import tokenize_with_snake_case, tokenize_with_camel_case

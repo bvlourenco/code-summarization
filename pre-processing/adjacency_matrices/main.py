@@ -7,8 +7,8 @@ import numpy as np
 from tqdm import tqdm
 
 from tree_sitter import Language, Parser
-from flow.data_flow.data_flow import DFG_go, DFG_java, DFG_javascript, DFG_php, DFG_python, DFG_ruby
-from flow.control_flow.control_flow import CFG_go, CFG_java, CFG_javascript, CFG_php, CFG_python, CFG_ruby
+from flow.data_flow import DFG_go, DFG_java, DFG_javascript, DFG_php, DFG_python, DFG_ruby
+from flow.control_flow import CFG_go, CFG_java, CFG_javascript, CFG_php, CFG_python, CFG_ruby
 from language_parsers.build.build_language import build_language_library
 from code_snippet import CodeSnippet
 

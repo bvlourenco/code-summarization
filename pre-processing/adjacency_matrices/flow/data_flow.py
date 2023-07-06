@@ -8,7 +8,7 @@ FROM: https://github.com/microsoft/CodeBERT/blob/
 # Licensed under the MIT license.
 
 
-from flow.utils import tree_to_variable_index
+from flow.tree_helpers import tree_to_variable_index
 
 
 def DFG_python(root_node, index_to_code, states):
