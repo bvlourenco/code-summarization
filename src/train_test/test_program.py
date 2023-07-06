@@ -1,6 +1,6 @@
 from dataset.build_vocab import load_vocab
 from dataset.dataloader import load_evaluation_dataloader
-from dataset.load_dataset import load_dataset_file
+from dataset.load_dataset import load_dataset_file, load_matrices
 from model.model import Model
 from train_test.program import Program
 
@@ -40,15 +40,35 @@ class TestProgram(Program):
                       It has the value of None if no GPUs are available or
                       only 1 GPU is available.
         '''
-        test_code_texts, test_summary_texts = load_dataset_file(self.test_filename,
-                                                                'test',
-                                                                self.debug_max_lines)
+        test_code_texts, \
+            test_code_tokens, \
+            test_summary_texts, \
+            test_summary_tokens = load_dataset_file(self.test_filename,
+                                                    'test',
+                                                    self.debug_max_lines)
+
+        test_token_matrices, test_statement_matrices, \
+            test_data_flow_matrices, test_control_flow_matrices, \
+            test_ast_matrices = load_matrices(self.test_token_matrix,
+                                              self.test_statement_matrix,
+                                              self.test_data_flow_matrix,
+                                              self.test_control_flow_matrix,
+                                              self.test_ast_matrix,
+                                              'test',
+                                              self.debug_max_lines)
 
         source_vocab, target_vocab = load_vocab('../results/src_vocab.pkl',
                                                 '../results/tgt_vocab.pkl')
 
         test_dataloader = load_evaluation_dataloader(test_code_texts,
+                                                     test_code_tokens,
                                                      test_summary_texts,
+                                                     test_summary_tokens,
+                                                     test_token_matrices,
+                                                     test_statement_matrices,
+                                                     test_data_flow_matrices,
+                                                     test_control_flow_matrices,
+                                                     test_ast_matrices,
                                                      source_vocab,
                                                      target_vocab,
                                                      self.batch_size,
@@ -78,7 +98,9 @@ class TestProgram(Program):
                       source_vocab.token_to_idx['<PAD>'],
                       model_device,
                       gpu_rank,
-                      self.init_type)
+                      self.init_type,
+                      self.hyperparameter_hsva,
+                      self.hyperparameter_attn_heads)
 
         model.load(gpu_rank)
         model.test(test_dataloader,

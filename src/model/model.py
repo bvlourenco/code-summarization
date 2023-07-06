@@ -116,6 +116,7 @@ class Model:
                                     betas=(0.9, 0.98),
                                     eps=1e-9)
 
+        # TODO: Enable LR scheduler
         # Adjusts the learning rate during training
         # Implements the "Noam" learning rate scheduler, used in vanilla Transformer
         # self.scheduler = LambdaLR(
@@ -176,7 +177,7 @@ class Model:
         losses = 0
 
         for src, tgt, token, statement, data_flow, \
-            control_flow, ast in tqdm(train_dataloader, desc="Training"):
+                control_flow, ast in tqdm(train_dataloader, desc="Training"):
             # Passing vectors to GPU if it's available
             src = src.to(self.device)
             tgt = tgt.to(self.device)
@@ -191,7 +192,7 @@ class Model:
 
             # Slicing the last element of tgt_data because it is used to compute the
             # loss.
-            output = self.model(src, tgt[:, :-1], token, statement, 
+            output = self.model(src, tgt[:, :-1], token, statement,
                                 data_flow, control_flow, ast)
 
             # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
@@ -267,7 +268,7 @@ class Model:
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
             for code, summary, src, tgt, token, statement, data_flow, \
-                control_flow, ast in tqdm(val_dataloader, desc="Validating"):
+                    control_flow, ast in tqdm(val_dataloader, desc="Validating"):
                 src = src.to(self.device)
                 tgt = tgt.to(self.device)
                 token = token.to(self.device)
@@ -279,10 +280,10 @@ class Model:
                 if mode in ['beam', 'greedy']:
                     metrics = self.translate_evaluate(src,
                                                       target_vocab,
-                                                      token, 
-                                                      statement, 
-                                                      data_flow, 
-                                                      control_flow, 
+                                                      token,
+                                                      statement,
+                                                      data_flow,
+                                                      control_flow,
                                                       ast,
                                                       max_tgt_length,
                                                       code,
@@ -295,7 +296,7 @@ class Model:
 
                 # Slicing the last element of tgt_data because it is used to compute the
                 # loss.
-                output = self.model(src, tgt[:, :-1], token, statement, 
+                output = self.model(src, tgt[:, :-1], token, statement,
                                     data_flow, control_flow, ast)
 
                 # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
@@ -350,12 +351,23 @@ class Model:
         with torch.no_grad():
             with open('../results/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                       '_gpu_' + str(self.gpu_rank) + '.json', 'w') as log:
-                for code, summary, src, tgt in tqdm(test_dataloader, desc="Testing"):
+                for code, summary, src, tgt, token, statement, data_flow, \
+                    control_flow, ast in tqdm(test_dataloader, desc="Testing"):
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)
+                    token = token.to(self.device)
+                    statement = statement.to(self.device)
+                    data_flow = data_flow.to(self.device)
+                    control_flow = control_flow.to(self.device)
+                    ast = ast.to(self.device)
 
                     metrics = self.translate_evaluate(src,
                                                       target_vocab,
+                                                      token,
+                                                      statement,
+                                                      data_flow,
+                                                      control_flow,
+                                                      ast,
                                                       max_tgt_length,
                                                       code,
                                                       summary,
@@ -370,10 +382,10 @@ class Model:
     def translate_evaluate(self,
                            src,
                            target_vocab,
-                           token, 
-                           statement, 
-                           data_flow, 
-                           control_flow, 
+                           token,
+                           statement,
+                           data_flow,
+                           control_flow,
                            ast,
                            max_tgt_length,
                            code,
@@ -391,6 +403,16 @@ class Model:
         Args:
             src: code snippet numericalized
             target_vocab: The vocabulary built from the summaries in training set.
+            token: The token adjacency matrices. 
+                   Shape: `(batch_size, max_src_len, max_src_len)`
+            statement: The statement adjacency matrices. 
+                       Shape: `(batch_size, max_src_len, max_src_len)`
+            data_flow: The data flow adjacency matrices. 
+                       Shape: `(batch_size, max_src_len, max_src_len)`
+            control_flow: The control flow adjacency matrices. 
+                          Shape: `(batch_size, max_src_len, max_src_len)`
+            ast: The ast adjacency matrices. 
+                 Shape: `(batch_size, max_src_len, max_src_len)`
             max_tgt_length (int): Maximum length of the generated summary.
             code (string): code snippet in textual form.
             summary (string): reference code comment.
@@ -405,18 +427,17 @@ class Model:
                              Only applicable if `mode == 'beam'`
             metrics: A dictionary containing the number of pairs 
                      <code snippet, summary> and the sum for each evaluation 
-                     metric. 
-            TODO: FINISH COMMENTS.
+                     metric.
         '''
         batch_size = src.shape[0]
 
         bleu, meteor, rouge_l, \
             precision, recall, f1 = self.translate_sentence(src,
                                                             target_vocab,
-                                                            token, 
-                                                            statement, 
-                                                            data_flow, 
-                                                            control_flow, 
+                                                            token,
+                                                            statement,
+                                                            data_flow,
+                                                            control_flow,
                                                             ast,
                                                             max_tgt_length,
                                                             code,
@@ -471,10 +492,10 @@ class Model:
     def translate_sentence(self,
                            src,
                            target_vocab,
-                           token, 
-                           statement, 
-                           data_flow, 
-                           control_flow, 
+                           token,
+                           statement,
+                           data_flow,
+                           control_flow,
                            ast,
                            max_tgt_length,
                            code,
@@ -490,6 +511,16 @@ class Model:
         Args:
             src: code snippet numericalized
             target_vocab: The vocabulary built from the summaries in training set.
+            token: The token adjacency matrices. 
+                   Shape: `(batch_size, max_src_len, max_src_len)`
+            statement: The statement adjacency matrices. 
+                       Shape: `(batch_size, max_src_len, max_src_len)`
+            data_flow: The data flow adjacency matrices. 
+                       Shape: `(batch_size, max_src_len, max_src_len)`
+            control_flow: The control flow adjacency matrices. 
+                          Shape: `(batch_size, max_src_len, max_src_len)`
+            ast: The ast adjacency matrices. 
+                 Shape: `(batch_size, max_src_len, max_src_len)`
             max_tgt_length (int): Maximum length of the generated summary.
             code (string): code snippet in textual form.
             summary (string): reference code comment.
@@ -501,8 +532,6 @@ class Model:
                            Can be one of the following: "loss", "greedy" or "beam"
             beam_size (int): Number of elements to store during beam search
                              Only applicable if `mode == 'beam'`
-            
-            TODO: FINISH COMMENTS.
         Returns:
             The average BLEU, METEOR, ROUGE-L F-measure, Precision, Recall and 
             F1-score of the predicted sentence relative to the reference. 
@@ -519,13 +548,14 @@ class Model:
             # src[i] has shape (max_src_length, )
             # Performing an unsqueeze on src[i] will make its shape (1, max_src_length)
             # which is the correct shape since batch_size = 1 in this case
+            # The same happens with token, statement, data flow, control flow and ast
             if mode == 'greedy':
                 tgt_preds_idx = greedy_decode(self.model,
                                               src[i].unsqueeze(0),
-                                              token[i].unsqueeze(0), 
-                                              statement[i].unsqueeze(0), 
-                                              data_flow[i].unsqueeze(0), 
-                                              control_flow[i].unsqueeze(0), 
+                                              token[i].unsqueeze(0),
+                                              statement[i].unsqueeze(0),
+                                              data_flow[i].unsqueeze(0),
+                                              control_flow[i].unsqueeze(0),
                                               ast[i].unsqueeze(0),
                                               self.device,
                                               start_symbol_idx,
@@ -679,7 +709,7 @@ class Model:
         self.model = self.get_model()
         map_location = self.get_map_location(gpu_rank)
         try:
-            self.model.load_state_dict(torch.load('../results/model_weights_last.pth',
+            self.model.load_state_dict(torch.load('../results/model_weights.pth',
                                                   map_location=map_location))
         except Exception:
             traceback.print_exc()

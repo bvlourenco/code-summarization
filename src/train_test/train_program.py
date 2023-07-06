@@ -53,9 +53,6 @@ class TrainProgram(Program):
         self.validation_control_flow_matrix = args.validation_control_flow_matrix
         self.validation_ast_matrix = args.validation_ast_matrix
 
-        self.hyperparameter_hsva = args.hyperparameter_hsva
-        self.hyperparameter_attn_heads = args.hyperparameter_attn_heads
-
         self.trial_number = trial_number
 
     def execute_operation(self, gpu_rank=None):
@@ -73,49 +70,59 @@ class TrainProgram(Program):
                       It has the value of None if no GPUs are available or
                       only 1 GPU is available.
         '''
-        train_code_texts, train_summary_texts = load_dataset_file(self.train_filename,
-                                                                  'train',
-                                                                  self.debug_max_lines)
+        train_code_texts, \
+            train_code_tokens, \
+            train_summary_texts, \
+            train_summary_tokens = load_dataset_file(self.train_filename,
+                                                     'train',
+                                                     self.debug_max_lines)
 
-        val_code_texts, val_summary_texts = load_dataset_file(self.validation_filename,
-                                                              'validation',
-                                                              32)
+        val_code_texts, \
+            val_code_tokens, \
+            val_summary_texts, \
+            val_summary_tokens = load_dataset_file(self.validation_filename,
+                                                   'validation',
+                                                   32)
 
         train_token_matrices, train_statement_matrices, \
-        train_data_flow_matrices, train_control_flow_matrices, \
-        train_ast_matrices = load_matrices(self.train_token_matrix,
-                                           self.train_statement_matrix,
-                                           self.train_data_flow_matrix,
-                                           self.train_control_flow_matrix,
-                                           self.train_ast_matrix,
-                                           'train',
-                                           self.debug_max_lines)
-        
-        val_token_matrices, val_statement_matrices, \
-        val_data_flow_matrices, val_control_flow_matrices, \
-        val_ast_matrices = load_matrices(self.validation_token_matrix,
-                                         self.validation_statement_matrix,
-                                         self.validation_data_flow_matrix,
-                                         self.validation_control_flow_matrix,
-                                         self.validation_ast_matrix,
-                                         'validation',
-                                         self.debug_max_lines)
+            train_data_flow_matrices, train_control_flow_matrices, \
+            train_ast_matrices = load_matrices(self.train_token_matrix,
+                                               self.train_statement_matrix,
+                                               self.train_data_flow_matrix,
+                                               self.train_control_flow_matrix,
+                                               self.train_ast_matrix,
+                                               'train',
+                                               self.debug_max_lines)
 
-        source_vocab, target_vocab = create_vocabulary(train_code_texts,
-                                                       train_summary_texts,
+        val_token_matrices, val_statement_matrices, \
+            val_data_flow_matrices, val_control_flow_matrices, \
+            val_ast_matrices = load_matrices(self.validation_token_matrix,
+                                             self.validation_statement_matrix,
+                                             self.validation_data_flow_matrix,
+                                             self.validation_control_flow_matrix,
+                                             self.validation_ast_matrix,
+                                             'validation',
+                                             self.debug_max_lines)
+
+        source_vocab, target_vocab = create_vocabulary(train_code_tokens,
+                                                       train_summary_tokens,
                                                        self.freq_threshold,
                                                        self.src_vocab_size,
                                                        self.tgt_vocab_size)
 
         train_dataloader, val_dataloader = create_dataloaders(train_code_texts,
+                                                              train_code_tokens,
                                                               train_summary_texts,
+                                                              train_summary_tokens,
                                                               train_token_matrices,
                                                               train_statement_matrices,
                                                               train_data_flow_matrices,
                                                               train_control_flow_matrices,
                                                               train_ast_matrices,
                                                               val_code_texts,
+                                                              val_code_tokens,
                                                               val_summary_texts,
+                                                              val_summary_tokens,
                                                               val_token_matrices,
                                                               val_statement_matrices,
                                                               val_data_flow_matrices,

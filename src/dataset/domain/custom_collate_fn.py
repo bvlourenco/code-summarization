@@ -80,8 +80,8 @@ class CustomCollate:
 
         return code_batch, summary_batch, torch.stack(code_idxs_batch), \
             torch.stack(summary_idxs_batch), \
-            build_local_matrix(token_batch, 'token'), \
-            build_local_matrix(statement_batch, 'statement'), \
+            build_local_matrix(token_batch, 'token', self.max_src_length), \
+            build_local_matrix(statement_batch, 'statement', self.max_src_length), \
             torch.stack(data_flow_batch), \
             torch.stack(control_flow_batch), \
             torch.stack(ast_batch)
@@ -121,8 +121,8 @@ class CustomCollate:
                 pad(summary, (0, self.max_tgt_length - len(summary)), value=self.pad_idx))
 
         return torch.stack(code_batch), torch.stack(summary_batch), \
-               build_local_matrix(token_batch, 'token'), \
-               build_local_matrix(statement_batch, 'statement'), \
+               build_local_matrix(token_batch, 'token', self.max_src_length), \
+               build_local_matrix(statement_batch, 'statement', self.max_src_length), \
                torch.stack(data_flow_batch), \
                torch.stack(control_flow_batch), \
                torch.stack(ast_batch)

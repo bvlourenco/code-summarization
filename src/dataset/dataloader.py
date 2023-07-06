@@ -75,14 +75,18 @@ def get_dataloader(dataset,
 
 
 def create_dataloaders(source_code_texts,
+                       source_code_tokens,
                        summary_texts,
+                       summary_tokens,
                        train_token_matrices,
                        train_statement_matrices,
                        train_data_flow_matrices,
                        train_control_flow_matrices,
                        train_ast_matrices,
                        val_code_texts,
+                       val_code_tokens,
                        val_summary_texts,
+                       val_summary_tokens,
                        val_token_matrices,
                        val_statement_matrices,
                        val_data_flow_matrices,
@@ -102,7 +106,9 @@ def create_dataloaders(source_code_texts,
 
     Args:
         source_code_texts: A list with size of training set containing code snippets.
+        source_code_tokens: A list containing the tokens of the code snippets.
         summary_texts: A list with the summaries of the training set.
+        summary_tokens: A list containing the tokens of the summaries.
         train_token_matrices: A list with size of training set containing the token
                               adjacency matrices for the training code snippets.
         train_statement_matrices: A list with size of training set containing the 
@@ -117,7 +123,9 @@ def create_dataloaders(source_code_texts,
         train_ast_matrices: A list with size of training set containing the 
                             ast adjacency matrices for the training code snippets.
         val_code_texts: A list with size of validation set containing code snippets.
+        val_code_tokens: Contains the tokens of the code snippets in validation set.
         val_summary_texts: A list with size of validation set containing summaries.
+        val_summary_tokens: Contains the tokens of the summaries in validation set.
         val_token_matrices: A list with size of validation set containing the token
                             adjacency matrices for the validation code snippets.
         val_statement_matrices: A list with size of validation set containing the 
@@ -150,7 +158,9 @@ def create_dataloaders(source_code_texts,
     Source: https://towardsdatascience.com/custom-datasets-in-pytorch-part-2-text-machine-translation-71c41a3e994e
     '''
     train_dataset = CustomDataset(source_code_texts,
+                                  source_code_tokens,
                                   summary_texts,
+                                  summary_tokens,
                                   max_src_length,
                                   train_token_matrices,
                                   train_statement_matrices,
@@ -173,7 +183,9 @@ def create_dataloaders(source_code_texts,
                                       gpu_rank)
 
     val_dataloader = load_evaluation_dataloader(val_code_texts,
+                                                val_code_tokens,
                                                 val_summary_texts,
+                                                val_summary_tokens,
                                                 val_token_matrices,
                                                 val_statement_matrices,
                                                 val_data_flow_matrices,
@@ -192,7 +204,9 @@ def create_dataloaders(source_code_texts,
 
 
 def load_evaluation_dataloader(code_texts,
+                               code_tokens,
                                summary_texts,
+                               summary_tokens,
                                token_matrices,
                                statement_matrices,
                                data_flow_matrices,
@@ -212,7 +226,9 @@ def load_evaluation_dataloader(code_texts,
 
     Args:
         source_code_texts: A list with size of validation/testing set containing code snippets.
+        source_code_tokens: A list containing the tokens of the code snippets.
         summary_texts: A list with the summaries of the validation/testing set.
+        summary_tokens: A list containing the tokens of the summaries.
         token_matrices: A list with size of validation/testing set containing 
                         the token adjacency matrices for the 
                         validation/testing code snippets.
@@ -245,7 +261,9 @@ def load_evaluation_dataloader(code_texts,
         A new dataloader with the validation or testing set.
     '''
     evaluation_dataset = CustomDataset(code_texts,
+                                       code_tokens,
                                        summary_texts,
+                                       summary_tokens,
                                        max_src_length,
                                        token_matrices,
                                        statement_matrices,

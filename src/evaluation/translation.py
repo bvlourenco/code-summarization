@@ -57,13 +57,21 @@ def greedy_decode(model,
 
     Args:
         model: The model (an instance of Transformer). 
-        src: The input (a code snippet numericalized). Shape: `(batch_size, src_len)` 
+        src: The input (a code snippet numericalized). Shape: `(1, src_len)`
+        token: The token adjacency matrices. 
+               Shape: `(1, max_src_len, max_src_len)`
+        statement: The statement adjacency matrices. 
+                   Shape: `(1, max_src_len, max_src_len)`
+        data_flow: The data flow adjacency matrices. 
+                   Shape: `(1, max_src_len, max_src_len)`
+        control_flow: The control flow adjacency matrices. 
+                      Shape: `(1, max_src_len, max_src_len)`
+        ast: The ast adjacency matrices. 
+             Shape: `(1, max_src_len, max_src_len)`
         device: The device where the model and tensors are inserted (GPU or CPU). 
         start_symbol_idx: The vocabulary start symbol index (<BOS> index)
         end_symbol_idx: The vocabulary end symbol index (<EOS> index)
         max_tgt_len (int): Maximum length of the summary.
-
-        TODO: FINISH COMMENTS.
 
     Returns:
         tgt: The predicted code comment token indexes. Shape: `(1, tgt_length)`

@@ -178,6 +178,15 @@ def parse_test_args():
     parser.add_argument('--test_ast_matrix', type=str, required=True,
                         help='Filename of the testing set with the \
                             AST adjacency matrices.')
+    
+    parser.add_argument('--hyperparameter_hsva', type=int, required=True,
+                        help='Hyperparameter used in HSVA (Hierarchical \
+                            Structure Variant Attention) to control the \
+                            distribution of the heads by type')
+    parser.add_argument('--hyperparameter_attn_heads', type=int, required=True,
+                        help='Hyperparameter used to adjust the weight of the \
+                              data flow, control flow and AST adjacency matrices \
+                              in the self-attention')
 
     parser.add_argument('--d_model', type=int, required=True,
                         help='Dimensionality of the model')

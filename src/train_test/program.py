@@ -43,6 +43,9 @@ class Program:
         self.label_smoothing = args.label_smoothing
         self.init_type = args.init_type
 
+        self.hyperparameter_hsva = args.hyperparameter_hsva
+        self.hyperparameter_attn_heads = args.hyperparameter_attn_heads
+
         self.mode = args.mode
         self.beam_size = args.beam_size
 
@@ -94,7 +97,7 @@ class Program:
                             It has the value of None if no GPUs are available or
                             only 1 GPU is available.
         '''
-        pass
+        raise NotImplementedError
 
     def init_multiple_processes(self, gpu_rank):
         '''

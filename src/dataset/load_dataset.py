@@ -29,12 +29,13 @@ def load_dataset_file(dataset_filename, type, debug_max_lines):
                                the whole dataset will be read.
 
     Returns:
-        A list of code snippets examples and a list of summaries examples.
+        A list of code snippets examples and its respective tokens and a list of 
+        summaries examples and its respective tokens.
     '''
     if (not os.path.exists(dataset_filename)):
         raise ValueError("dataset filename does not exist")
 
-    source_code_texts, summary_texts = [], []
+    code_texts, code_tokens, summary_texts, summary_tokens = [], [], [], []
     with open(dataset_filename) as dataset_file:
         if debug_max_lines > 0:
             num_lines = debug_max_lines
@@ -55,10 +56,12 @@ def load_dataset_file(dataset_filename, type, debug_max_lines):
                 line = json.loads(next(dataset_file))
             else:
                 line = json.loads(line)
-            source_code_texts.append(line['original_string'])
+            code_texts.append(line['original_string'])
             summary_texts.append(line['docstring'])
+            code_tokens.append(line['code_tokens'])
+            summary_tokens.append(line['docstring_tokens'])
 
-    return source_code_texts, summary_texts
+    return code_texts, code_tokens, summary_texts, summary_tokens
 
 
 def load_local_matrices(matrix_filename, type, debug_max_lines):

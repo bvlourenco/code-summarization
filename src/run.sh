@@ -79,6 +79,8 @@ function test_model() {
     --test_data_flow_matrix ../data/python/test_processed_python_df.pkl \
     --test_control_flow_matrix ../data/python/test_processed_python_cf.pkl \
     --test_ast_matrix ../data/python/test_processed_python_ast.pkl \
+    --hyperparameter_hsva 6 \
+    --hyperparameter_attn_heads 5 \
     --mode greedy
 
 }
