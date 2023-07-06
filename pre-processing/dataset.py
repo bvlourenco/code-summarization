@@ -1,6 +1,14 @@
 import argparse
+from typing import List
+import code_tokenize as ctok
 import json
+import re
 from tqdm import tqdm
+from tokenization import tokenize_with_camel_case, tokenize_with_snake_case
+
+
+DOCSTRING_REGEX_TOKENIZER = re.compile(
+    r"[^\s,'\"`.():\[\]=*;>{\}+-/\\]+|\\+|\.+|\(\)|{\}|\[\]|\(+|\)+|:+|\[+|\]+|{+|\}+|=+|\*+|;+|>+|\++|-+|/+")
 
 
 def str2bool(value):
@@ -78,6 +86,40 @@ def parse_arguments():
     return args
 
 
+def tokenize_code(code_snippet, language, camel_case=True, snake_case=True):
+    code_tokens = ctok.tokenize(
+        code_snippet, lang=language, syntax_error="ignore")
+
+    # Removing some python unwanted tokens representing \n, \t and untabbing.
+    code_tokens = [token.__str__() for token in code_tokens
+                   if token.__str__() not in ["#NEWLINE#", "#DEDENT#", "#INDENT#"]]
+
+    if snake_case:
+        snake_case_tokenized = []
+        for token in code_tokens:
+            tokens_snake_case = tokenize_with_snake_case(token)
+            for token_snake_case in tokens_snake_case:
+                snake_case_tokenized.append(token_snake_case)
+        code_tokens = snake_case_tokenized
+
+    if camel_case:
+        camel_case_tokenized = []
+        for token in code_tokens:
+            tokens_camel_case = tokenize_with_camel_case(token)
+            for token_camel_case in tokens_camel_case:
+                camel_case_tokenized.append(token_camel_case)
+        code_tokens = camel_case_tokenized
+
+    return code_tokens
+
+
+def tokenize_docstring(docstring: str) -> List[str]:
+    '''
+    Source: https://github.com/github/CodeSearchNet/blob/106e827405c968597da938f6b373d30183918869/function_parser/function_parser/parsers/language_parser.py
+    '''
+    return [t for t in DOCSTRING_REGEX_TOKENIZER.findall(docstring) if t is not None and len(t) > 0]
+
+
 def main():
     args = parse_arguments()
 
@@ -109,7 +151,11 @@ def main():
                 code_snippet = pre_process(code_snippet)
 
             code_comment = {
-                "original_string": code_snippet.strip(), "docstring": summary.strip()}
+                "original_string": code_snippet.strip(),
+                "docstring": summary.strip(),
+                "code_tokens": tokenize_code(code_snippet.strip(), args.language),
+                "docstring_tokens": tokenize_docstring(summary.strip())
+            }
 
             json.dump(code_comment, dataset)
             dataset.write("\n")
@@ -127,7 +173,9 @@ def main():
 
             code_comment = {
                 "original_string": code_summary['code'].strip(),
-                "docstring": code_summary['comment'].strip()
+                "docstring": code_summary['comment'].strip(),
+                "code_tokens": tokenize_code(code_summary['code'].strip(), args.language),
+                "docstring_tokens": tokenize_docstring(code_summary['comment'].strip())
             }
 
             json.dump(code_comment, dataset)

@@ -6,8 +6,10 @@ FROM: https://github.com/microsoft/CodeBERT/blob/
 
 import re
 from io import StringIO
+import sys
 import tokenize
 import traceback
+
 
 def build_flow(codeT, parser, lang, build_flow_graph, type):
     '''
@@ -19,6 +21,7 @@ def build_flow(codeT, parser, lang, build_flow_graph, type):
         code = remove_comments_and_docstrings(codeT, lang)
     except Exception as e:
         traceback.print_exc()
+        sys.exit(1)
     # obtain dataflow
     if lang == "php":
         code = "<?php"+code+"?>"
@@ -67,7 +70,7 @@ def build_flow(codeT, parser, lang, build_flow_graph, type):
                           instructions_code[0][0][1]], [1]))]
                 graph += build_flow_graph(root_node,
                                           index_to_code, instructions_code, {})
-                graph += [(('END', instructions_code[len(instructions_code) - 1]
+                graph += [(('END', instructions_code[max(k for k, _ in instructions_code.items())]
                            [-1][0] + 2, 'Next Instruction', [], []))]
                 # for edge in graph:
                 #     print(edge)
@@ -78,6 +81,7 @@ def build_flow(codeT, parser, lang, build_flow_graph, type):
             print(codeT, "\n")
             traceback.print_exc()
             graph = []
+            sys.exit(1)
 
         graph = sorted(graph, key=lambda x: x[1])
         indexs = set()
@@ -95,6 +99,7 @@ def build_flow(codeT, parser, lang, build_flow_graph, type):
         traceback.print_exc()
         graph = []
         code_tokens = []
+        sys.exit(1)
 
     return code_tokens, graph
 
@@ -183,7 +188,7 @@ def tree_to_variable_index(root_node, index_to_code):
         index = (root_node.start_point, root_node.end_point)
         if index not in index_to_code:
             return []
-        
+
         _, code = index_to_code[index]
         if root_node.type != code:
             return [(root_node.start_point, root_node.end_point)]
