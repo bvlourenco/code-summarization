@@ -42,6 +42,7 @@ class MultiHeadAttention(nn.Module):
                                      ast,
                                      zero_matrix,
                                      heads_distribution,
+                                     hyperparameter_attn_heads,
                                      mask=None):
         '''
         Computes the attention score for multiple heads using the following formula: 
@@ -75,6 +76,12 @@ class MultiHeadAttention(nn.Module):
                                 [TOKEN_HEADS, STATEMENT_HEADS, DATA_FLOW_HEADS, 
                                  CONTROL_FLOW_HEADS, AST_HEADS, STANDARD_HEADS]
                                 Only used for the self-attention of the encoder layer.
+            hyperparameter_attn_heads (int): Hyperparameter used to adjust the 
+                                             weight of the data flow, control 
+                                             flow and AST adjacency matrices in 
+                                             the self-attention.
+                                             Only used for the self-attention of 
+                                             the encoder layer.
 
             mask: A batch of matrices with 0/1 indicating which keys have zero
             or non-zero attention. Shape: `(batch_size, query_len, key_len)`
@@ -106,9 +113,9 @@ class MultiHeadAttention(nn.Module):
                                              [ast for _ in range(heads_distribution[4])] +
                                              [zero_matrix for _ in range(heads_distribution[5])], 1)
 
-            # TODO: miu_parameter is set to 5. Try other values!
-            global_enhance_map = 5 * global_enhance_map.mul(attn_scores)
-            attn_scores = attn_scores + local_mask_map
+            global_enhance_map = hyperparameter_attn_heads * \
+                global_enhance_map.mul(attn_scores)
+            attn_scores = attn_scores + local_mask_map + global_enhance_map
 
         if mask is not None:
             # In the positions where the mask is 0, the attention score will be
@@ -171,6 +178,7 @@ class MultiHeadAttention(nn.Module):
                 ast=None,
                 zero_matrix=None,
                 heads_distribution=None,
+                hyperparameter_attn_heads=None,
                 mask=None):
         '''
         Computes the attention score for each head using the following formula: 
@@ -206,6 +214,12 @@ class MultiHeadAttention(nn.Module):
                                 [TOKEN_HEADS, STATEMENT_HEADS, DATA_FLOW_HEADS, 
                                  CONTROL_FLOW_HEADS, AST_HEADS, STANDARD_HEADS]
                                 Only used for the self-attention of the encoder layer.
+            hyperparameter_attn_heads (int): Hyperparameter used to adjust the 
+                                             weight of the data flow, control 
+                                             flow and AST adjacency matrices in 
+                                             the self-attention.
+                                             Only used for the self-attention of 
+                                             the encoder layer.
 
             mask: A batch of matrices with 0/1 indicating which keys have zero
                   or non-zero attention. Shape: `(batch, query_len, key_len)`
@@ -227,6 +241,7 @@ class MultiHeadAttention(nn.Module):
                                                                     ast,
                                                                     zero_matrix,
                                                                     heads_distribution,
+                                                                    hyperparameter_attn_heads,
                                                                     mask)
         output = self.W_o(self.combine_heads(attn_output))
         return output, attn_probs

@@ -30,8 +30,17 @@ class EncoderLayer(nn.Module):
         self.norm1 = SublayerConnection(d_model, dropout)
         self.norm2 = SublayerConnection(d_model, dropout)
 
-    def forward(self, x, token, statement, data_flow, control_flow, ast, zero_matrix,
-                heads_distribution, mask):
+    def forward(self, 
+                x, 
+                token, 
+                statement, 
+                data_flow, 
+                control_flow, 
+                ast, 
+                zero_matrix,
+                heads_distribution, 
+                hyperparameter_attn_heads, 
+                mask):
         '''
         Args:
             x: The input tensor (embeddings or from the previous layer). 
@@ -49,6 +58,10 @@ class EncoderLayer(nn.Module):
                                 The number of heads of each type is the following:
                                 [TOKEN_HEADS, STATEMENT_HEADS, DATA_FLOW_HEADS, 
                                  CONTROL_FLOW_HEADS, AST_HEADS, STANDARD_HEADS]
+            hyperparameter_attn_heads (int): Hyperparameter used to adjust the 
+                                             weight of the data flow, control 
+                                             flow and AST adjacency matrices in 
+                                             the self-attention.
             mask: Indicates which positions of the input sequence should have
                   attention or not. Shape: `(batch_size, 1, 1, seq_length)`
 
@@ -60,11 +73,15 @@ class EncoderLayer(nn.Module):
                         Shape: `(batch_size, num_heads, query_len, key_len)`
         '''
         x, attn_probs = self.norm1(x, "MultiHeadAttention", 
-                                   lambda x: self.self_attn(x, x, x, token, 
-                                                            statement, data_flow, 
-                                                            control_flow, ast, 
+                                   lambda x: self.self_attn(x, x, x, 
+                                                            token, 
+                                                            statement, 
+                                                            data_flow, 
+                                                            control_flow, 
+                                                            ast, 
                                                             zero_matrix,
                                                             heads_distribution,
+                                                            hyperparameter_attn_heads,
                                                             mask))
         return self.norm2(x, "PositionWiseFeedForward", lambda x: self.feed_forward(x)), attn_probs
     

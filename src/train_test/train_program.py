@@ -53,6 +53,9 @@ class TrainProgram(Program):
         self.validation_control_flow_matrix = args.validation_control_flow_matrix
         self.validation_ast_matrix = args.validation_ast_matrix
 
+        self.hyperparameter_hsva = args.hyperparameter_hsva
+        self.hyperparameter_attn_heads = args.hyperparameter_attn_heads
+
         self.trial_number = trial_number
 
     def execute_operation(self, gpu_rank=None):
@@ -147,7 +150,9 @@ class TrainProgram(Program):
                       source_vocab.token_to_idx['<PAD>'],
                       model_device,
                       gpu_rank,
-                      self.init_type)
+                      self.init_type,
+                      self.hyperparameter_hsva,
+                      self.hyperparameter_attn_heads)
 
         self.train_validate_model(model,
                                   self.num_epochs,

@@ -38,7 +38,9 @@ class Transformer(nn.Module):
                  max_tgt_length,
                  dropout,
                  device,
-                 init_type):
+                 init_type,
+                 hyperparameter_hsva,
+                 hyperparameter_attn_heads):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -54,6 +56,13 @@ class Transformer(nn.Module):
             device: The device where the model and tensors are inserted (GPU or CPU).
             init_type (string): The weight initialization technique to be used
                                 with the Transformer architecture.
+            hyperparameter_hsva (int): Hyperparameter used in HSVA (Hierarchical
+                                       Structure Variant Attention) to control the
+                                       distribution of the heads by type.
+            hyperparameter_attn_heads (int): Hyperparameter used to adjust the 
+                                             weight of the data flow, control 
+                                             flow and AST adjacency matrices in 
+                                             the self-attention.
 
         Note: The log-softmax function is not applied here due to the later use 
               of CrossEntropyLoss, which requires the inputs to be unnormalized 
@@ -85,6 +94,9 @@ class Transformer(nn.Module):
 
         self.init_weights(init_type)
         # self.print_transformer_information()
+
+        self.hyperparameter_hsva = hyperparameter_hsva
+        self.hyperparameter_attn_heads = hyperparameter_attn_heads
 
     def init_weights(self, init_type):
         '''
@@ -215,12 +227,13 @@ class Transformer(nn.Module):
                                   device=self.device)
 
         for layer_idx, enc_layer in enumerate(self.encoder_layers):
-            heads_distribution = compute_heads_distribution(self.num_heads, 
-                                                            self.num_layers, 
-                                                            layer_idx)
+            heads_distribution = compute_heads_distribution(self.num_heads,
+                                                            layer_idx,
+                                                            self.hyperparameter_hsva)
             enc_output, enc_attn_score = enc_layer(enc_output, token, statement, 
                                                    data_flow, control_flow, ast, 
                                                    zero_matrix, heads_distribution,
+                                                   self.hyperparameter_attn_heads,
                                                    src_mask)
         # Final encoder layer normalization according to Pre-LN
         enc_output = self.norm1(enc_output)

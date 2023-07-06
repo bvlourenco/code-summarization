@@ -111,6 +111,15 @@ def parse_arguments():
     parser.add_argument('--validation_ast_matrix', type=str, required=True,
                         help='Filename of the validation set with the \
                             AST adjacency matrices.')
+    
+    parser.add_argument('--hyperparameter_hsva', type=int, required=True,
+                        help='Hyperparameter used in HSVA (Hierarchical \
+                            Structure Variant Attention) to control the \
+                            distribution of the heads by type')
+    parser.add_argument('--hyperparameter_attn_heads', type=int, required=True,
+                        help='Hyperparameter used to adjust the weight of the \
+                              data flow, control flow and AST adjacency matrices \
+                              in the self-attention')
 
     parser.add_argument('--mode', type=str, required=True,
                         choices=['beam', 'greedy', 'loss'],

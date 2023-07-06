@@ -47,7 +47,9 @@ class Model:
                  pad_idx,
                  device,
                  gpu_rank,
-                 init_type):
+                 init_type,
+                 hyperparameter_hsva,
+                 hyperparameter_attn_heads):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -70,6 +72,13 @@ class Model:
                             only 1 GPU is available.
             init_type (string): The weight initialization technique to be used
                                 with the Transformer architecture.
+            hyperparameter_hsva (int): Hyperparameter used in HSVA (Hierarchical
+                                       Structure Variant Attention) to control the
+                                       distribution of the heads by type.
+            hyperparameter_attn_heads (int): Hyperparameter used to adjust the 
+                                             weight of the data flow, control 
+                                             flow and AST adjacency matrices in 
+                                             the self-attention.
         '''
         self.model = Transformer(src_vocab_size,
                                  tgt_vocab_size,
@@ -81,7 +90,9 @@ class Model:
                                  max_tgt_length,
                                  dropout,
                                  device,
-                                 init_type)
+                                 init_type,
+                                 hyperparameter_hsva,
+                                 hyperparameter_attn_heads)
 
         # Passing the model and all its layers to GPU if available
         self.model = self.model.to(device)

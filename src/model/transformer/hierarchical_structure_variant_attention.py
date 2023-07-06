@@ -2,15 +2,17 @@
 import math
 
 
-def compute_heads_distribution(num_heads, num_encoder_layers, layer_index):
+def compute_heads_distribution(num_heads, layer_index, hyperparameter_hsva):
     '''
     Computes the heads distribution for a given encoder layer.
     Formula:
 
-    number_token_headss = number_statement_heads = floor(h * ( (k - l) / (2*k - l) ) )
-    number_data_flow_heads = number_control_flow_heads = number_AST_heads = floor((h * ( l / (2*k - l) )) / 3)
+    number_token_heads = number_statement_heads = 
+                                            floor(h * ( (k - l) / (2*k - l) ) )
+    number_data_flow_heads = number_control_flow_heads = number_AST_heads = 
+                                            floor((h * ( l / (2*k - l) )) / 3)
 
-    k = hyper-parameter (in this case it's the number of encoder layers)
+    k = hyper-parameter
     l = index of the encoder layer
     h = number of heads
 
@@ -20,26 +22,37 @@ def compute_heads_distribution(num_heads, num_encoder_layers, layer_index):
 
     Args:
         num_heads (int): Number of heads in current encoder layer.
-        num_encoder_layers (int): Number of encoder layers in Transformer.
         layer_index (int): The index of the encoder layer for which we're 
-                           computing the distribution of heads. 
+                           computing the distribution of heads.
+        hyperparameter_hsva (int): Hyperparameter used in HSVA (Hierarchical
+                                   Structure Variant Attention) to control the
+                                   distribution of the heads by type.
     
-    
+    Returns:
+        A list containing the number of token, statement, data flow, control
+        flow, AST and standard head attentions in the following format:
+        [
+         num_token_head_attentions,
+         num_statement_head_attentions, 
+         num_data_flow_head_attentions,
+         num_control_flow_head_attentions,
+         num_AST_head_attentions,
+         num_standard_head_attentions
+        ]
 
-    TODO: try different values for hyper-parameter L
     According to the SG-Trans paper, k = L (hyper-parameter k is equal to 
                                             number of encoder layers)
     '''
     token_heads = math.floor(num_heads * 
-                             ((num_encoder_layers - layer_index) / 
-                              (2 * num_encoder_layers - layer_index)))
+                             ((hyperparameter_hsva - layer_index) / 
+                              (2 * hyperparameter_hsva - layer_index)))
     statement_heads = token_heads
     if token_heads <= 0:
         data_flow_heads = 0
     else:
         data_flow_heads = math.floor((num_heads * 
                                       (layer_index / 
-                                       (2 * num_encoder_layers - layer_index))) 
+                                       (2 * hyperparameter_hsva - layer_index))) 
                                     / 3)
     control_flow_heads = data_flow_heads
     ast_heads = data_flow_heads

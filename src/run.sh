@@ -44,6 +44,8 @@ function train_and_validate() {
     --validation_data_flow_matrix ../data/python/validation_processed_python_df.pkl \
     --validation_control_flow_matrix ../data/python/validation_processed_python_cf.pkl \
     --validation_ast_matrix ../data/python/validation_processed_python_ast.pkl \
+    --hyperparameter_hsva 6 \
+    --hyperparameter_attn_heads 5 \
     --mode greedy \
     --checkpoint True \
     --hyperparameter_tuning False
