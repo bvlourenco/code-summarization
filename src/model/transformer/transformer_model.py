@@ -241,8 +241,11 @@ class Transformer(nn.Module):
         if display_attn:
             # Displaying attention scores of the last encoder layer for the first
             # example passed as input
-            display_attention(
-                src[0], src[0], enc_attn_score[0], "encoder_self_attn")
+            display_attention(src[0], 
+                              src[0], 
+                              enc_attn_score[0], 
+                              "encoder_self_attn", 
+                              self.num_heads)
 
         return enc_output
 
@@ -281,15 +284,21 @@ class Transformer(nn.Module):
         if display_attn:
             # Displaying self and cross attention scores of the last decoder layer
             # for the first example passed as input
-            display_attention(
-                tgt[0], tgt[0], dec_self_attn_score[0], "decoder_self_attn")
-            display_attention(
-                src[0], tgt[0], dec_cross_attn_score[0], "decoder_cross_attn")
+            display_attention(tgt[0], 
+                              tgt[0], 
+                              dec_self_attn_score[0], 
+                              "decoder_self_attn",
+                              self.num_heads)
+            display_attention(src[0], 
+                              tgt[0], 
+                              dec_cross_attn_score[0], 
+                              "decoder_cross_attn",
+                              self.num_heads)
 
         return dec_output
 
     def forward(self, src, tgt, token, statement, data_flow, control_flow, ast, 
-                display_attn=False):
+                display_attn=True):
         '''
         Args:
             src: The encoder input. Shape: `(batch_size, max_src_len)`
