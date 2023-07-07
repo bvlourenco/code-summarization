@@ -111,7 +111,8 @@ class Transformer(nn.Module):
         for p in self.parameters():
             if p.dim() > 1:
                 if init_type == 'kaiming':
-                    nn.init.kaiming_uniform_(p, mode='fan_in', nonlinearity='relu')
+                    nn.init.kaiming_uniform_(
+                        p, mode='fan_in', nonlinearity='relu')
                 elif init_type == 'xavier':
                     nn.init.xavier_uniform_(p)
 
@@ -191,15 +192,14 @@ class Transformer(nn.Module):
         tgt_mask = tgt_mask & nopeak_mask
         return tgt_mask
 
-    def encode(self, 
-               src, 
-               src_mask, 
-               token, 
-               statement, 
-               data_flow, 
-               control_flow, 
-               ast, 
-               display_attn=False):
+    def encode(self,
+               src,
+               src_mask,
+               token,
+               statement,
+               data_flow,
+               control_flow,
+               ast):
         '''
         Encodes the input and returns the result of the last encoder layer.
 
@@ -212,50 +212,39 @@ class Transformer(nn.Module):
             data_flow: The data flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
             control_flow: The control flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
             ast: The ast adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
-            display_attn (bool): Tells whether we want to save the attention of
-                                 the last layer encoder multi-head attention.
 
         Returns:
-            The resulting encoding from the last layer. 
-            Shape: `(batch_size, max_src_len, d_model)`
+            The resulting encoding from the last layer and the encoder self-attention.
+            Shapes: encoding: `(batch_size, max_src_len, d_model)`
+                    attention: `(batch_size, num_heads, max_src_len, max_src_len)`        
         '''
-        src_embedded = self.encoder_positional_encoding(self.encoder_embedding(src))
+        src_embedded = self.encoder_positional_encoding(
+            self.encoder_embedding(src))
         enc_output = src_embedded
 
         # Used in multi-head attention to denote we're using a standard head attention
-        zero_matrix = torch.zeros(token.shape[0], token.shape[1], token.shape[2], 
+        zero_matrix = torch.zeros(token.shape[0], token.shape[1], token.shape[2],
                                   device=self.device)
 
         for layer_idx, enc_layer in enumerate(self.encoder_layers):
             heads_distribution = compute_heads_distribution(self.num_heads,
                                                             layer_idx,
                                                             self.hyperparameter_hsva)
-            enc_output, enc_attn_score = enc_layer(enc_output, token, statement, 
-                                                   data_flow, control_flow, ast, 
-                                                   zero_matrix, heads_distribution,
-                                                   self.hyperparameter_attn_heads,
-                                                   src_mask)
+            enc_output, enc_attn = enc_layer(enc_output, token, statement,
+                                             data_flow, control_flow, ast,
+                                             zero_matrix, heads_distribution,
+                                             self.hyperparameter_attn_heads,
+                                             src_mask)
         # Final encoder layer normalization according to Pre-LN
         enc_output = self.norm1(enc_output)
 
-        if display_attn:
-            # Displaying attention scores of the last encoder layer for the first
-            # example passed as input
-            display_attention(src[0], 
-                              src[0], 
-                              enc_attn_score[0], 
-                              "encoder_self_attn", 
-                              self.num_heads)
+        return enc_output, enc_attn
 
-        return enc_output
-
-    def decode(self, src, src_mask, tgt, tgt_mask, enc_output, display_attn=False):
+    def decode(self, src_mask, tgt, tgt_mask, enc_output):
         '''
         Decodes the input and returns the result of the last decoder layer.
 
         Args:
-            src: The encoder input (used to display cross attention). 
-                 Shape: `(batch_size, max_src_len)`
             src_mask: The encoder input mask (to avoid paying attention to padding).
                       Shape: `(batch_size, 1, 1, src_len)`
             tgt: The decoder input. Shape: `(batch_size, max_tgt_len)`
@@ -264,41 +253,27 @@ class Transformer(nn.Module):
                       Shape: `(batch_size, 1, tgt_len, tgt_len)`
             enc_output: The output of the last encoder layer. 
                         Shape: `(batch_size, max_src_len, d_model)`
-            display_attn (bool): Tells whether we want to save the attention of
-                                 the last layer decoder multi-head attentions.
 
         Returns:
-            The resulting decoding from the last layer. 
-            Shape: `(batch_size, tgt_seq_length, d_model)`
+            The resulting decoding from the last layer, the decoder 
+            self-attention and the decoder cross-attention. 
+            Shape: decoding - `(batch_size, tgt_seq_length, d_model)`
+                   decoder self-attention - `(batch_size, num_heads, max_tgt_len, max_tgt_len)`
+                   decoder cross-attention - `(batch_size, num_heads, max_tgt_len, max_src_len)`
         '''
         tgt_embedded = self.decoder_positional_encoding(
             self.decoder_embedding(tgt))
 
         dec_output = tgt_embedded
         for dec_layer in self.decoder_layers:
-            dec_output, dec_self_attn_score, dec_cross_attn_score = dec_layer(
+            dec_output, dec_self_attn, dec_cross_attn = dec_layer(
                 dec_output, enc_output, src_mask, tgt_mask)
         # Final decoder layer normalization according to Pre-LN
         dec_output = self.norm2(dec_output)
 
-        if display_attn:
-            # Displaying self and cross attention scores of the last decoder layer
-            # for the first example passed as input
-            display_attention(tgt[0], 
-                              tgt[0], 
-                              dec_self_attn_score[0], 
-                              "decoder_self_attn",
-                              self.num_heads)
-            display_attention(src[0], 
-                              tgt[0], 
-                              dec_cross_attn_score[0], 
-                              "decoder_cross_attn",
-                              self.num_heads)
+        return dec_output, dec_self_attn, dec_cross_attn
 
-        return dec_output
-
-    def forward(self, src, tgt, token, statement, data_flow, control_flow, ast, 
-                display_attn=True):
+    def forward(self, src, tgt, token, statement, data_flow, control_flow, ast):
         '''
         Args:
             src: The encoder input. Shape: `(batch_size, max_src_len)`
@@ -308,22 +283,30 @@ class Transformer(nn.Module):
             data_flow: The data flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
             control_flow: The control flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
             ast: The ast adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
-            display_attn (bool): Tells whether we want to save the attention of
-                                 the last layer encoder and decoder 
-                                 multi-head attentions.
 
         Returns:
-            output: The output of the Transformer model. 
-                    Shape: `(batch_size, max_tgt_len, tgt_vocab_size)`
+            output: The output of the Transformer model, the encoder self-attention,
+                    the decoder self-attention and the decoder cross-attention.
+                    Shape: output: `(batch_size, max_tgt_len, tgt_vocab_size)`
+                           encoder self-attention: `(batch_size, num_heads, max_src_len, max_src_len)`
+                           decoder self-attention: `(batch_size, num_heads, max_tgt_len, max_tgt_len)`
+                           decoder cross-attention: `(batch_size, num_heads, max_tgt_len, max_src_len)`
         '''
         src_mask = self.generate_src_mask(src)
         tgt_mask = self.generate_tgt_mask(tgt)
 
-        enc_output = self.encode(src, src_mask, token, statement, data_flow, 
-                                 control_flow, ast, display_attn)
+        enc_output, enc_attn = self.encode(src,
+                                           src_mask,
+                                           token,
+                                           statement,
+                                           data_flow,
+                                           control_flow,
+                                           ast)
 
-        dec_output = self.decode(src, src_mask, tgt, tgt_mask, 
-                                 enc_output, display_attn)
+        dec_output, dec_self_attn, dec_cross_attn = self.decode(src_mask,
+                                                                tgt,
+                                                                tgt_mask,
+                                                                enc_output)
 
         output = self.fc(dec_output)
-        return output
+        return output, enc_attn, dec_self_attn, dec_cross_attn

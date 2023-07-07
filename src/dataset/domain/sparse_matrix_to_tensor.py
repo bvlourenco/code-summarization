@@ -12,6 +12,8 @@ def build_tensor_from_sparse_matrix(sparse_matrix, dim):
 
     Returns:
         A tensor built from the sparse matrix.
+    
+    Source: https://stackoverflow.com/questions/50665141/converting-a-scipy-coo-matrix-to-pytorch-sparse-tensor
     '''
     coo = coo_matrix(sparse_matrix, shape=(dim, dim))
 

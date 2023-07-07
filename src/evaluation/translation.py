@@ -23,7 +23,7 @@ def translate_tokens(tokens_idx, vocabulary):
             token = "<UNK>"
         else:
             token = vocabulary.idx_to_token[token_idx.item()]
-        
+
         if token in ["<EOS>", "<PAD>"]:
             break
         elif token == "<BOS>":
@@ -31,7 +31,7 @@ def translate_tokens(tokens_idx, vocabulary):
         elif token == "<UNK>":
             token = "?"
         translation += token + " "
-    
+
     if translation == "":
         translation = "<PAD>"
 
@@ -39,16 +39,16 @@ def translate_tokens(tokens_idx, vocabulary):
     return translation.strip()
 
 
-def greedy_decode(model, 
-                  src, 
-                  token, 
-                  statement, 
-                  data_flow, 
-                  control_flow, 
+def greedy_decode(model,
+                  src,
+                  token,
+                  statement,
+                  data_flow,
+                  control_flow,
                   ast,
-                  device, 
-                  start_symbol_idx, 
-                  end_symbol_idx, 
+                  device,
+                  start_symbol_idx,
+                  end_symbol_idx,
                   max_tgt_len):
     '''
     Creates a code comment given a code snippet using the greedy decoding
@@ -79,13 +79,14 @@ def greedy_decode(model,
     Source: https://pytorch.org/tutorials/beginner/translation_transformer.html?highlight=transformer
     '''
     src_mask = model.generate_src_mask(src)
-    enc_output = model.encode(src, 
-                              src_mask, 
-                              token, 
-                              statement, 
-                              data_flow, 
-                              control_flow, 
-                              ast).to(device)
+    enc_output, _ = model.encode(src,
+                                 src_mask,
+                                 token,
+                                 statement,
+                                 data_flow,
+                                 control_flow,
+                                 ast)
+    enc_output = enc_output.to(device)
 
     # Initializes the target sequence with <BOS> symbol
     # Will be further expland to include the predicted tokens
@@ -96,7 +97,10 @@ def greedy_decode(model,
         # Essentially, we're running the decoder phasing of the model
         # to generate the next token
         tgt_mask = model.generate_tgt_mask(tgt)
-        dec_output = model.decode(src, src_mask, tgt, tgt_mask, enc_output)
+        dec_output, _, _ = model.decode(src_mask, 
+                                        tgt, 
+                                        tgt_mask, 
+                                        enc_output)
         # prob has shape: `(batch_size, tgt_vocab_size)`
         prob = model.fc(dec_output[:, -1])
 
@@ -146,7 +150,7 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
         tgt: The predicted code comment token indexes. Shape: `(1, tgt_length)`
     '''
     src_mask = model.generate_src_mask(src)
-    enc_output = model.encode(src, src_mask).to(device)
+    enc_output, _ = model.encode(src, src_mask).to(device)
 
     # Initialize the beam with the start symbol
     beam = [(torch.ones(1, 1).fill_(
@@ -164,8 +168,10 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
             else:
                 # Generate probabilities for the next token
                 tgt_mask = model.generate_tgt_mask(seq)
-                dec_output = model.decode(
-                    src, src_mask, seq, tgt_mask, enc_output)
+                dec_output, _, _ = model.decode(src_mask, 
+                                                seq, 
+                                                tgt_mask, 
+                                                enc_output)
                 prob = model.fc(dec_output[-1, :, :])
 
                 # Get the top-k most probable tokens
@@ -193,7 +199,7 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
 
     # Adding <EOS> token
     best_sequence = torch.cat([best_sequence,
-                               torch.ones(1, 1).type_as(src.data).fill_(end_symbol_idx)], 
-                               dim=0)
+                               torch.ones(1, 1).type_as(src.data).fill_(end_symbol_idx)],
+                              dim=0)
 
     return best_sequence

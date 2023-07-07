@@ -12,6 +12,7 @@ from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
 from tqdm import tqdm
+from evaluation.graphs import display_attention
 from evaluation.translation import beam_search, greedy_decode, translate_tokens
 from model.transformer.transformer_model import Transformer
 from rouge_score import rouge_scorer
@@ -94,6 +95,8 @@ class Model:
                                  hyperparameter_hsva,
                                  hyperparameter_attn_heads)
 
+        self.num_heads = num_heads
+
         # Passing the model and all its layers to GPU if available
         self.model = self.model.to(device)
 
@@ -156,7 +159,8 @@ class Model:
             model_size ** (-0.5) * min(step ** (-0.5), step * warmup ** (-1.5))
         )
 
-    def train_epoch(self, train_dataloader, tgt_vocab_size, grad_clipping):
+    def train_epoch(self, train_dataloader, tgt_vocab_size, grad_clipping,
+                    display_attn=True):
         '''
         Trains the model during one epoch, using the examples of the dataset for training.
         Computes the loss during this epoch.
@@ -165,6 +169,9 @@ class Model:
             train_dataloader: A Dataloader object that contains the training set.
             tgt_vocab_size (int): size of the target vocabulary.
             grad_clipping (int): Maximum norm of the gradient.
+            display_attn (bool): Tells whether we want to save the attention of
+                                 the last layer encoder and decoder 
+                                 multi-head attentions.
 
         Returns:
             The average loss across all examples during one epoch.
@@ -176,7 +183,7 @@ class Model:
         self.model.train()
         losses = 0
 
-        for src, tgt, token, statement, data_flow, \
+        for src_tokens, tgt_tokens, src, tgt, token, statement, data_flow, \
                 control_flow, ast in tqdm(train_dataloader, desc="Training"):
             # Passing vectors to GPU if it's available
             src = src.to(self.device)
@@ -192,8 +199,21 @@ class Model:
 
             # Slicing the last element of tgt_data because it is used to compute the
             # loss.
-            output = self.model(src, tgt[:, :-1], token, statement,
-                                data_flow, control_flow, ast)
+            output, enc_attn, dec_self_attn, dec_cross_attn = self.model(src,
+                                                                         tgt[:,
+                                                                             :-1],
+                                                                         token,
+                                                                         statement,
+                                                                         data_flow,
+                                                                         control_flow,
+                                                                         ast)
+
+            if display_attn:
+                self.display_all_attentions(src_tokens,
+                                            tgt_tokens,
+                                            enc_attn,
+                                            dec_self_attn,
+                                            dec_cross_attn)
 
             # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
             # - tgt_data is reshaped using view() method in shape (batch_size * tgt_len)
@@ -226,7 +246,8 @@ class Model:
                  tgt_vocab_size,
                  max_tgt_length,
                  num_epoch,
-                 beam_size):
+                 beam_size,
+                 display_attn=True):
         '''
         Validates the model after a training epoch to see how well he generalizes. 
         Does not update the weights of the model.
@@ -243,6 +264,9 @@ class Model:
             num_epoch (int): The current training epoch.
             beam_size (int): Number of elements to store during beam search
                              Only applicable if `mode == 'beam'`
+            display_attn (bool): Tells whether we want to save the attention of
+                                 the last layer encoder and decoder 
+                                 multi-head attentions.
 
         Returns:
             The average loss across all examples during one epoch.
@@ -267,8 +291,9 @@ class Model:
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
-            for code, summary, src, tgt, token, statement, data_flow, \
-                    control_flow, ast in tqdm(val_dataloader, desc="Validating"):
+            for code_tokens, summary_tokens, code, summary, src, tgt, token, \
+                statement, data_flow, control_flow, ast in \
+                    tqdm(val_dataloader, desc="Validating"):
                 src = src.to(self.device)
                 tgt = tgt.to(self.device)
                 token = token.to(self.device)
@@ -294,10 +319,23 @@ class Model:
                                                       beam_size,
                                                       metrics)
 
-                # Slicing the last element of tgt_data because it is used to compute the
-                # loss.
-                output = self.model(src, tgt[:, :-1], token, statement,
-                                    data_flow, control_flow, ast)
+                # Slicing the last element of tgt_data because it is used to
+                # compute the loss.
+                output, enc_attn, dec_self_attn, dec_cross_attn = self.model(src,
+                                                                             tgt[:,
+                                                                                 :-1],
+                                                                             token,
+                                                                             statement,
+                                                                             data_flow,
+                                                                             control_flow,
+                                                                             ast)
+
+                if display_attn:
+                    self.display_all_attentions(code_tokens,
+                                                summary_tokens,
+                                                enc_attn,
+                                                dec_self_attn,
+                                                dec_cross_attn)
 
                 # - output is reshaped using view() method in shape (batch_size * tgt_len, tgt_vocab_size)
                 # - tgt_data is reshaped using view() method in shape (batch_size * tgt_len)
@@ -352,7 +390,7 @@ class Model:
             with open('../results/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                       '_gpu_' + str(self.gpu_rank) + '.json', 'w') as log:
                 for code, summary, src, tgt, token, statement, data_flow, \
-                    control_flow, ast in tqdm(test_dataloader, desc="Testing"):
+                        control_flow, ast in tqdm(test_dataloader, desc="Testing"):
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)
                     token = token.to(self.device)
@@ -378,6 +416,48 @@ class Model:
                                                       metrics)
 
         Model.compute_avg_metrics(metrics)
+
+    def display_all_attentions(self,
+                               src_tokens,
+                               tgt_tokens,
+                               enc_attn,
+                               dec_self_attn,
+                               dec_cross_attn):
+        '''
+        Display the encoder self-attention, decoder self-attention and decoder
+        cross-attention.
+
+        Args:
+            src_tokens: The tokens of the source sequence.
+                        Shape: `(batch_size, max_src_len)`
+            tgt_tokens: The tokens of the target sequences.
+                        Shape: `(batch_size, max_tgt_len)`
+            enc_attn: The encoder self attention.
+                      Shape: `(batch_size, num_heads, max_src_len, max_src_len)`
+            dec_self_attn: The decoder self attention.
+                           Shape: `(batch_size, num_heads, max_tgt_len, max_tgt_len)`
+            dec_cross_attn: The decoder cross attention.
+                            Shape: `(batch_size, num_heads, max_tgt_len, max_src_len)`
+        '''
+        # Displaying self and cross attention scores of the last encoder
+        # and decoder layer for the first example passed as input
+        display_attention(src_tokens[0],
+                          tgt_tokens[0],
+                          enc_attn[0],
+                          "encoder_self_attn",
+                          self.num_heads)
+
+        display_attention(tgt_tokens[0],
+                          tgt_tokens[0],
+                          dec_self_attn[0],
+                          "decoder_self_attn",
+                          self.num_heads)
+
+        display_attention(src_tokens[0],
+                          tgt_tokens[0],
+                          dec_cross_attn[0],
+                          "decoder_cross_attn",
+                          self.num_heads)
 
     def translate_evaluate(self,
                            src,

@@ -120,7 +120,9 @@ class CustomDataset(Dataset):
 
         if self.type == 'train':
             # convert the list to tensor and return
-            return torch.tensor(numericalized_source), \
+            return code_tokens, \
+                summary_tokens, \
+                torch.tensor(numericalized_source), \
                 torch.tensor(numericalized_target), \
                 token_matrix.strip().split(), \
                 statement_matrix.strip().split(), \
@@ -128,7 +130,9 @@ class CustomDataset(Dataset):
                 cf_tensor, \
                 ast_tensor
         elif self.type == 'evaluation':
-            return source_text, \
+            return code_tokens, \
+                summary_tokens, \
+                source_text, \
                 target_text, \
                 torch.tensor(numericalized_source), \
                 torch.tensor(numericalized_target), \
