@@ -1,25 +1,62 @@
+from flow.tree_helpers import get_node_text_snake_camel
+
+
+def add_cfg_edges(index_to_code, instructions_code, dependencies, start, end):
+    curr_token = index_to_code[(start, end)][1]
+
+    if start[0] + 1 in instructions_code:
+        next_tokens = [instructions_code[start[0] + 1][0][1]]
+        next_indexes = [
+            instructions_code[start[0] + 1][0][0] + 1]
+    else:
+        next_tokens = ['END']
+        # END token index is last token index + 1 (all indexes of tokens are shifted by 1)
+        next_indexes = [instructions_code[start[0]][-1][0] + 2]
+
+    # putting control flow edges
+    if start[0] in dependencies and dependencies[start[0]] in instructions_code:
+        next_indexes += [instructions_code[dependencies[start[0]]][0][0] + 1]
+        next_tokens += [instructions_code[dependencies[start[0]]][0][1]]
+    elif start[0] in dependencies:
+        next_tokens += ['END']
+        next_indexes += [instructions_code[dependencies[start[0]] - 1][-1][0] + 2]
+
+    return [(curr_token, index_to_code[(start, end)][0] + 1, "Next Instruction", next_tokens, next_indexes)]
+
+def process_leaf_node(root, index_to_code, instructions_code, dependencies):
+    if (root.start_point, root.end_point) in index_to_code:
+        return add_cfg_edges(index_to_code, instructions_code, dependencies, root.start_point, root.end_point)
+    else:
+        # The AST does not split tokens in snake_case and camelCase and since it
+        # is impossible to change the AST, we need to split those tokens here to
+        # make sure that a snake_case/camelCase token get split into multiple
+        # "nodes" (1 per sub-token) 
+        node_text_camel_case = get_node_text_snake_camel(root)
+        if len(node_text_camel_case) > 1:
+            begin = root.start_point
+            # To keep track of the total length of tokens that are already in token_idxs
+            tokens_len = begin[1]
+            edges = []
+            for token in node_text_camel_case:
+                if token == '_':
+                    tokens_len += 1
+                    continue
+                
+                start = (begin[0], tokens_len)
+                end = (begin[0], tokens_len + len(token))
+                edges += add_cfg_edges(index_to_code, instructions_code, dependencies, start, end)
+
+                tokens_len += len(token)            
+            return edges
+        else:
+            # This case should not happen
+            print("Returning empty list...")
+            return []
+
+
 def CFG_python(root, index_to_code, instructions_code, dependencies):
     if (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
-        curr_token = index_to_code[(root.start_point, root.end_point)][1]
-
-        if root.start_point[0] + 1 in instructions_code:
-            next_tokens = [instructions_code[root.start_point[0] + 1][0][1]]
-            next_indexes = [
-                instructions_code[root.start_point[0] + 1][0][0] + 1]
-        else:
-            next_tokens = ['END']
-            # END token index is last token index + 1 (all indexes of tokens are shifted by 1)
-            next_indexes = [instructions_code[root.start_point[0]][-1][0] + 2]
-
-        # putting control flow edges
-        if root.start_point[0] in dependencies and dependencies[root.start_point[0]] in instructions_code:
-            next_indexes += [instructions_code[dependencies[root.start_point[0]]][0][0] + 1]
-            next_tokens += [instructions_code[dependencies[root.start_point[0]]][0][1]]
-        elif root.start_point[0] in dependencies:
-            next_tokens += ['END']
-            next_indexes += [instructions_code[dependencies[root.start_point[0]] - 1][-1][0] + 2]
-
-        return [(curr_token, index_to_code[(root.start_point, root.end_point)][0] + 1, "Next Instruction", next_tokens, next_indexes)]
+        return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
         if root.type == 'while_statement' or root.type == 'if_statement':
@@ -36,26 +73,7 @@ def CFG_python(root, index_to_code, instructions_code, dependencies):
 
 def CFG_java(root, index_to_code, instructions_code, dependencies):
     if (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
-        curr_token = index_to_code[(root.start_point, root.end_point)][1]
-
-        if root.start_point[0] + 1 in instructions_code:
-            next_tokens = [instructions_code[root.start_point[0] + 1][0][1]]
-            next_indexes = [
-                instructions_code[root.start_point[0] + 1][0][0] + 1]
-        else:
-            next_tokens = ['END']
-            # END token index is last token index + 1 (all indexes of tokens are shifted by 1)
-            next_indexes = [instructions_code[root.start_point[0]][-1][0] + 2]
-
-        # putting control flow edges
-        if root.start_point[0] in dependencies and dependencies[root.start_point[0]] in instructions_code:
-            next_indexes += [instructions_code[dependencies[root.start_point[0]]][0][0] + 1]
-            next_tokens += [instructions_code[dependencies[root.start_point[0]]][0][1]]
-        elif root.start_point[0] in dependencies:
-            next_tokens += ['END']
-            next_indexes += [instructions_code[dependencies[root.start_point[0]] - 1][-1][0] + 2]
-
-        return [(curr_token, index_to_code[(root.start_point, root.end_point)][0] + 1, "Next Instruction", next_tokens, next_indexes)]
+        return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
         if root.type == 'while_statement':
@@ -76,26 +94,7 @@ def CFG_java(root, index_to_code, instructions_code, dependencies):
 
 def CFG_ruby(root, index_to_code, instructions_code, dependencies):
     if (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
-        curr_token = index_to_code[(root.start_point, root.end_point)][1]
-
-        if root.start_point[0] + 1 in instructions_code:
-            next_tokens = [instructions_code[root.start_point[0] + 1][0][1]]
-            next_indexes = [
-                instructions_code[root.start_point[0] + 1][0][0] + 1]
-        else:
-            next_tokens = ['END']
-            # END token index is last token index + 1 (all indexes of tokens are shifted by 1)
-            next_indexes = [instructions_code[root.start_point[0]][-1][0] + 2]
-
-        # putting control flow edges
-        if root.start_point[0] in dependencies and dependencies[root.start_point[0]] in instructions_code:
-            next_indexes += [instructions_code[dependencies[root.start_point[0]]][0][0] + 1]
-            next_tokens += [instructions_code[dependencies[root.start_point[0]]][0][1]]
-        elif root.start_point[0] in dependencies:
-            next_tokens += ['END']
-            next_indexes += [instructions_code[dependencies[root.start_point[0]] - 1][-1][0] + 2]
-
-        return [(curr_token, index_to_code[(root.start_point, root.end_point)][0] + 1, "Next Instruction", next_tokens, next_indexes)]
+        return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
         if root.type == 'while':
@@ -116,26 +115,7 @@ def CFG_ruby(root, index_to_code, instructions_code, dependencies):
 
 def CFG_go(root, index_to_code, instructions_code, dependencies):
     if (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
-        curr_token = index_to_code[(root.start_point, root.end_point)][1]
-
-        if root.start_point[0] + 1 in instructions_code:
-            next_tokens = [instructions_code[root.start_point[0] + 1][0][1]]
-            next_indexes = [
-                instructions_code[root.start_point[0] + 1][0][0] + 1]
-        else:
-            next_tokens = ['END']
-            # END token index is last token index + 1 (all indexes of tokens are shifted by 1)
-            next_indexes = [instructions_code[root.start_point[0]][-1][0] + 2]
-
-        # putting control flow edges
-        if root.start_point[0] in dependencies and dependencies[root.start_point[0]] in instructions_code:
-            next_indexes += [instructions_code[dependencies[root.start_point[0]]][0][0] + 1]
-            next_tokens += [instructions_code[dependencies[root.start_point[0]]][0][1]]
-        elif root.start_point[0] in dependencies:
-            next_tokens += ['END']
-            next_indexes += [instructions_code[dependencies[root.start_point[0]] - 1][-1][0] + 2]
-
-        return [(curr_token, index_to_code[(root.start_point, root.end_point)][0] + 1, "Next Instruction", next_tokens, next_indexes)]
+        return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
         if root.type == 'for_statement':
@@ -158,26 +138,7 @@ def CFG_go(root, index_to_code, instructions_code, dependencies):
 
 def CFG_php(root, index_to_code, instructions_code, dependencies):
     if (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
-        curr_token = index_to_code[(root.start_point, root.end_point)][1]
-
-        if root.start_point[0] + 1 in instructions_code:
-            next_tokens = [instructions_code[root.start_point[0] + 1][0][1]]
-            next_indexes = [
-                instructions_code[root.start_point[0] + 1][0][0] + 1]
-        else:
-            next_tokens = ['END']
-            # END token index is last token index + 1 (all indexes of tokens are shifted by 1)
-            next_indexes = [instructions_code[root.start_point[0]][-1][0] + 2]
-
-        # putting control flow edges
-        if root.start_point[0] in dependencies and dependencies[root.start_point[0]] in instructions_code:
-            next_indexes += [instructions_code[dependencies[root.start_point[0]]][0][0] + 1]
-            next_tokens += [instructions_code[dependencies[root.start_point[0]]][0][1]]
-        elif root.start_point[0] in dependencies:
-            next_tokens += ['END']
-            next_indexes += [instructions_code[dependencies[root.start_point[0]] - 1][-1][0] + 2]
-
-        return [(curr_token, index_to_code[(root.start_point, root.end_point)][0] + 1, "Next Instruction", next_tokens, next_indexes)]
+        return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
         if root.type == 'while_statement':
@@ -198,26 +159,7 @@ def CFG_php(root, index_to_code, instructions_code, dependencies):
 
 def CFG_javascript(root, index_to_code, instructions_code, dependencies):
     if (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
-        curr_token = index_to_code[(root.start_point, root.end_point)][1]
-
-        if root.start_point[0] + 1 in instructions_code:
-            next_tokens = [instructions_code[root.start_point[0] + 1][0][1]]
-            next_indexes = [
-                instructions_code[root.start_point[0] + 1][0][0] + 1]
-        else:
-            next_tokens = ['END']
-            # END token index is last token index + 1 (all indexes of tokens are shifted by 1)
-            next_indexes = [instructions_code[root.start_point[0]][-1][0] + 2]
-
-        # putting control flow edges
-        if root.start_point[0] in dependencies and dependencies[root.start_point[0]] in instructions_code:
-            next_indexes += [instructions_code[dependencies[root.start_point[0]]][0][0] + 1]
-            next_tokens += [instructions_code[dependencies[root.start_point[0]]][0][1]]
-        elif root.start_point[0] in dependencies:
-            next_tokens += ['END']
-            next_indexes += [instructions_code[dependencies[root.start_point[0]] - 1][-1][0] + 2]
-
-        return [(curr_token, index_to_code[(root.start_point, root.end_point)][0] + 1, "Next Instruction", next_tokens, next_indexes)]
+        return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
         if root.type == 'while_statement':

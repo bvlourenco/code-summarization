@@ -210,6 +210,9 @@ def DFG_java(root_node, index_to_code, states):
     do_first_statement = []
     states = states.copy()
     if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
+        if (root_node.start_point, root_node.end_point) not in index_to_code:
+            return [], states
+        
         idx, code = index_to_code[(root_node.start_point, root_node.end_point)]
         if root_node.type == code:
             return [], states
@@ -395,6 +398,10 @@ def DFG_ruby(root_node, index_to_code, states):
     def_statement = ['keyword_parameter']
     if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
         states = states.copy()
+
+        if (root_node.start_point, root_node.end_point) not in index_to_code:
+            return [], states
+    
         idx, code = index_to_code[(root_node.start_point, root_node.end_point)]
         if root_node.type == code:
             return [], states
@@ -571,6 +578,9 @@ def DFG_go(root_node, index_to_code, states):
     do_first_statement = []
     states = states.copy()
     if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
+        if (root_node.start_point, root_node.end_point) not in index_to_code:
+            return [], states
+
         idx, code = index_to_code[(root_node.start_point, root_node.end_point)]
         if root_node.type == code:
             return [], states
@@ -719,6 +729,9 @@ def DFG_php(root_node, index_to_code, states):
     do_first_statement = []
     states = states.copy()
     if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
+        if (root_node.start_point, root_node.end_point) not in index_to_code:
+            return [], states
+
         idx, code = index_to_code[(root_node.start_point, root_node.end_point)]
         if root_node.type == code:
             return [], states
@@ -915,6 +928,9 @@ def DFG_javascript(root_node, index_to_code, states):
     do_first_statement = []
     states = states.copy()
     if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
+        if (root_node.start_point, root_node.end_point) not in index_to_code:
+            return [], states
+
         idx, code = index_to_code[(root_node.start_point, root_node.end_point)]
         if root_node.type == code:
             return [], states

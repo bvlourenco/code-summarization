@@ -68,7 +68,8 @@ def compute_heads_distribution(num_heads, layer_index, hyperparameter_hsva):
     standard_heads = num_heads - (token_heads + statement_heads + data_flow_heads
                                   + control_flow_heads + ast_heads)
     
-    logger.info(f"Heads distribution:\nToken Heads: {token_heads} | " +
+    logger.info(f"Heads distribution of layer {layer_index}:\n" + 
+                f"Token Heads: {token_heads} | " +
                 f"Statement Heads: {statement_heads} | " +
                 f"Data flow Heads: {data_flow_heads} | " +
                 f"Control flow Heads: {control_flow_heads} | " +
