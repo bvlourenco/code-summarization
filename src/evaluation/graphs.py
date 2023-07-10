@@ -49,8 +49,8 @@ def display_attention(input,
             # create a plot
             # width and height depend on the number of squares in the heatmap
             # respective axis
-            height = 0.5 * _attention.shape[0]
-            width = 0.5 * _attention.shape[1]
+            height = 0.6 * _attention.shape[0]
+            width = 0.6 * _attention.shape[1]
             _, ax = plt.subplots(figsize=(width, height))
 
             # plot the matrix. cmap defines the colors of the matrix
@@ -74,6 +74,12 @@ def display_attention(input,
             elif isinstance(input[0], int):
                 ax.set_xticklabels(input, rotation=45)
                 ax.set_yticklabels(output)
+            
+            # Loop over data dimensions and create text annotations.
+            for i in range(len(output)):
+                for j in range(len(input)):
+                    ax.text(j, i, "{:.2f}".format(_attention[i, j]), ha="center", va="center", color="w")
+
 
             plt.title('Head ' + str(i))
             plt.tight_layout()
