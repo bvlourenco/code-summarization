@@ -43,8 +43,11 @@ def parse_arguments():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('--language', type=str, required=True,
-                        choices=['python', 'java'],
+                        choices=['python', 'java', 'go', 'ruby', 'php', 'javascript'],
                         help="Programming language of the dataset")
+    parser.add_argument('--codesearchnet', type=str2bool, default=False,
+                        help="Tells whether we're loading a file from \
+                              CodeSearchNet dataset or not")
 
     # Only used with python dataset
     parser.add_argument('--code_snippet_file', type=str, default=None,
@@ -69,18 +72,26 @@ def parse_arguments():
 
     args = parser.parse_args()
 
-    if args.language == 'java' and args.code_summary_file is None:
-        parser.error("--language java requires --code_summary_file")
-    elif args.language == 'python' and (args.code_snippet_file is None or
-                                        args.summary_file is None):
-        parser.error("--language python requires --code_snippet_file and"
-                     " --summary_file")
-    elif args.language == 'java' and (args.code_snippet_file is not None or
-                                      args.summary_file is not None):
-        parser.error("--language java does not require --code_snippet_file and"
-                     " --summary_file")
-    elif args.language == 'python' and args.code_summary_file is not None:
-        parser.error("--language python does not require --code_summary_file")
+    if not args.codesearchnet:
+        if args.language == 'java' and args.code_summary_file is None:
+            parser.error("--language java requires --code_summary_file")
+        elif args.language == 'python' and (args.code_snippet_file is None or
+                                            args.summary_file is None):
+            parser.error("--language python requires --code_snippet_file and"
+                        " --summary_file")
+        elif args.language == 'java' and (args.code_snippet_file is not None or
+                                        args.summary_file is not None):
+            parser.error("--language java does not require --code_snippet_file and"
+                        " --summary_file")
+        elif args.language == 'python' and args.code_summary_file is not None:
+            parser.error("--language python does not require --code_summary_file")
+    else:
+        if args.code_summary_file is None:
+            parser.error("--codesearchnet (with any language) requires "
+                         "--code_summary_file")
+        elif args.code_snippet_file is not None or args.summary_file is not None:
+            parser.error("--codesearchnet does not require --code_snippet_file "
+                         "and --summary_file")
 
     return args
 
@@ -132,14 +143,17 @@ def tokenize_docstring(docstring: str) -> List[str]:
 def main():
     args = parse_arguments()
 
+    if args.codesearchnet:
+        path = 'CodeSearchNet/dataset/' + args.language
+    else:
+        path = args.language
+
     # Cleaning file
-    open('../../data/' + args.language + "/" +
-         args.type + '_processed.json', 'w').close()
+    open('../../data/' + path + "/" + args.type + '_processed.json', 'w').close()
 
-    dataset = open('../../data/' + args.language + "/" +
-                   args.type + '_processed.json', 'w')
+    dataset = open('../../data/' + path + "/" + args.type + '_processed.json', 'w')
 
-    if args.language == 'python':
+    if path == 'python':
         code_snippet_file = open(args.code_snippet_file, 'r')
         summary_file = open(args.summary_file, 'r')
 
@@ -171,26 +185,35 @@ def main():
 
         code_snippet_file.close()
         summary_file.close()
-    elif args.language == 'java':
+    elif path == 'java' or path == 'CodeSearchNet/dataset/' + args.language:
+
+        if path == 'java':
+            code_key = 'code'
+            summary_key = 'comment'
+        elif path == 'CodeSearchNet/dataset/' + args.language:
+            code_key = 'original_string'
+            summary_key = 'docstring'
+
         code_summary_file = open(args.code_summary_file, 'r')
 
         num_lines = sum(1 for _ in open(args.code_summary_file, 'r'))
 
-        for _ in tqdm(range(num_lines), desc="Reading java code snippets and summaries"):
+        for _ in tqdm(range(num_lines), desc=f"Reading CodeSearchNet " + 
+                      f"{args.language} code snippets and summaries"):
             line = code_summary_file.readline()
             code_summary = json.loads(line)
 
             code_comment = {
-                "original_string": code_summary['code'].strip(),
-                "docstring": code_summary['comment'].strip(),
-                "code_tokens": tokenize_code(code_summary['code'].strip(), args.language),
-                "docstring_tokens": tokenize_docstring(code_summary['comment'].strip())
+                "original_string": code_summary[code_key].strip(),
+                "docstring": code_summary[summary_key].strip(),
+                "code_tokens": tokenize_code(code_summary[code_key].strip(), args.language),
+                "docstring_tokens": tokenize_docstring(code_summary[summary_key].strip())
             }
 
             json.dump(code_comment, dataset)
             dataset.write("\n")
 
-        code_summary_file.close()
+        code_summary_file.close()        
 
     dataset.close()
 
