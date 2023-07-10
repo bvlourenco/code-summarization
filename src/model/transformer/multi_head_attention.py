@@ -99,6 +99,13 @@ class MultiHeadAttention(nn.Module):
             Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
 
         if token is not None:
+            # In the token adjacency matrix, elements who are 1 will be -inf
+            # (to make the attention 0 in those places). Elements who are already
+            # 0 will remain the same.
+            # The same happens with the statement adjacency matrix
+            token = -1e9 * token
+            statement = -1e9 * statement
+
             local_mask_map = torch.stack([token for _ in range(heads_distribution[0])] +
                                          [statement for _ in range(heads_distribution[1])] +
                                          [zero_matrix for _ in range(heads_distribution[2])] +

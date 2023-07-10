@@ -442,7 +442,7 @@ class Model:
         # Displaying self and cross attention scores of the last encoder
         # and decoder layer for the first example passed as input
         display_attention(src_tokens[0],
-                          tgt_tokens[0],
+                          src_tokens[0],
                           enc_attn[0],
                           "encoder_self_attn",
                           self.num_heads)

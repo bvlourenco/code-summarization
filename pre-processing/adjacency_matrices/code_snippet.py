@@ -25,9 +25,10 @@ class CodeSnippet(object):
         self.log_file = log_file
         self.debug = debug
 
-    def tokenize_code(self, camel_case=True, snake_case=True):
-        code_tokens = ctok.tokenize(
-            self.code_snippet, lang=self.language, syntax_error="ignore")
+    def tokenize_code(self, code_snippet, camel_case=True, snake_case=True):
+        code_tokens = ctok.tokenize(code_snippet, 
+                                    lang=self.language, 
+                                    syntax_error="ignore")
 
         # Removing some python unwanted tokens representing \n, \t and untabbing.
         code_tokens = [token.__str__() for token in code_tokens
@@ -52,7 +53,8 @@ class CodeSnippet(object):
         return code_tokens
 
     def build_token_matrix(self):
-        code_tokens = self.tokenize_code(camel_case=False,
+        code_tokens = self.tokenize_code(self.code_snippet,
+                                         camel_case=False,
                                          snake_case=False)
 
         snake_case_tokenized = []
@@ -85,7 +87,7 @@ class CodeSnippet(object):
         # such as ;, { and } in Java (and other languages)
         instructions = self.code_snippet.split('\n')
         for i in range(len(instructions)):
-            num_tokens = len(self.tokenize_code())
+            num_tokens = len(self.tokenize_code(instructions[i]))
             self.in_statement_adjacency_matrix.extend(
                 [i for _ in range(num_tokens)])
 

@@ -1,6 +1,15 @@
 from datetime import datetime
+import logging
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+
+# Multiple calls to getLogger() with the same name will return a reference
+# to the same Logger object, which saves us from passing the logger objects
+# to every part where it’s needed.
+# Source: https://realpython.com/python-logging/
+logger = logging.getLogger('main_logger')
+# To avoid having repeated logs!
+logger.propagate = False
 
 
 def display_attention(input,
@@ -24,6 +33,8 @@ def display_attention(input,
             https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html
             https://matplotlib.org/stable/gallery/misc/multipage_pdf.html
     '''
+    logger.info(f"Creating an attention heatmap for {label}")
+
     # Create the PdfPages object to which we will save the pages:
     # The with statement makes sure that the PdfPages object is closed properly at
     # the end of the block, even if an Exception occurs.
@@ -31,12 +42,16 @@ def display_attention(input,
                   datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.pdf') as pdf:
 
         for i in range(n_heads):
-            # create a plot
-            _, ax = plt.subplots()
-
             # select the respective head and make it a numpy array for plotting
             _attention = attention.squeeze(0)[i, :len(output), :len(input)] \
                                   .cpu().detach().numpy()
+
+            # create a plot
+            # width and height depend on the number of squares in the heatmap
+            # respective axis
+            height = 0.5 * _attention.shape[0]
+            width = 0.5 * _attention.shape[1]
+            _, ax = plt.subplots(figsize=(width, height))
 
             # plot the matrix. cmap defines the colors of the matrix
             cax = ax.matshow(_attention, cmap='viridis', aspect='auto')
@@ -54,13 +69,14 @@ def display_attention(input,
 
             # if the provided sequences are sentences or indices
             if isinstance(input[0], str):
-                ax.set_xticklabels([t.lower() for t in input], rotation=45)
+                ax.set_xticklabels([t for t in input], rotation=45)
                 ax.set_yticklabels(output)
             elif isinstance(input[0], int):
                 ax.set_xticklabels(input, rotation=45)
                 ax.set_yticklabels(output)
 
             plt.title('Head ' + str(i))
+            plt.tight_layout()
             pdf.savefig()  # saves the current figure into a pdf page
             plt.close()
 

@@ -98,6 +98,13 @@ class Transformer(nn.Module):
         self.hyperparameter_hsva = hyperparameter_hsva
         self.hyperparameter_attn_heads = hyperparameter_attn_heads
 
+        self.heads_distribution = []
+        for layer_idx, _ in enumerate(self.encoder_layers):
+            heads_layer = compute_heads_distribution(self.num_heads,
+                                                     layer_idx,
+                                                     self.hyperparameter_hsva)
+            self.heads_distribution.append(heads_layer)
+
     def init_weights(self, init_type):
         '''
         Initialize parameters in the transformer model.
@@ -227,12 +234,10 @@ class Transformer(nn.Module):
                                   device=self.device)
 
         for layer_idx, enc_layer in enumerate(self.encoder_layers):
-            heads_distribution = compute_heads_distribution(self.num_heads,
-                                                            layer_idx,
-                                                            self.hyperparameter_hsva)
             enc_output, enc_attn = enc_layer(enc_output, token, statement,
                                              data_flow, control_flow, ast,
-                                             zero_matrix, heads_distribution,
+                                             zero_matrix,
+                                             self.heads_distribution[layer_idx],
                                              self.hyperparameter_attn_heads,
                                              src_mask)
         # Final encoder layer normalization according to Pre-LN

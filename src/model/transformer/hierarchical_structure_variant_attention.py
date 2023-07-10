@@ -1,5 +1,14 @@
 
+import logging
 import math
+
+# Multiple calls to getLogger() with the same name will return a reference
+# to the same Logger object, which saves us from passing the logger objects
+# to every part where it’s needed.
+# Source: https://realpython.com/python-logging/
+logger = logging.getLogger('main_logger')
+# To avoid having repeated logs!
+logger.propagate = False
 
 
 def compute_heads_distribution(num_heads, layer_index, hyperparameter_hsva):
@@ -27,7 +36,7 @@ def compute_heads_distribution(num_heads, layer_index, hyperparameter_hsva):
         hyperparameter_hsva (int): Hyperparameter used in HSVA (Hierarchical
                                    Structure Variant Attention) to control the
                                    distribution of the heads by type.
-    
+
     Returns:
         A list containing the number of token, statement, data flow, control
         flow, AST and standard head attentions in the following format:
@@ -43,24 +52,32 @@ def compute_heads_distribution(num_heads, layer_index, hyperparameter_hsva):
     According to the SG-Trans paper, k = L (hyper-parameter k is equal to 
                                             number of encoder layers)
     '''
-    token_heads = math.floor(num_heads * 
-                             ((hyperparameter_hsva - layer_index) / 
+    token_heads = math.floor(num_heads *
+                             ((hyperparameter_hsva - layer_index) /
                               (2 * hyperparameter_hsva - layer_index)))
     statement_heads = token_heads
     if token_heads <= 0:
         data_flow_heads = 0
     else:
-        data_flow_heads = math.floor((num_heads * 
-                                      (layer_index / 
-                                       (2 * hyperparameter_hsva - layer_index))) 
-                                    / 3)
+        data_flow_heads = math.floor((num_heads *
+                                      (layer_index /
+                                       (2 * hyperparameter_hsva - layer_index)))
+                                     / 3)
     control_flow_heads = data_flow_heads
     ast_heads = data_flow_heads
-    standard_heads = num_heads - (token_heads + statement_heads + data_flow_heads 
+    standard_heads = num_heads - (token_heads + statement_heads + data_flow_heads
                                   + control_flow_heads + ast_heads)
-    return [token_heads, 
+    
+    logger.info(f"Heads distribution:\nToken Heads: {token_heads} | " +
+                f"Statement Heads: {statement_heads} | " +
+                f"Data flow Heads: {data_flow_heads} | " +
+                f"Control flow Heads: {control_flow_heads} | " +
+                f"AST Heads: {ast_heads} | " +
+                f"Standard Heads: {standard_heads}")
+
+    return [token_heads,
             statement_heads,
-            data_flow_heads, 
+            data_flow_heads,
             control_flow_heads,
             ast_heads,
             standard_heads]
