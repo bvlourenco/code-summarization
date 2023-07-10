@@ -50,7 +50,9 @@ class Model:
                  gpu_rank,
                  init_type,
                  hyperparameter_hsva,
-                 hyperparameter_attn_heads):
+                 hyperparameter_data_flow,
+                 hyperparameter_control_flow,
+                 hyperparameter_ast):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -76,10 +78,15 @@ class Model:
             hyperparameter_hsva (int): Hyperparameter used in HSVA (Hierarchical
                                        Structure Variant Attention) to control the
                                        distribution of the heads by type.
-            hyperparameter_attn_heads (int): Hyperparameter used to adjust the 
-                                             weight of the data flow, control 
-                                             flow and AST adjacency matrices in 
-                                             the self-attention.
+            hyperparameter_data_flow (int): Hyperparameter used to adjust the 
+                                            weight of the data flow adjacency 
+                                            matrix in the self-attention.
+            hyperparameter_control_flow (int): Hyperparameter used to adjust the 
+                                               weight of the control flow adjacency 
+                                               matrix in the self-attention.
+            hyperparameter_ast (int): Hyperparameter used to adjust the 
+                                      weight of the ast adjacency matrix in the 
+                                      self-attention.
         '''
         self.model = Transformer(src_vocab_size,
                                  tgt_vocab_size,
@@ -93,7 +100,9 @@ class Model:
                                  device,
                                  init_type,
                                  hyperparameter_hsva,
-                                 hyperparameter_attn_heads)
+                                 hyperparameter_data_flow,
+                                 hyperparameter_control_flow,
+                                 hyperparameter_ast)
 
         self.num_heads = num_heads
 

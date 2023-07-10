@@ -45,7 +45,9 @@ function train_and_validate() {
     --validation_control_flow_matrix ../data/python/validation_processed_python_control_flow.pkl \
     --validation_ast_matrix ../data/python/validation_processed_python_ast.pkl \
     --hyperparameter_hsva 6 \
-    --hyperparameter_attn_heads 5 \
+    --hyperparameter_data_flow 5 \
+    --hyperparameter_control_flow 5 \
+    --hyperparameter_ast 5 \
     --mode greedy \
     --checkpoint True \
     --hyperparameter_tuning False
@@ -80,7 +82,9 @@ function test_model() {
     --test_control_flow_matrix ../data/python/test_processed_python_control_flow.pkl \
     --test_ast_matrix ../data/python/test_processed_python_ast.pkl \
     --hyperparameter_hsva 6 \
-    --hyperparameter_attn_heads 5 \
+    --hyperparameter_data_flow 5 \
+    --hyperparameter_control_flow 5 \
+    --hyperparameter_ast 5 \
     --mode greedy
 
 }

@@ -100,7 +100,9 @@ class TestProgram(Program):
                       gpu_rank,
                       self.init_type,
                       self.hyperparameter_hsva,
-                      self.hyperparameter_attn_heads)
+                      self.hyperparameter_data_flow,
+                      self.hyperparameter_control_flow,
+                      self.hyperparameter_ast)
 
         model.load(gpu_rank)
         model.test(test_dataloader,

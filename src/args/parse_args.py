@@ -116,10 +116,15 @@ def parse_arguments():
                         help='Hyperparameter used in HSVA (Hierarchical \
                             Structure Variant Attention) to control the \
                             distribution of the heads by type')
-    parser.add_argument('--hyperparameter_attn_heads', type=int, required=True,
+    parser.add_argument('--hyperparameter_data_flow', type=int, required=True,
                         help='Hyperparameter used to adjust the weight of the \
-                              data flow, control flow and AST adjacency matrices \
-                              in the self-attention')
+                              data flow adjacency matrix in the self-attention')
+    parser.add_argument('--hyperparameter_control_flow', type=int, required=True,
+                        help='Hyperparameter used to adjust the weight of the \
+                              control flow adjacency matrix in the self-attention')
+    parser.add_argument('--hyperparameter_ast', type=int, required=True,
+                        help='Hyperparameter used to adjust the weight of the \
+                              AST adjacency matrix in the self-attention')
 
     parser.add_argument('--mode', type=str, required=True,
                         choices=['beam', 'greedy', 'loss'],
@@ -183,10 +188,15 @@ def parse_test_args():
                         help='Hyperparameter used in HSVA (Hierarchical \
                             Structure Variant Attention) to control the \
                             distribution of the heads by type')
-    parser.add_argument('--hyperparameter_attn_heads', type=int, required=True,
+    parser.add_argument('--hyperparameter_data_flow', type=int, required=True,
                         help='Hyperparameter used to adjust the weight of the \
-                              data flow, control flow and AST adjacency matrices \
-                              in the self-attention')
+                              data flow adjacency matrix in the self-attention')
+    parser.add_argument('--hyperparameter_control_flow', type=int, required=True,
+                        help='Hyperparameter used to adjust the weight of the \
+                              control flow adjacency matrix in the self-attention')
+    parser.add_argument('--hyperparameter_ast', type=int, required=True,
+                        help='Hyperparameter used to adjust the weight of the \
+                              AST adjacency matrix in the self-attention')
 
     parser.add_argument('--d_model', type=int, required=True,
                         help='Dimensionality of the model')

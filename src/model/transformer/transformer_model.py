@@ -40,7 +40,9 @@ class Transformer(nn.Module):
                  device,
                  init_type,
                  hyperparameter_hsva,
-                 hyperparameter_attn_heads):
+                 hyperparameter_data_flow,
+                 hyperparameter_control_flow,
+                 hyperparameter_ast):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -59,10 +61,15 @@ class Transformer(nn.Module):
             hyperparameter_hsva (int): Hyperparameter used in HSVA (Hierarchical
                                        Structure Variant Attention) to control the
                                        distribution of the heads by type.
-            hyperparameter_attn_heads (int): Hyperparameter used to adjust the 
-                                             weight of the data flow, control 
-                                             flow and AST adjacency matrices in 
-                                             the self-attention.
+            hyperparameter_data_flow (int): Hyperparameter used to adjust the 
+                                            weight of the data flow adjacency 
+                                            matrix in the self-attention.
+            hyperparameter_control_flow (int): Hyperparameter used to adjust the 
+                                               weight of the control flow adjacency 
+                                               matrix in the self-attention.
+            hyperparameter_ast (int): Hyperparameter used to adjust the 
+                                      weight of the ast adjacency matrix in the 
+                                      self-attention.
 
         Note: The log-softmax function is not applied here due to the later use 
               of CrossEntropyLoss, which requires the inputs to be unnormalized 
@@ -96,7 +103,9 @@ class Transformer(nn.Module):
         # self.print_transformer_information()
 
         self.hyperparameter_hsva = hyperparameter_hsva
-        self.hyperparameter_attn_heads = hyperparameter_attn_heads
+        self.hyperparameter_data_flow = hyperparameter_data_flow
+        self.hyperparameter_control_flow = hyperparameter_control_flow
+        self.hyperparameter_ast = hyperparameter_ast
 
         self.heads_distribution = []
         for layer_idx, _ in enumerate(self.encoder_layers):
@@ -238,7 +247,9 @@ class Transformer(nn.Module):
                                              data_flow, control_flow, ast,
                                              zero_matrix,
                                              self.heads_distribution[layer_idx],
-                                             self.hyperparameter_attn_heads,
+                                             self.hyperparameter_data_flow,
+                                             self.hyperparameter_control_flow,
+                                             self.hyperparameter_ast,
                                              src_mask)
         # Final encoder layer normalization according to Pre-LN
         enc_output = self.norm1(enc_output)

@@ -44,7 +44,9 @@ class Program:
         self.init_type = args.init_type
 
         self.hyperparameter_hsva = args.hyperparameter_hsva
-        self.hyperparameter_attn_heads = args.hyperparameter_attn_heads
+        self.hyperparameter_data_flow = args.hyperparameter_data_flow
+        self.hyperparameter_control_flow = args.hyperparameter_control_flow
+        self.hyperparameter_ast = args.hyperparameter_ast
 
         self.mode = args.mode
         self.beam_size = args.beam_size

@@ -39,7 +39,9 @@ class EncoderLayer(nn.Module):
                 ast, 
                 zero_matrix,
                 heads_distribution, 
-                hyperparameter_attn_heads, 
+                hyperparameter_data_flow,
+                hyperparameter_control_flow, 
+                hyperparameter_ast, 
                 mask):
         '''
         Args:
@@ -58,10 +60,15 @@ class EncoderLayer(nn.Module):
                                 The number of heads of each type is the following:
                                 [TOKEN_HEADS, STATEMENT_HEADS, DATA_FLOW_HEADS, 
                                  CONTROL_FLOW_HEADS, AST_HEADS, STANDARD_HEADS]
-            hyperparameter_attn_heads (int): Hyperparameter used to adjust the 
-                                             weight of the data flow, control 
-                                             flow and AST adjacency matrices in 
-                                             the self-attention.
+            hyperparameter_data_flow (int): Hyperparameter used to adjust the 
+                                            weight of the data flow adjacency 
+                                            matrix in the self-attention.
+            hyperparameter_control_flow (int): Hyperparameter used to adjust the 
+                                               weight of the control flow adjacency 
+                                               matrix in the self-attention.
+            hyperparameter_ast (int): Hyperparameter used to adjust the 
+                                      weight of the ast adjacency matrix in the 
+                                      self-attention.
             mask: Indicates which positions of the input sequence should have
                   attention or not. Shape: `(batch_size, 1, 1, seq_length)`
 
@@ -81,7 +88,9 @@ class EncoderLayer(nn.Module):
                                                             ast, 
                                                             zero_matrix,
                                                             heads_distribution,
-                                                            hyperparameter_attn_heads,
+                                                            hyperparameter_data_flow,
+                                                            hyperparameter_control_flow,
+                                                            hyperparameter_ast,
                                                             mask))
         return self.norm2(x, "PositionWiseFeedForward", lambda x: self.feed_forward(x)), attn_probs
     
