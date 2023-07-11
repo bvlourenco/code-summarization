@@ -20,7 +20,7 @@ function train_and_validate() {
     --max_src_length 150 \
     --max_tgt_length 50 \
     --freq_threshold 0 \
-    --d_model 512 \
+    --d_model 768 \
     --num_heads 8 \
     --num_layers 6 \
     --d_ff 2048 \
