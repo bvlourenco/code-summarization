@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import Dataset
+from transformers import RobertaTokenizer
 
 from dataset.domain.sparse_matrix_to_tensor import build_tensor_from_sparse_matrix
 
@@ -72,6 +73,9 @@ class CustomDataset(Dataset):
 
         self.max_src_length = max_src_length
 
+        self.codebert_tokenizer = RobertaTokenizer.from_pretrained("microsoft/codebert-base", 
+                                                                   do_lower_case=False)
+
     def __len__(self):
         '''
         Returns the number of samples in our dataset.
@@ -118,12 +122,25 @@ class CustomDataset(Dataset):
         cf_tensor = build_tensor_from_sparse_matrix(control_flow_matrix, self.max_src_length)
         ast_tensor = build_tensor_from_sparse_matrix(ast_matrix, self.max_src_length)
 
+        # Getting the code split into tokens and numericalized for CodeBERT encoder
+        source_tokens = self.codebert_tokenizer.tokenize(source_text)[:self.max_src_length - 2]
+        source_tokens = [self.codebert_tokenizer.cls_token] + \
+                        source_tokens + \
+                        [self.codebert_tokenizer.sep_token]
+        source_ids =  self.codebert_tokenizer.convert_tokens_to_ids(source_tokens)
+        source_mask = [1] * (len(source_tokens))
+        padding_length = self.max_src_length - len(source_ids)
+        source_ids += [self.codebert_tokenizer.pad_token_id] * padding_length
+        source_mask += [0] * padding_length
+
         if self.type == 'train':
             # convert the list to tensor and return
             return code_tokens, \
                 summary_tokens, \
                 torch.tensor(numericalized_source), \
                 torch.tensor(numericalized_target), \
+                torch.tensor(source_ids), \
+                torch.tensor(source_mask), \
                 token_matrix.strip().split(), \
                 statement_matrix.strip().split(), \
                 df_tensor, \
@@ -136,6 +153,8 @@ class CustomDataset(Dataset):
                 target_text, \
                 torch.tensor(numericalized_source), \
                 torch.tensor(numericalized_target), \
+                torch.tensor(source_ids), \
+                torch.tensor(source_mask), \
                 token_matrix.strip().split(), \
                 statement_matrix.strip().split(), \
                 df_tensor, \

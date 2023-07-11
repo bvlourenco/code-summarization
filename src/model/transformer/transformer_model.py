@@ -2,7 +2,6 @@ import logging
 from prettytable import PrettyTable
 import torch
 import torch.nn as nn
-from evaluation.graphs import display_attention
 
 from model.transformer.embeddings import Embeddings
 from model.transformer.hierarchical_structure_variant_attention import compute_heads_distribution
@@ -215,6 +214,8 @@ class Transformer(nn.Module):
     def encode(self,
                src,
                src_mask,
+               source_ids,
+               source_mask,
                token,
                statement,
                data_flow,
@@ -258,8 +259,8 @@ class Transformer(nn.Module):
         # Final encoder layer normalization according to Pre-LN
         structural_enc_output = self.norm1(enc_output)
 
-        # CodeBERT only accepts a mask with size `(batch_size, max_src_len)`
-        code_enc_output = self.code_encoder_layers(src, attention_mask=src_mask.squeeze(1).squeeze(1))
+        code_enc_output = self.code_encoder_layers(source_ids, 
+                                                   attention_mask=source_mask)
 
         enc_output = 0.5 * structural_enc_output + 0.5 * code_enc_output[0]
 
@@ -298,7 +299,8 @@ class Transformer(nn.Module):
 
         return dec_output, dec_self_attn, dec_cross_attn
 
-    def forward(self, src, tgt, token, statement, data_flow, control_flow, ast):
+    def forward(self, src, source_ids, source_mask, tgt, token, statement, 
+                data_flow, control_flow, ast):
         '''
         Args:
             src: The encoder input. Shape: `(batch_size, max_src_len)`
@@ -322,6 +324,8 @@ class Transformer(nn.Module):
 
         enc_output, enc_attn = self.encode(src,
                                            src_mask,
+                                           source_ids,
+                                           source_mask,
                                            token,
                                            statement,
                                            data_flow,

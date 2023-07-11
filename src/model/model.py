@@ -192,11 +192,14 @@ class Model:
         self.model.train()
         losses = 0
 
-        for src_tokens, tgt_tokens, src, tgt, token, statement, data_flow, \
-                control_flow, ast in tqdm(train_dataloader, desc="Training"):
+        for src_tokens, tgt_tokens, src, tgt, source_ids, source_mask, token, \
+                statement, data_flow, control_flow, ast in \
+                                        tqdm(train_dataloader, desc="Training"):
             # Passing vectors to GPU if it's available
             src = src.to(self.device)
             tgt = tgt.to(self.device)
+            source_ids = source_ids.to(self.device)
+            source_mask = source_mask.to(self.device)
             token = token.to(self.device)
             statement = statement.to(self.device)
             data_flow = data_flow.to(self.device)
@@ -209,8 +212,9 @@ class Model:
             # Slicing the last element of tgt_data because it is used to compute the
             # loss.
             output, enc_attn, dec_self_attn, dec_cross_attn = self.model(src,
-                                                                         tgt[:,
-                                                                             :-1],
+                                                                         source_ids,
+                                                                         source_mask,
+                                                                         tgt[:, :-1],
                                                                          token,
                                                                          statement,
                                                                          data_flow,
@@ -300,11 +304,13 @@ class Model:
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
-            for code_tokens, summary_tokens, code, summary, src, tgt, token, \
-                statement, data_flow, control_flow, ast in \
-                    tqdm(val_dataloader, desc="Validating"):
+            for code_tokens, summary_tokens, code, summary, src, tgt, \
+                source_ids, source_mask, token, statement, data_flow, \
+                control_flow, ast in tqdm(val_dataloader, desc="Validating"):
                 src = src.to(self.device)
                 tgt = tgt.to(self.device)
+                source_ids = source_ids.to(self.device)
+                source_mask = source_mask.to(self.device)
                 token = token.to(self.device)
                 statement = statement.to(self.device)
                 data_flow = data_flow.to(self.device)
@@ -313,6 +319,8 @@ class Model:
 
                 if mode in ['beam', 'greedy']:
                     metrics = self.translate_evaluate(src,
+                                                      source_ids,
+                                                      source_mask,
                                                       target_vocab,
                                                       token,
                                                       statement,
@@ -331,8 +339,9 @@ class Model:
                 # Slicing the last element of tgt_data because it is used to
                 # compute the loss.
                 output, enc_attn, dec_self_attn, dec_cross_attn = self.model(src,
-                                                                             tgt[:,
-                                                                                 :-1],
+                                                                             source_ids,
+                                                                             source_mask,
+                                                                             tgt[:,:-1],
                                                                              token,
                                                                              statement,
                                                                              data_flow,
@@ -470,6 +479,8 @@ class Model:
 
     def translate_evaluate(self,
                            src,
+                           source_ids,
+                           source_mask,
                            target_vocab,
                            token,
                            statement,
@@ -522,6 +533,8 @@ class Model:
 
         bleu, meteor, rouge_l, \
             precision, recall, f1 = self.translate_sentence(src,
+                                                            source_ids,
+                                                            source_mask,
                                                             target_vocab,
                                                             token,
                                                             statement,
@@ -580,6 +593,8 @@ class Model:
 
     def translate_sentence(self,
                            src,
+                           source_ids,
+                           source_mask,
                            target_vocab,
                            token,
                            statement,
@@ -641,6 +656,8 @@ class Model:
             if mode == 'greedy':
                 tgt_preds_idx = greedy_decode(self.model,
                                               src[i].unsqueeze(0),
+                                              source_ids[i].unsqueeze(0),
+                                              source_mask[i].unsqueeze(0),
                                               token[i].unsqueeze(0),
                                               statement[i].unsqueeze(0),
                                               data_flow[i].unsqueeze(0),
