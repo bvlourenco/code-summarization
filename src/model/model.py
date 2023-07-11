@@ -169,7 +169,7 @@ class Model:
         )
 
     def train_epoch(self, train_dataloader, tgt_vocab_size, grad_clipping,
-                    display_attn=True):
+                    display_attn=False):
         '''
         Trains the model during one epoch, using the examples of the dataset for training.
         Computes the loss during this epoch.
@@ -256,7 +256,7 @@ class Model:
                  max_tgt_length,
                  num_epoch,
                  beam_size,
-                 display_attn=True):
+                 display_attn=False):
         '''
         Validates the model after a training epoch to see how well he generalizes. 
         Does not update the weights of the model.
