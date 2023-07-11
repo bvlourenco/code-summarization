@@ -23,8 +23,6 @@ def build_local_matrix(positions, type, max_src_length):
                        Can be one of the following: "token", "statement"
         max_src_length (int): Maximum length of the source code.
 
-    TODO: REFACTOR!!!
-
     From: https://github.com/gszsectan/SG-Trans/blob/2afab8844e4f1e06c06585d80158bda947e0c720/java/c2nl/inputters/vector.py#L5
     '''
     try:

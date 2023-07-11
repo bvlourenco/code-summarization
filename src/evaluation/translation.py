@@ -41,6 +41,8 @@ def translate_tokens(tokens_idx, vocabulary):
 
 def greedy_decode(model,
                   src,
+                  source_ids,
+                  source_mask,
                   token,
                   statement,
                   data_flow,
@@ -81,6 +83,8 @@ def greedy_decode(model,
     src_mask = model.generate_src_mask(src)
     enc_output, _ = model.encode(src,
                                  src_mask,
+                                 source_ids,
+                                 source_mask,
                                  token,
                                  statement,
                                  data_flow,

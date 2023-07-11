@@ -138,6 +138,10 @@ def parse_arguments():
                         help="Save model + optimizer state after each epoch")
     parser.add_argument("--hyperparameter_tuning", type=str2bool, required=True,
                         help="Fine-tune some selected parameters or not")
+    
+    parser.add_argument("--optimizer", type=str, required=True,
+                        choices=['adam', 'sgd'],
+                        help="Optimizer to use in the model (SGD or Adam)")
 
     return parser.parse_args()
 

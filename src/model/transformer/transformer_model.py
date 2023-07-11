@@ -2,13 +2,13 @@ import logging
 from prettytable import PrettyTable
 import torch
 import torch.nn as nn
-from evaluation.graphs import display_attention
 
 from model.transformer.embeddings import Embeddings
 from model.transformer.hierarchical_structure_variant_attention import compute_heads_distribution
 from model.transformer.positional_encoding import PositionalEncoding
 from model.transformer.encoder_layer import EncoderLayer
 from model.transformer.decoder_layer import DecoderLayer
+from transformers import (RobertaConfig, RobertaModel)
 
 # Multiple calls to getLogger() with the same name will return a reference
 # to the same Logger object, which saves us from passing the logger objects
@@ -83,13 +83,16 @@ class Transformer(nn.Module):
         self.decoder_positional_encoding = PositionalEncoding(
             d_model, max_tgt_length, dropout)
 
-        self.encoder_layers = nn.ModuleList(
+        self.structural_encoder_layers = nn.ModuleList(
             [EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
         self.norm1 = nn.LayerNorm(d_model)
 
+        config = RobertaConfig.from_pretrained("microsoft/codebert-base", do_lower_case=False)
+        self.code_encoder_layers = RobertaModel.from_pretrained("microsoft/codebert-base", config=config)
+
         self.decoder_layers = nn.ModuleList(
             [DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
-        self.norm2 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)  
 
         self.num_heads = num_heads
         self.num_layers = num_layers
@@ -108,7 +111,7 @@ class Transformer(nn.Module):
         self.hyperparameter_ast = hyperparameter_ast
 
         self.heads_distribution = []
-        for layer_idx, _ in enumerate(self.encoder_layers):
+        for layer_idx, _ in enumerate(self.structural_encoder_layers):
             heads_layer = compute_heads_distribution(self.num_heads,
                                                      layer_idx,
                                                      self.hyperparameter_hsva)
@@ -211,6 +214,8 @@ class Transformer(nn.Module):
     def encode(self,
                src,
                src_mask,
+               source_ids,
+               source_mask,
                token,
                statement,
                data_flow,
@@ -242,7 +247,7 @@ class Transformer(nn.Module):
         zero_matrix = torch.zeros(token.shape[0], token.shape[1], token.shape[2],
                                   device=self.device)
 
-        for layer_idx, enc_layer in enumerate(self.encoder_layers):
+        for layer_idx, enc_layer in enumerate(self.structural_encoder_layers):
             enc_output, enc_attn = enc_layer(enc_output, token, statement,
                                              data_flow, control_flow, ast,
                                              zero_matrix,
@@ -252,7 +257,12 @@ class Transformer(nn.Module):
                                              self.hyperparameter_ast,
                                              src_mask)
         # Final encoder layer normalization according to Pre-LN
-        enc_output = self.norm1(enc_output)
+        structural_enc_output = self.norm1(enc_output)
+
+        code_enc_output = self.code_encoder_layers(source_ids, 
+                                                   attention_mask=source_mask)
+
+        enc_output = 0.5 * structural_enc_output + 0.5 * code_enc_output[0]
 
         return enc_output, enc_attn
 
@@ -289,7 +299,8 @@ class Transformer(nn.Module):
 
         return dec_output, dec_self_attn, dec_cross_attn
 
-    def forward(self, src, tgt, token, statement, data_flow, control_flow, ast):
+    def forward(self, src, source_ids, source_mask, tgt, token, statement, 
+                data_flow, control_flow, ast):
         '''
         Args:
             src: The encoder input. Shape: `(batch_size, max_src_len)`
@@ -313,6 +324,8 @@ class Transformer(nn.Module):
 
         enc_output, enc_attn = self.encode(src,
                                            src_mask,
+                                           source_ids,
+                                           source_mask,
                                            token,
                                            statement,
                                            data_flow,

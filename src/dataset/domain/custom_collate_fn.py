@@ -59,12 +59,17 @@ class CustomCollate:
         code_batch, summary_batch, code_idxs_batch, summary_idxs_batch = [], [], [], []
         code_tokens_batch, summary_tokens_batch = [], []
         token_batch, statement_batch, data_flow_batch, control_flow_batch, ast_batch = [], [], [], [], []
+        source_ids_batch, source_mask_batch = [], []
 
         # for each code snippet
-        for (code_tokens, summary_tokens, source_code, summary, code_idxs, summary_idxs, token_matrix, \
-             statement_matrix, data_flow_matrix, control_flow_matrix, ast_matrix) in batch:
+        for (code_tokens, summary_tokens, source_code, summary, code_idxs, \
+             summary_idxs, source_ids, source_mask, token_matrix, \
+             statement_matrix, data_flow_matrix, control_flow_matrix, \
+             ast_matrix) in batch:
             code_tokens_batch.append(code_tokens)
             summary_tokens_batch.append(summary_tokens)
+            source_ids_batch.append(source_ids)
+            source_mask_batch.append(source_mask)
             code_batch.append(source_code)
             summary_batch.append(summary)
             token_batch.append(token_matrix)
@@ -84,6 +89,7 @@ class CustomCollate:
         return code_tokens_batch, summary_tokens_batch, code_batch, summary_batch, \
             torch.stack(code_idxs_batch), \
             torch.stack(summary_idxs_batch), \
+            torch.stack(source_ids_batch), torch.stack(source_mask_batch), \
             build_local_matrix(token_batch, 'token', self.max_src_length), \
             build_local_matrix(statement_batch, 'statement', self.max_src_length), \
             torch.stack(data_flow_batch), \
@@ -107,12 +113,16 @@ class CustomCollate:
         code_batch, summary_batch = [], []
         code_tokens_batch, summary_tokens_batch = [], []
         token_batch, statement_batch, data_flow_batch, control_flow_batch, ast_batch = [], [], [], [], []
+        source_ids_batch, source_mask_batch = [], []
 
         # for each code snippet
-        for (code_tokens, summary_tokens, source_code, summary, token_matrix, statement_matrix, \
-             data_flow_matrix, control_flow_matrix, ast_matrix) in batch:
+        for (code_tokens, summary_tokens, source_code, summary, source_ids, source_mask, \
+             token_matrix, statement_matrix, data_flow_matrix, control_flow_matrix, \
+             ast_matrix) in batch:
             code_tokens_batch.append(code_tokens)
             summary_tokens_batch.append(summary_tokens)
+            source_ids_batch.append(source_ids)
+            source_mask_batch.append(source_mask)
             token_batch.append(token_matrix)
             statement_batch.append(statement_matrix)
             data_flow_batch.append(data_flow_matrix)
@@ -129,6 +139,7 @@ class CustomCollate:
 
         return code_tokens_batch, summary_tokens_batch, \
                torch.stack(code_batch), torch.stack(summary_batch), \
+               torch.stack(source_ids_batch), torch.stack(source_mask_batch), \
                build_local_matrix(token_batch, 'token', self.max_src_length), \
                build_local_matrix(statement_batch, 'statement', self.max_src_length), \
                torch.stack(data_flow_batch), \

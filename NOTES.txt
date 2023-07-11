@@ -37,4 +37,6 @@
 
     General tutorial with Transformer model, training, evaluation and inference:
     https://pytorch.org/tutorials/beginner/translation_transformer.html?highlight=transformer
+
+    TODO: Ver torch.compile!!!
     '''
