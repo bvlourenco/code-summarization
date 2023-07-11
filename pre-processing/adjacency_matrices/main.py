@@ -7,8 +7,8 @@ import numpy as np
 from tqdm import tqdm
 
 from tree_sitter import Language, Parser
-from flow.data_flow.data_flow import DFG_go, DFG_java, DFG_javascript, DFG_php, DFG_python, DFG_ruby
-from flow.control_flow.control_flow import CFG_go, CFG_java, CFG_javascript, CFG_php, CFG_python, CFG_ruby
+from flow.data_flow import DFG_go, DFG_java, DFG_javascript, DFG_php, DFG_python, DFG_ruby
+from flow.control_flow import CFG_go, CFG_java, CFG_javascript, CFG_php, CFG_python, CFG_ruby
 from language_parsers.build.build_language import build_language_library
 from code_snippet import CodeSnippet
 
@@ -84,15 +84,15 @@ def read_file(f, must_process, language, parser, log_file, filename):
     filename_no_extension = filename.split('/')[-1].split('.')[0]
 
     in_token_file = open('files/in_token/' +
-                         filename_no_extension + '_' + language + '.txt', 'w')
+                         filename_no_extension + '_' + language + '_in_token.txt', 'w')
     in_statement_file = open('files/in_statement/' +
-                             filename_no_extension + '_' + language + '.txt', 'w')
+                             filename_no_extension + '_' + language + '_in_statement.txt', 'w')
     data_flow_file = open('files/data_flow/' +
-                          filename_no_extension + '_' + language + '.txt', 'wb')
+                          filename_no_extension + '_' + language + '_data_flow.pkl', 'wb')
     control_flow_file = open('files/control_flow/' +
-                             filename_no_extension + '_' + language + '.txt', 'wb')
+                             filename_no_extension + '_' + language + '_control_flow.pkl', 'wb')
     ast_adjacency_matrix_file = open(
-        'files/ast_adjacency_matrix/' + filename_no_extension + '_' + language + '.txt', 'wb')
+        'files/ast_adjacency_matrix/' + filename_no_extension + '_' + language + '_ast.pkl', 'wb')
 
     num_lines = sum(1 for _ in open(filename, 'r'))
 

@@ -1,6 +1,8 @@
 import torch
 from torch.utils.data import Dataset
 
+from dataset.domain.sparse_matrix_to_tensor import build_tensor_from_sparse_matrix
+
 
 class CustomDataset(Dataset):
     '''
@@ -9,11 +11,37 @@ class CustomDataset(Dataset):
     Source: https://towardsdatascience.com/custom-datasets-in-pytorch-part-2-text-machine-translation-71c41a3e994e
     '''
 
-    def __init__(self, source_code_texts, summary_texts, source_vocab, target_vocab, type):
+    def __init__(self,
+                 source_code_texts,
+                 source_code_tokens,
+                 summary_texts,
+                 summary_tokens,
+                 max_src_length,
+                 token_matrices,
+                 statement_matrices,
+                 data_flow_matrices,
+                 control_flow_matrices,
+                 ast_matrices,
+                 source_vocab,
+                 target_vocab,
+                 type):
         '''
         Args:
             source_code_texts: A list containing code snippets.
+            source_code_tokens: A list containing the tokens of the code snippets.
             summary_texts: A list containing summaries.
+            summary_tokens: A list containing the tokens of the summaries.
+            max_src_length (int): Maximum length of the source code.
+            token_matrices: A list with the token adjacency matrices for the 
+                            code snippets passed as argument.
+            statement_matrices: A list with the statement adjacency matrices 
+                                for the code snippets passed as argument.
+            data_flow_matrices: A list with the data flow adjacency matrices for 
+                                the code snippets passed as argument.
+            control_flow_matrices: A list with the control flow adjacency matrices 
+                                   for the code snippets passed as argument.
+            ast_matrices: A list with the ast adjacency matrices for the code 
+                          snippets passed as argument.
             source_vocab: The vocabulary built from the code snippets in training set.
             target_vocab: The vocabulary built from the summaries in training set.
             type (string): Indicates whether we are loading the training set or the
@@ -25,6 +53,9 @@ class CustomDataset(Dataset):
         self.source_code_texts = source_code_texts
         self.summary_texts = summary_texts
 
+        self.source_code_tokens = source_code_tokens
+        self.summary_tokens = summary_tokens
+
         assert len(source_code_texts) == len(summary_texts)
         self.dataset_size = len(source_code_texts)
 
@@ -32,6 +63,14 @@ class CustomDataset(Dataset):
         self.target_vocab = target_vocab
 
         self.type = type
+
+        self.token_matrices = token_matrices
+        self.statement_matrices = statement_matrices
+        self.data_flow_matrices = data_flow_matrices
+        self.control_flow_matrices = control_flow_matrices
+        self.ast_matrices = ast_matrices
+
+        self.max_src_length = max_src_length
 
     def __len__(self):
         '''
@@ -57,20 +96,51 @@ class CustomDataset(Dataset):
         source_text = self.source_code_texts[index]
         target_text = self.summary_texts[index]
 
+        code_tokens = self.source_code_tokens[index]
+        summary_tokens = self.summary_tokens[index]
+
+        token_matrix = self.token_matrices[index]
+        statement_matrix = self.statement_matrices[index]
+        data_flow_matrix = self.data_flow_matrices[index]
+        control_flow_matrix = self.control_flow_matrices[index]
+        ast_matrix = self.ast_matrices[index]
+
         # numericalize texts ['<BOS>','cat', 'in', 'a', 'bag','<EOS>'] -> [1,12,2,9,24,2]
         numericalized_source = [self.source_vocab.token_to_idx["<BOS>"]]
-        numericalized_source += self.source_vocab.numericalize(source_text)
+        numericalized_source += self.source_vocab.numericalize(code_tokens)
         numericalized_source.append(self.source_vocab.token_to_idx["<EOS>"])
 
         numericalized_target = [self.target_vocab.token_to_idx["<BOS>"]]
-        numericalized_target += self.target_vocab.numericalize(target_text)
+        numericalized_target += self.target_vocab.numericalize(summary_tokens)
         numericalized_target.append(self.target_vocab.token_to_idx["<EOS>"])
+
+        df_tensor = build_tensor_from_sparse_matrix(data_flow_matrix, self.max_src_length)
+        cf_tensor = build_tensor_from_sparse_matrix(control_flow_matrix, self.max_src_length)
+        ast_tensor = build_tensor_from_sparse_matrix(ast_matrix, self.max_src_length)
 
         if self.type == 'train':
             # convert the list to tensor and return
-            return torch.tensor(numericalized_source), torch.tensor(numericalized_target)
+            return code_tokens, \
+                summary_tokens, \
+                torch.tensor(numericalized_source), \
+                torch.tensor(numericalized_target), \
+                token_matrix.strip().split(), \
+                statement_matrix.strip().split(), \
+                df_tensor, \
+                cf_tensor, \
+                ast_tensor
         elif self.type == 'evaluation':
-            return source_text, target_text, torch.tensor(numericalized_source), \
-                   torch.tensor(numericalized_target)
+            return code_tokens, \
+                summary_tokens, \
+                source_text, \
+                target_text, \
+                torch.tensor(numericalized_source), \
+                torch.tensor(numericalized_target), \
+                token_matrix.strip().split(), \
+                statement_matrix.strip().split(), \
+                df_tensor, \
+                cf_tensor, \
+                ast_tensor
         else:
-            raise ValueError("Invalid type: " + self.type + ". It can only be: train, evaluation.")
+            raise ValueError("Invalid type: " + self.type +
+                             ". It can only be: train, evaluation.")

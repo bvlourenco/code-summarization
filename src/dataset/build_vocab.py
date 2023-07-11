@@ -3,13 +3,17 @@ import pickle
 from dataset.domain.vocabulary import Vocabulary
 
 
-def create_vocabulary(source_code_texts, summary_texts, freq_threshold, src_vocab_size, tgt_vocab_size):
+def create_vocabulary(source_code_tokens,
+                      summary_tokens, 
+                      freq_threshold, 
+                      src_vocab_size, 
+                      tgt_vocab_size):
     '''
     Creates the vocabulary for the code snippets and for the summaries.
 
     Args:
-        source_code_texts: List with the code snippets from the training set.
-        summary_texts: List with the summaries from the training set.
+        source_code_tokens: List with the code snippet tokens from the training set.
+        summary_tokens: List with the summary tokens from the training set.
         freq_threshold (int): the minimum times a word must occur in corpus to be treated in vocab
         src_vocab_size (int): size of the source vocabulary.
         tgt_vocab_size (int): size of the target vocabulary.
@@ -21,10 +25,10 @@ def create_vocabulary(source_code_texts, summary_texts, freq_threshold, src_voca
     '''
     # Initialize source vocab object and build vocabulary
     source_vocab = Vocabulary(freq_threshold, src_vocab_size)
-    source_vocab.build_vocabulary(source_code_texts, "code")
+    source_vocab.build_vocabulary(source_code_tokens, "code")
     # Initialize target vocab object and build vocabulary
     target_vocab = Vocabulary(freq_threshold, tgt_vocab_size)
-    target_vocab.build_vocabulary(summary_texts, "summary")
+    target_vocab.build_vocabulary(summary_tokens, "summary")
 
     pickle.dump(source_vocab, open('../results/src_vocab.pkl', 'wb'))
     pickle.dump(target_vocab, open('../results/tgt_vocab.pkl', 'wb'))

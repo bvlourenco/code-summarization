@@ -1,66 +1,90 @@
 from datetime import datetime
+import logging
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+
+# Multiple calls to getLogger() with the same name will return a reference
+# to the same Logger object, which saves us from passing the logger objects
+# to every part where it’s needed.
+# Source: https://realpython.com/python-logging/
+logger = logging.getLogger('main_logger')
+# To avoid having repeated logs!
+logger.propagate = False
 
 
-def display_attention(input, output, attention, label, n_heads=8, n_rows=4, n_cols=2):
+def display_attention(input,
+                      output,
+                      attention,
+                      label,
+                      n_heads):
     '''
     Display the attention matrix for each head of a sequence.
 
     Args:
         input: The input given to the model (e.g. code snippet).
-        output: The output predicted by the model (e.g. short code comment).
+        output: The reference/predicted output (e.g. short code comment).
         attention: attention scores for the heads. Shape: `(batch_size, num_heads, query_len, key_len)`
         label (string): part of the filename of the attention matrices.
                         Used to identifier whether the matrices are from encoder self-attn, decoder self-attn
                         or decoder cross-attn.
         n_heads (int): number of heads.
-        n_rows (int): number of rows. Default is 8, meaning that we will have 8 rows, each one with the
-                      matrices.
-        n_cols (int): number of columns. Default is 1, meaning that we will have only 1 matrix per row.
 
     Source: https://medium.com/@hunter-j-phillips/putting-it-all-together-the-implemented-transformer-bfb11ac1ddfe
             https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html
+            https://matplotlib.org/stable/gallery/misc/multipage_pdf.html
     '''
-    # ensure the number of rows and columns are equal to the number of heads
-    assert n_rows * n_cols == n_heads
+    logger.info(f"Creating an attention heatmap for {label}")
 
-    # figure size
-    fig = plt.figure(figsize=(15, 25))
+    # Create the PdfPages object to which we will save the pages:
+    # The with statement makes sure that the PdfPages object is closed properly at
+    # the end of the block, even if an Exception occurs.
+    with PdfPages('../results/' + label + "_" +
+                  datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.pdf') as pdf:
 
-    # visualize each head
-    for i in range(n_heads):
+        for i in range(n_heads):
+            # select the respective head and make it a numpy array for plotting
+            _attention = attention.squeeze(0)[i, :len(output), :len(input)] \
+                                  .cpu().detach().numpy()
 
-        # create a plot
-        ax = fig.add_subplot(n_rows, n_cols, i+1)
+            # create a plot
+            # width and height depend on the number of squares in the heatmap
+            # respective axis
+            height = 0.6 * _attention.shape[0]
+            width = 0.6 * _attention.shape[1]
+            _, ax = plt.subplots(figsize=(width, height))
 
-        # select the respective head and make it a numpy array for plotting
-        _attention = attention.squeeze(0)[i, :, :].cpu().detach().numpy()
+            # plot the matrix. cmap defines the colors of the matrix
+            cax = ax.matshow(_attention, cmap='viridis', aspect='auto')
 
-        # plot the matrix. cmap defines the colors of the matrix
-        cax = ax.matshow(_attention, cmap='viridis', aspect='auto')
+            # create side bar with attention score
+            cbar = ax.figure.colorbar(cax, ax=ax)
+            cbar.ax.set_ylabel("Attention score", rotation=-90, va="bottom")
 
-        # create side bar with attention score
-        cbar = ax.figure.colorbar(cax, ax=ax)
-        cbar.ax.set_ylabel("Attention score", rotation=-90, va="bottom")
+            # # set the size of the labels
+            # ax.tick_params(labelsize=6)
 
-        # set the size of the labels
-        ax.tick_params(labelsize=12)
+            # set the indices for the tick marks
+            ax.set_xticks(range(len(input)))
+            ax.set_yticks(range(len(output)))
 
-        # set the indices for the tick marks
-        ax.set_xticks(range(len(input)))
-        ax.set_yticks(range(len(output)))
+            # if the provided sequences are sentences or indices
+            if isinstance(input[0], str):
+                ax.set_xticklabels([t for t in input], rotation=45)
+                ax.set_yticklabels(output)
+            elif isinstance(input[0], int):
+                ax.set_xticklabels(input, rotation=45)
+                ax.set_yticklabels(output)
+            
+            # Loop over data dimensions and create text annotations.
+            for i in range(len(output)):
+                for j in range(len(input)):
+                    ax.text(j, i, "{:.2f}".format(_attention[i, j]), ha="center", va="center", color="w")
 
-        # if the provided sequences are sentences or indices
-        if isinstance(input[0], str):
-            ax.set_xticklabels([t.lower() for t in input], rotation=45)
-            ax.set_yticklabels(output)
-        elif isinstance(input[0], int):
-            ax.set_xticklabels(input, rotation=45)
-            ax.set_yticklabels(output)
 
-    plt.savefig('../results/' + label + "_" +
-                datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.png')
-    plt.close()
+            plt.title('Head ' + str(i))
+            plt.tight_layout()
+            pdf.savefig()  # saves the current figure into a pdf page
+            plt.close()
 
 
 def create_loss_plot(train_epoch_loss, val_epoch_loss, gpu_rank):
