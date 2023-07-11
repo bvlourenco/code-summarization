@@ -49,6 +49,7 @@ class Model:
                  device,
                  gpu_rank,
                  init_type,
+                 optimizer,
                  hyperparameter_hsva,
                  hyperparameter_data_flow,
                  hyperparameter_control_flow,
@@ -115,28 +116,27 @@ class Model:
                              device_ids=[gpu_rank],
                              output_device=gpu_rank)
 
-        # Optimizes the model. TODO: Try to fix this!
-        # self.model = torch.compile(self.model)
-
         # Function used to compute the loss. ignore_index is the padding token index
         self.criterion = nn.CrossEntropyLoss(ignore_index=pad_idx,
                                              label_smoothing=label_smoothing)
 
-        # TODO: Test with SGD optimizer
-        self.optimizer = optim.Adam(self.model.parameters(),
-                                    lr=learning_rate,
-                                    betas=(0.9, 0.98),
-                                    eps=1e-9)
+        if optimizer == 'adam':
+            self.optimizer = optim.Adam(self.model.parameters(),
+                                        lr=learning_rate,
+                                        betas=(0.9, 0.98),
+                                        eps=1e-9)
+        elif optimizer == 'sgd':
+            self.optimizer = optim.SGD(self.model.parameters(),
+                                       lr=learning_rate)
 
-        # TODO: Enable LR scheduler
         # Adjusts the learning rate during training
         # Implements the "Noam" learning rate scheduler, used in vanilla Transformer
-        # self.scheduler = LambdaLR(
-        #     optimizer=self.optimizer,
-        #     lr_lambda=lambda step: Model.rate(
-        #         step, model_size=d_model, factor=1.0, warmup=400
-        #     ),
-        # )
+        self.scheduler = LambdaLR(
+            optimizer=self.optimizer,
+            lr_lambda=lambda step: Model.rate(
+                step, model_size=d_model, factor=1.0, warmup=400
+            ),
+        )
 
         self.device = device
         self.gpu_rank = gpu_rank
@@ -246,7 +246,7 @@ class Model:
             self.optimizer.step()
 
             # Adjust learning rate
-            # self.scheduler.step()
+            self.scheduler.step()
 
             losses += loss.item()
 

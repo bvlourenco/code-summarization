@@ -51,6 +51,8 @@ class Program:
         self.mode = args.mode
         self.beam_size = args.beam_size
 
+        self.optimizer = args.optimizer
+
         self.device = torch.device(
             'cuda' if torch.cuda.is_available() else 'cpu')
 
