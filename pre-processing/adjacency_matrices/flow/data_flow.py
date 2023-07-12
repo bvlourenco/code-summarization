@@ -8,8 +8,49 @@ FROM: https://github.com/microsoft/CodeBERT/blob/
 # Licensed under the MIT license.
 
 
-from flow.tree_helpers import tree_to_variable_index
+from flow.tree_helpers import tree_to_variable_index, get_node_text_snake_camel
 
+def add_dfg_edges(root_node, index_to_code, states, start, end):
+    idx, code = index_to_code[(start, end)]
+    if root_node.type == code:
+        return [], states
+    elif code in states:
+        return [(code, idx, 'comesFrom', [code], states[code].copy())], states
+    else:
+        if root_node.type == 'identifier':
+            states[code] = [idx]
+        return [(code, idx, 'comesFrom', [], [])], states
+
+def process_leaf_node(root_node, index_to_code, states):
+    if (root_node.start_point, root_node.end_point) not in index_to_code:
+        # The AST does not split tokens in snake_case and camelCase and since it
+        # is impossible to change the AST, we need to split those tokens here to
+        # make sure that a snake_case/camelCase token get split into multiple
+        # "nodes" (1 per sub-token) 
+        node_text_camel_case = get_node_text_snake_camel(root_node)
+        if len(node_text_camel_case) > 1:
+            begin = root_node.start_point
+            # To keep track of the total length of tokens that are already in token_idxs
+            tokens_len = begin[1]
+            edges = []
+            for token in node_text_camel_case:
+                if token == '_':
+                    tokens_len += 1
+                    continue
+                
+                start = (begin[0], tokens_len)
+                end = (begin[0], tokens_len + len(token))
+                new_edges, states = add_dfg_edges(root_node, index_to_code, states, start, end)
+                edges.extend(new_edges)
+
+                tokens_len += len(token)            
+            return edges, states
+        else:
+            # This case should not happen
+            print("Returning empty list...")
+            return [], states
+    else:
+        return add_dfg_edges(root_node, index_to_code, states, root_node.start_point, root_node.end_point)
 
 def DFG_python(root_node, index_to_code, states):
     assignment = ['assignment', 'augmented_assignment', 'for_in_clause']
@@ -20,18 +61,7 @@ def DFG_python(root_node, index_to_code, states):
     def_statement = ['default_parameter']
     states = states.copy()
     if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
-        if (root_node.start_point, root_node.end_point) not in index_to_code:
-            return [], states
-
-        idx, code = index_to_code[(root_node.start_point, root_node.end_point)]
-        if root_node.type == code:
-            return [], states
-        elif code in states:
-            return [(code, idx, 'comesFrom', [code], states[code].copy())], states
-        else:
-            if root_node.type == 'identifier':
-                states[code] = [idx]
-            return [(code, idx, 'comesFrom', [], [])], states
+        return process_leaf_node(root_node, index_to_code, states)
     elif root_node.type in def_statement:
         name = root_node.child_by_field_name('name')
         value = root_node.child_by_field_name('value')
@@ -73,6 +103,13 @@ def DFG_python(root_node, index_to_code, states):
                 left_nodes = [root_node.child_by_field_name('left')]
             if len(right_nodes) == 0:
                 right_nodes = [root_node.child_by_field_name('right')]
+            
+            # Avoiding splitting string nodes into " string_content "
+            if root_node.child_by_field_name('left').type == 'string':
+                left_nodes = [root_node.child_by_field_name('left')]
+            if root_node.child_by_field_name('right').type == 'string':
+                right_nodes = [root_node.child_by_field_name('right')]
+
         DFG = []
         for node in right_nodes:
             temp, states = DFG_python(node, index_to_code, states)
@@ -136,6 +173,13 @@ def DFG_python(root_node, index_to_code, states):
                 left_nodes = [root_node.child_by_field_name('left')]
             if len(right_nodes) == 0:
                 right_nodes = [root_node.child_by_field_name('right')]
+            
+            # Avoiding splitting string nodes into " string_content "
+            if root_node.child_by_field_name('left').type == 'string':
+                left_nodes = [root_node.child_by_field_name('left')]
+            if root_node.child_by_field_name('right').type == 'string':
+                right_nodes = [root_node.child_by_field_name('right')]
+
             for node in right_nodes:
                 temp, states = DFG_python(node, index_to_code, states)
                 DFG += temp
@@ -210,18 +254,7 @@ def DFG_java(root_node, index_to_code, states):
     do_first_statement = []
     states = states.copy()
     if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
-        if (root_node.start_point, root_node.end_point) not in index_to_code:
-            return [], states
-        
-        idx, code = index_to_code[(root_node.start_point, root_node.end_point)]
-        if root_node.type == code:
-            return [], states
-        elif code in states:
-            return [(code, idx, 'comesFrom', [code], states[code].copy())], states
-        else:
-            if root_node.type == 'identifier':
-                states[code] = [idx]
-            return [(code, idx, 'comesFrom', [], [])], states
+        return process_leaf_node(root_node, index_to_code, states)
     elif root_node.type in def_statement:
         name = root_node.child_by_field_name('name')
         value = root_node.child_by_field_name('value')
@@ -396,21 +429,9 @@ def DFG_ruby(root_node, index_to_code, states):
     while_statement = ['while_modifier', 'until']
     do_first_statement = []
     def_statement = ['keyword_parameter']
+    states = states.copy()
     if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
-        states = states.copy()
-
-        if (root_node.start_point, root_node.end_point) not in index_to_code:
-            return [], states
-    
-        idx, code = index_to_code[(root_node.start_point, root_node.end_point)]
-        if root_node.type == code:
-            return [], states
-        elif code in states:
-            return [(code, idx, 'comesFrom', [code], states[code].copy())], states
-        else:
-            if root_node.type == 'identifier':
-                states[code] = [idx]
-            return [(code, idx, 'comesFrom', [], [])], states
+        return process_leaf_node(root_node, index_to_code, states)
     elif root_node.type in def_statement:
         name = root_node.child_by_field_name('name')
         value = root_node.child_by_field_name('value')
@@ -446,6 +467,13 @@ def DFG_ruby(root_node, index_to_code, states):
             left_nodes = [root_node.child_by_field_name('left')]
         if len(right_nodes) == 0:
             right_nodes = [root_node.child_by_field_name('right')]
+        
+        # Avoiding splitting string nodes into " string_content "
+        if root_node.child_by_field_name('left').type == 'string':
+            left_nodes = [root_node.child_by_field_name('left')]
+        if root_node.child_by_field_name('right').type == 'string':
+            right_nodes = [root_node.child_by_field_name('right')]
+
         if root_node.type == "operator_assignment":
             left_nodes = [root_node.children[0]]
             right_nodes = [root_node.children[-1]]
@@ -578,18 +606,7 @@ def DFG_go(root_node, index_to_code, states):
     do_first_statement = []
     states = states.copy()
     if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
-        if (root_node.start_point, root_node.end_point) not in index_to_code:
-            return [], states
-
-        idx, code = index_to_code[(root_node.start_point, root_node.end_point)]
-        if root_node.type == code:
-            return [], states
-        elif code in states:
-            return [(code, idx, 'comesFrom', [code], states[code].copy())], states
-        else:
-            if root_node.type == 'identifier':
-                states[code] = [idx]
-            return [(code, idx, 'comesFrom', [], [])], states
+        return process_leaf_node(root_node, index_to_code, states)
     elif root_node.type in def_statement:
         name = root_node.child_by_field_name('name')
         value = root_node.child_by_field_name('value')
@@ -729,18 +746,7 @@ def DFG_php(root_node, index_to_code, states):
     do_first_statement = []
     states = states.copy()
     if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
-        if (root_node.start_point, root_node.end_point) not in index_to_code:
-            return [], states
-
-        idx, code = index_to_code[(root_node.start_point, root_node.end_point)]
-        if root_node.type == code:
-            return [], states
-        elif code in states:
-            return [(code, idx, 'comesFrom', [code], states[code].copy())], states
-        else:
-            if root_node.type == 'identifier':
-                states[code] = [idx]
-            return [(code, idx, 'comesFrom', [], [])], states
+        return process_leaf_node(root_node, index_to_code, states)
     elif root_node.type in def_statement:
         name = root_node.child_by_field_name('name')
         value = root_node.child_by_field_name('default_value')
@@ -928,18 +934,7 @@ def DFG_javascript(root_node, index_to_code, states):
     do_first_statement = []
     states = states.copy()
     if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
-        if (root_node.start_point, root_node.end_point) not in index_to_code:
-            return [], states
-
-        idx, code = index_to_code[(root_node.start_point, root_node.end_point)]
-        if root_node.type == code:
-            return [], states
-        elif code in states:
-            return [(code, idx, 'comesFrom', [code], states[code].copy())], states
-        else:
-            if root_node.type == 'identifier':
-                states[code] = [idx]
-            return [(code, idx, 'comesFrom', [], [])], states
+        return process_leaf_node(root_node, index_to_code, states)
     elif root_node.type in def_statement:
         name = root_node.child_by_field_name('name')
         value = root_node.child_by_field_name('value')
