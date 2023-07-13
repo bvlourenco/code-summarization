@@ -1,83 +1,45 @@
-    '''
-    TODO: For model training, check:
-    https://nlp.seas.harvard.edu/annotated-transformer/
-    https://medium.com/@hunter-j-phillips/putting-it-all-together-the-implemented-transformer-bfb11ac1ddfe
+Usar o chatGPT/huggingChat vai ficar "congelado" por agora.
 
-    -- (LATER) For evaluation, check:
-        https://github.com/DeepSoftwareAnalytics/CodeSumEvaluation
-        https://arxiv.org/pdf/2107.07112.pdf
-    
-    AFTER BASELINE IS DONE:
-    - Check Kaiming initialization (KINDA DONE)
-        https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
-    - Pytorch link: https://pytorch.org/docs/stable/nn.init.html#torch.nn.init.kaiming_uniform_
+TODO por agora:
+--  For evaluation, check:
+    https://github.com/DeepSoftwareAnalytics/CodeSumEvaluation
+    https://arxiv.org/pdf/2107.07112.pdf
+    Compute all BLEU metrics for my model at least.
+    Testar o modelo com os datasets apresentados no repo
+-- Tentar resolver o bug da copy attention
+-- Tokenization techniques I might try (Word, Subword, and Character-Based Tokenization):
+    https://towardsdatascience.com/word-subword-and-character-based-tokenization-know-the-difference-ea0976b64e17
+    Paper: https://openreview.net/pdf?id=htL4UZ344nF
+            https://openreview.net/forum?id=htL4UZ344nF
+    Na tokenização, devo retirar sinais de pontuação ou não?
+    - Se quiser retirar sinais de pontuação, usar `string.punctuation` (https://www.geeksforgeeks.org/string-punctuation-in-python/)
+    - Posso só cortar pontuação se len(code_tokens) > max_src_len. Se ainda assim estiver maior, vão haver palavras a perderem-se…
+    - Depois terei que ajustar as matrizes todas
+    Maybe testar a tokenização com o método do CodeSearchNet (para os code tokens)
+-- Talvez retirar a AST head attention ou colocá-la noutro sítio.
+-- Adicionar mais técnicas de inicialização de pesos
+-- Dar fix do modelo quando se corre em vários GPUs
+-- Ver porque é que a validation loss não se relaciona com os resultados das métricas.
+   -- Treinar com todo o validation set.
+
+-- (ASK TO SUPERVISORS!!!) Check pre-processing techniques I suggested in the Thesis Project (uso algumas e outras não)
 
 
-    - Experimentar técnicas diferentes de tokenization (Word, Subword, and Character-Based Tokenization)
-    --  Check tokenization techniques 
-        https://towardsdatascience.com/word-subword-and-character-based-tokenization-know-the-difference-ea0976b64e17
-        Good paper: https://openreview.net/pdf?id=htL4UZ344nF
-                    https://openreview.net/forum?id=htL4UZ344nF
-    
-    -- Check: https://github.com/cedricrupb/code_tokenize (to tokenize source code)
-              Hugging Face tokenizer class (https://web.archive.org/web/20211026153231/https://huggingface.co/transformers/tokenizer_summary.html)
-                                           (https://huggingface.co/docs/transformers/model_doc/roberta#transformers.RobertaTokenizer)
-                                           (https://github.com/microsoft/CodeBERT/blob/master/CodeBERT/code2nl/run.py)
-              Byte Pair Encoding explanation (https://towardsdatascience.com/byte-pair-encoding-subword-based-tokenization-algorithm-77828a70bee0)
-              Implementation of Byte Pair Encoding (https://github.com/DolbyUUU/byte_pair_encoding_BPE_subword_tokenization_implementation_python/blob/main/BPE.py)
-    -- Also check pre-processing techniques I suggested in the Thesis Project
+-- (OPCIONAL) Fazer um frontend/backend para a parte de inference?
+    Deploying Pytorch in python via a REST API with Flask: 
+    https://pytorch.org/tutorials/intermediate/flask_rest_api_tutorial.html?highlight=transformer
 
-    - Aplicar copy attention (está com BUGS)
-    
-    - Testar o modelo com os datasets apresentados aqui: https://github.com/DeepSoftwareAnalytics/CodeSumEvaluation
-
-    - (LATER) Deploying Pytorch in python via a REST API with Flask: https://pytorch.org/tutorials/intermediate/flask_rest_api_tutorial.html?highlight=transformer
-    - (LATER) DO not load all dataset into a list (optional improvement)
-
-    General tutorial with Transformer model, training, evaluation and inference:
-    https://pytorch.org/tutorials/beginner/translation_transformer.html?highlight=transformer
-
-    TODO: Ver torch.compile!!!
-
-    Depois:
-
-    - VER LATER: Na tokenização, devo retirar sinais de pontuação ou não? (Tenho estes sinais de pontuação no data flow, control flow e ast matrices; por outro lado não faço tokenização com camel case e snake case e faço-o nas token e statement matrices)
-        - Se quiser retirar sinais de pontuação, usar `string.punctuation` (https://www.geeksforgeeks.org/string-punctuation-in-python/)
-        - Na AST, retirar os nós que são pontuação (ver edges do graph no código)
-        - VER LATER: len(code_tokens) > max_src_len ⇒ cortar sinais de pontuação. Se ainda assim estiver maior, vão haver palavras a perderem-se…
-    - VER LATER: Testar a tokenização com o método do CodeSearchNet (para os code tokens)
-
-    - TODO: Try different values for miu in attention heads and k in HSVA (optuna)
-    - TODO: Refactor do código atual → Ver TODOs + dar fix quando se corre com várias GPUs
-
-    Depois dos TODOs de cima, devo:
-    - Ver se faz sentido ter a AST head attention ou não?
-
-    Depois:
-
-    - Ablation Studies
-        - Se quiser desativar as matrizes, basta mudar o hyperparameter respetivo ou no caso das token/statement matrices, posso simplesmente substituir -1e9 por 0.
-        - Talvez testar com outros pre-trained models (?)
-    - Human evaluation
-    - Evaluate baselines
-    - Escrever a tese
-    - FIM 😀
-
-    Cenas fixes a fazer:
-
-    - O script de build_dataset podia ter em cada JSON entry o code_snippet, summary, code_tokens, summary_tokens e tb a respetiva token, statement, data-flow, control-flow e AST adjacency matrix.
-
-    ---
-
-    - Porque é que a validation loss não se relaciona com os resultados das métricas?
-    - Avaliar o modelo com as métricas apresentadas aqui: https://github.com/DeepSoftwareAnalytics/CodeSumEvaluation e com os datasets deles
-    - Começar a ver a copy attention (e relative positional encoding?) e como a colocar no modelo
-    - Ver diferentes técnicas de inicialização de pesos
-    - Ver diferentes técnicas de tokenização e pre-processing (pre-processing está no Projeto de Tese)
-
-    ---
-
-    NOTAS:
-
-    - (Pasta A_old tem as matrizes antes do data flow, control flow e AST terem os tokens snake_case e camelCase partidos em “nós”)
-    '''
+Depois:
+- Fine-tuning do modelo
+    - Posso usar https://docs.wandb.ai/quickstart ou https://weightwatcher.ai/
+    - Usar o optuna
+    - Prioridade: miu in attention heads and k in HSVA using 
+    - Talvez testar com outros pre-trained models
+    - Testar vários métodos de inicialização de pesos
+- Ablation Studies
+    - Se quiser desativar as matrizes, basta mudar o hyperparameter respetivo 
+      ou no caso das token/statement matrices, posso simplesmente substituir 
+      -1e9 por 0.
+- Human evaluation
+- Evaluate baselines
+- Escrever a tese
