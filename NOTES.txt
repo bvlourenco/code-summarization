@@ -46,7 +46,6 @@
         - Na AST, retirar os nós que são pontuação (ver edges do graph no código)
         - VER LATER: len(code_tokens) > max_src_len ⇒ cortar sinais de pontuação. Se ainda assim estiver maior, vão haver palavras a perderem-se…
     - VER LATER: Testar a tokenização com o método do CodeSearchNet (para os code tokens)
-    - VER LATER: Improve the quality of the dataset by improving the quality of summaries with HuggingChat.
 
     - TODO: Try different values for miu in attention heads and k in HSVA (optuna)
     - TODO: Refactor do código atual → Ver TODOs + dar fix quando se corre com várias GPUs
