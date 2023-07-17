@@ -1,6 +1,7 @@
 Usar o chatGPT/huggingChat vai ficar "congelado" por agora.
 
 TODO por agora:
+--  Testar o modelo com o CodeSearchNet 
 --  For evaluation, check:
     https://github.com/DeepSoftwareAnalytics/CodeSumEvaluation
     https://arxiv.org/pdf/2107.07112.pdf
@@ -11,10 +12,8 @@ TODO por agora:
     https://towardsdatascience.com/word-subword-and-character-based-tokenization-know-the-difference-ea0976b64e17
     Paper: https://openreview.net/pdf?id=htL4UZ344nF
             https://openreview.net/forum?id=htL4UZ344nF
-    Na tokenização, devo retirar sinais de pontuação ou não?
-    - Se quiser retirar sinais de pontuação, usar `string.punctuation` (https://www.geeksforgeeks.org/string-punctuation-in-python/)
-    - Posso só cortar pontuação se len(code_tokens) > max_src_len. Se ainda assim estiver maior, vão haver palavras a perderem-se…
-    - Depois terei que ajustar as matrizes todas
+    Na tokenização, retiro sinais de pontuação se len(code_tokens) > max_src_len.
+    - Falta ajustar as matrizes todas
     Maybe testar a tokenização com o método do CodeSearchNet (para os code tokens)
 -- Talvez retirar a AST head attention ou colocá-la noutro sítio.
 -- Adicionar mais técnicas de inicialização de pesos

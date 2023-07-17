@@ -1,4 +1,5 @@
 import argparse
+import string
 from typing import List
 import code_tokenize as ctok
 import json
@@ -10,7 +11,7 @@ from requests.exceptions import HTTPError
 
 DOCSTRING_REGEX_TOKENIZER = re.compile(
     r"[^\s,'\"`.():\[\]=*;>{\}+-/\\]+|\\+|\.+|\(\)|{\}|\[\]|\(+|\)+|:+|\[+|\]+|{+|\}+|=+|\*+|;+|>+|\++|-+|/+")
-
+MAX_SRC_LEN = 150
 
 def str2bool(value):
     '''
@@ -232,10 +233,14 @@ def main():
             if args.pre_processing:
                 code_snippet = pre_process(code_snippet)
 
+            code_tokens = tokenize_code(code_snippet.strip(), args.language)
+            if len(code_tokens) > MAX_SRC_LEN:
+                code_tokens = [token for token in code_tokens if token not in string.punctuation]
+
             code_comment = {
                 "original_string": code_snippet.strip(),
                 "docstring": summary.strip(),
-                "code_tokens": tokenize_code(code_snippet.strip(), args.language),
+                "code_tokens": code_tokens,
                 "docstring_tokens": tokenize_docstring(summary.strip())
             }
 
@@ -269,10 +274,12 @@ def main():
             line = code_summary_file.readline()
             code_summary = json.loads(line)
 
+            if len(code_tokens) > MAX_SRC_LEN:
+                code_tokens = [token for token in code_tokens if token not in string.punctuation]
             code_comment = {
                 "original_string": code_summary[code_key].strip(),
                 "docstring": code_summary[summary_key].strip(),
-                "code_tokens": tokenize_code(code_summary[code_key].strip(), args.language),
+                "code_tokens": code_tokens,
                 "docstring_tokens": tokenize_docstring(code_summary[summary_key].strip())
             }
 
