@@ -12,14 +12,14 @@ TODO por agora:
     https://towardsdatascience.com/word-subword-and-character-based-tokenization-know-the-difference-ea0976b64e17
     Paper: https://openreview.net/pdf?id=htL4UZ344nF
             https://openreview.net/forum?id=htL4UZ344nF
-    Na tokenização, retiro sinais de pontuação se len(code_tokens) > max_src_len.
-    - Falta ajustar as matrizes todas
+    Na tokenização, retirar sinais de pontuação se len(code_tokens) > max_src_len (ajustar as matrizes todas)
     Maybe testar a tokenização com o método do CodeSearchNet (para os code tokens)
 -- Talvez retirar a AST head attention ou colocá-la noutro sítio.
 -- Adicionar mais técnicas de inicialização de pesos
 -- Dar fix do modelo quando se corre em vários GPUs
 -- Ver porque é que a validation loss não se relaciona com os resultados das métricas.
    -- Treinar com todo o validation set.
+-- Ao testar, usar o beam search!
 
 -- (ASK TO SUPERVISORS!!!) Check pre-processing techniques I suggested in the Thesis Project (uso algumas e outras não)
 

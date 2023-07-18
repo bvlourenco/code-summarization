@@ -131,12 +131,12 @@ class Model:
 
         # Adjusts the learning rate during training
         # Implements the "Noam" learning rate scheduler, used in vanilla Transformer
-        self.scheduler = LambdaLR(
-            optimizer=self.optimizer,
-            lr_lambda=lambda step: Model.rate(
-                step, model_size=d_model, factor=1.0, warmup=400
-            ),
-        )
+        # self.scheduler = LambdaLR(
+        #     optimizer=self.optimizer,
+        #     lr_lambda=lambda step: Model.rate(
+        #         step, model_size=d_model, factor=1.0, warmup=400
+        #     ),
+        # )
 
         self.device = device
         self.gpu_rank = gpu_rank
@@ -246,7 +246,7 @@ class Model:
             self.optimizer.step()
 
             # Adjust learning rate
-            self.scheduler.step()
+            # self.scheduler.step()
 
             losses += loss.item()
 

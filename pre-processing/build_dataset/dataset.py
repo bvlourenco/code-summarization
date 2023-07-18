@@ -1,17 +1,15 @@
 import argparse
-import string
 from typing import List
 import code_tokenize as ctok
 import json
 import re
-import requests
 from tqdm import tqdm
-from requests.exceptions import HTTPError
 
 
 DOCSTRING_REGEX_TOKENIZER = re.compile(
     r"[^\s,'\"`.():\[\]=*;>{\}+-/\\]+|\\+|\.+|\(\)|{\}|\[\]|\(+|\)+|:+|\[+|\]+|{+|\}+|=+|\*+|;+|>+|\++|-+|/+")
 MAX_SRC_LEN = 150
+
 
 def str2bool(value):
     '''
@@ -73,10 +71,6 @@ def parse_arguments():
                         help='If true, tells to pre-process the code snippets by \
                             replacing the DCNL and DCSP tokens by newline and tab \
                             characters')
-
-    parser.add_argument('--chatgpt_comments', type=str2bool, required=True,
-                        help="If true, it gets comments for the code snippets \
-                              using chatGPT")
 
     args = parser.parse_args()
 
@@ -149,56 +143,6 @@ def tokenize_docstring(docstring: str) -> List[str]:
     return [t for t in DOCSTRING_REGEX_TOKENIZER.findall(docstring) if t is not None and len(t) > 0]
 
 
-def perform_request(input):
-    headers = {'Cookie': '_ga_MWL7THFH58=GS1.1.1689235868.2.1.1689236089.0.0.0; _ga=GA1.1.1559918855.1689156808; __stripe_mid=08fe76e1-1a30-4881-b263-a3cdf3ebfc027e45ab; __Host-next-auth.csrf-token=b99a0f66c5957d8e04508a04bafc04c0fc5f701f0cd4b6514964479fc1426011%7Cd1b629481cc19d321616b66a7f23ea4e1327d8a46640e98dc52f39dd239d30d0; __Secure-next-auth.callback-url=https%3A%2F%2Fora.ai%2F; __cf_bm=VnBduHvz3qSx8BCbrkoZfCQPw7XmEPHeKirERYbk.nE-1689235868-0-AQm8y9jG4samxymw1rVNHta7dOBnF1djk2su4zFjH138AbB9JhLb4amLpKashfMpNA==; __stripe_sid=419d4f5e-ccd7-4c38-bce9-bce8803fe89ea73ccf; __Secure-next-auth.session-token=eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..U04dYn_PRGB4Zmcx._VbhQtHt9j6wmIqf-uPPqXPGvGkmbGAL6Gp0HqISbpRj-hajMvSzFpcvhF9Z0Jb1lVgNpfqCd1Aqo65XgHheNDtyZa50djIsfqQ9QpXxEtXDjln3Bd4u20reXBctxw8yI8Q_NZHowI30dFOwWcd4nAlTsyFWcssmiTrm4J1oNaF8MY0qtCD_FDVyEg2XBb-d4Cu_q2TkAwvwNByTL5QVKNVtHyvhHdZGn5HZzqKBOXwb57xwGwe8OLWeO2x7EdS4JpQ3OHH-rXpLsPBnDy81R4UqqhyNbL3-Jo23rTFZ4x9KT8CTR4o89eIkR_dwhlWbyrKJu4K9lZ3Z4oMFAZ4sEbZTH34c4S8fE26fwPwPBqXm3ZQ0mEfFhd8Ju6Zdp-tcQFp5FJJb5WX3kYerP55J2qXTia0BbZcuJ_CQzdWycLb-rqagpPDA0X8S1Wype7QBkBASopmWzyvY78_q7pom0DbjS4vmPhiQN0Ow5JzrK0aSSpSQH05jZVW2VKrJp3FwDs4Is8OpoDvCZPqVP-psCKFzagNctDYOXdpolWhfpkvIbhfSKpntU6rtHKNlqeqLhuGi8jxeV7fE9tNWwouPporbsEU-z0lFtS7bc5gfr1mmp-0nD3f-_n1x91dH7-3JlwZlKtU2LexlkZGmeFpUgdabAkJ71ismKkM3SVqLTp0z0jLfEw.E8cxPmQeKOqcmARyUVDTtQ'}
-    payload = {
-        "chatbotId": "66381037-ea3c-4f7d-b87c-ba9b759eae3a",
-        "conversationId": "979802f1-6bc8-44b9-b91e-1089a812bd54",
-        "userId": "08b85e39-f118-48bf-8c59-39429f18cf68",
-        "provider": "OPEN_AI",
-        "config": False,
-        "includeHistory": False
-    }
-    payload["input"] = input
-    response = requests.post("https://ora.ai/api/conversation",
-                             headers=headers,
-                             json=payload)
-    response.raise_for_status()
-    comment = response.json()["response"]
-
-    if comment.startswith("This code snippet "):
-        comment = comment.replace("This code snippet ", "")
-    elif comment.startswith("This code "):
-        comment = comment.replace("This code ", "")
-    elif comment.startswith("The code "):
-        comment = comment.replace("The code ", "")
-
-    return comment
-
-
-def get_comment(code_snippet):
-    try:
-        comment = ""
-        goodComment = False
-        while not goodComment:
-            comment = perform_request(code_snippet)
-            tokens = comment.split()
-            if len(tokens) > 48:
-                comment = perform_request(
-                    "Summarize the code comment below in less than 48 words:\n" + comment)
-
-                tokens = comment.split()
-                if len(tokens) <= 48:
-                    goodComment = True
-            else:
-                goodComment = True
-        return comment
-    except HTTPError as http_err:
-        print(f'HTTP error occurred: {http_err}')
-    except Exception as err:
-        print(f'Other error occurred: {err}')
-
-
 def main():
     args = parse_arguments()
 
@@ -233,23 +177,12 @@ def main():
             if args.pre_processing:
                 code_snippet = pre_process(code_snippet)
 
-            code_tokens = tokenize_code(code_snippet.strip(), args.language)
-            if len(code_tokens) > MAX_SRC_LEN:
-                code_tokens = [token for token in code_tokens if token not in string.punctuation]
-
             code_comment = {
                 "original_string": code_snippet.strip(),
                 "docstring": summary.strip(),
-                "code_tokens": code_tokens,
+                "code_tokens": tokenize_code(code_snippet.strip(), args.language),
                 "docstring_tokens": tokenize_docstring(summary.strip())
             }
-
-            if args.chatgpt_comments:
-                comment = get_comment(code_snippet.strip())
-
-                code_comment["docstring_chatGPT"] = comment.strip()
-                code_comment["docstring_chatGPT_tokens"] = tokenize_docstring(
-                    comment.strip())
 
             json.dump(code_comment, dataset)
             dataset.write("\n")
@@ -274,21 +207,12 @@ def main():
             line = code_summary_file.readline()
             code_summary = json.loads(line)
 
-            if len(code_tokens) > MAX_SRC_LEN:
-                code_tokens = [token for token in code_tokens if token not in string.punctuation]
             code_comment = {
                 "original_string": code_summary[code_key].strip(),
                 "docstring": code_summary[summary_key].strip(),
-                "code_tokens": code_tokens,
+                "code_tokens": tokenize_code(code_summary[code_key].strip(), args.language),
                 "docstring_tokens": tokenize_docstring(code_summary[summary_key].strip())
             }
-
-            if args.chatgpt_comments:
-                comment = get_comment(code_summary[code_key].strip())
-
-                code_comment["docstring_chatGPT"] = comment.strip()
-                code_comment["docstring_chatGPT_tokens"] = tokenize_docstring(
-                    comment.strip())
 
             json.dump(code_comment, dataset)
             dataset.write("\n")
