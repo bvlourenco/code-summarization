@@ -91,13 +91,14 @@ def greedy_decode(model,
                                  control_flow,
                                  ast)
     enc_output = enc_output.to(device)
+    batch_size = src.shape[0]
 
-    # Initializes the target sequence with <BOS> symbol
+    # Initializes the target sequences with <BOS> symbol
     # Will be further expland to include the predicted tokens
-    tgt = torch.ones(1, 1).fill_(start_symbol_idx).type(torch.long).to(device)
+    tgt = torch.ones(batch_size, 1).fill_(start_symbol_idx).type(torch.long).to(device)
 
     for _ in range(max_tgt_len - 2):
-        # Generate probabilities for the next token
+        # Generate probabilities for the next token in each sequence
         # Essentially, we're running the decoder phasing of the model
         # to generate the next token
         tgt_mask = model.generate_tgt_mask(tgt)
@@ -109,25 +110,27 @@ def greedy_decode(model,
         prob = model.fc(dec_output[:, -1])
 
         # Get the index of of the token with the
-        # highest probability as the predicted next word.
+        # highest probability as the predicted next word, for each example.
         _, next_word = torch.max(prob, dim=1)
 
-        # Get the integer value present in the tensor. It represents
-        # the index of the predicted token.
-        next_word = next_word.item()
+        # Unsqueezing will add a new dimension to the next_word. This is done to
+        # concatenate the new predicted tokens to the examples (each example gets
+        # one new predicted token)
+        next_word = next_word.unsqueeze(1)
 
         # Adding the new predicted token to tgt
-        tgt = torch.cat([tgt,
-                        torch.ones(1, 1).type_as(src.data).fill_(next_word)], dim=1)
+        tgt = torch.cat([tgt, next_word], dim=1)
 
-        # If the token predicted is <EOS>, then stop generating new tokens.
-        if next_word == end_symbol_idx:
+        # If the token predicted is <EOS> for all sequences, then stop generating 
+        # new tokens. When an <EOS> is generated for one particular sequence, all
+        # future tokens of that sequence will also be <EOS>
+        if all(next_word.squeeze(1) == end_symbol_idx):
             break
 
-    # Adding <EOS> token
-    if tgt[:, -1] != end_symbol_idx:
+    # Adding <EOS> token if any sequence does not have it
+    if any(tgt[:, -1] != end_symbol_idx):
         tgt = torch.cat([tgt,
-                        torch.ones(1, 1).type_as(src.data).fill_(end_symbol_idx)], dim=1)
+                        torch.ones(batch_size, 1).type_as(src.data).fill_(end_symbol_idx)], dim=1)
 
     # Return the indexes of the predicted tokens
     return tgt

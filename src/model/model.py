@@ -652,27 +652,33 @@ class Model:
 
         batch_size = src.shape[0]
 
+        if mode == 'greedy':
+            tgt_preds_idx = greedy_decode(self.model,
+                                          src,
+                                          source_ids,
+                                          source_mask,
+                                          token,
+                                          statement,
+                                          data_flow,
+                                          control_flow,
+                                          ast,
+                                          self.device,
+                                          start_symbol_idx,
+                                          end_symbol_idx,
+                                          max_tgt_length)
+
         # Translating a batch of source sentences
         for i in range(batch_size):
-            # src[i] has shape (max_src_length, )
-            # Performing an unsqueeze on src[i] will make its shape (1, max_src_length)
-            # which is the correct shape since batch_size = 1 in this case
-            # The same happens with token, statement, data flow, control flow and ast
             if mode == 'greedy':
-                tgt_preds_idx = greedy_decode(self.model,
-                                              src[i].unsqueeze(0),
-                                              source_ids[i].unsqueeze(0),
-                                              source_mask[i].unsqueeze(0),
-                                              token[i].unsqueeze(0),
-                                              statement[i].unsqueeze(0),
-                                              data_flow[i].unsqueeze(0),
-                                              control_flow[i].unsqueeze(0),
-                                              ast[i].unsqueeze(0),
-                                              self.device,
-                                              start_symbol_idx,
-                                              end_symbol_idx,
-                                              max_tgt_length)
+                # Translating the indexes of tokens to the textual
+                # representation of tokens. Replacing <BOS> and <EOS>
+                # with empty string
+                tgt_pred_tokens = translate_tokens(tgt_preds_idx[i], target_vocab)
             elif mode == 'beam':
+                # src[i] has shape (max_src_length, )
+                # Performing an unsqueeze on src[i] will make its shape (1, max_src_length)
+                # which is the correct shape since batch_size = 1 in this case
+                # The same happens with token, statement, data flow, control flow and ast
                 tgt_preds_idx = beam_search(self.model,
                                             src[i].unsqueeze(0),
                                             self.device,
@@ -680,16 +686,11 @@ class Model:
                                             end_symbol_idx,
                                             max_tgt_length,
                                             beam_size)
+                
+                tgt_preds_idx = tgt_preds_idx.flatten()
+                tgt_pred_tokens = translate_tokens(tgt_preds_idx, target_vocab)
             else:
                 raise ValueError("The mode " + mode + " does not exist.")
-
-            # Flattening the tensor
-            tgt_preds_idx.flatten()
-
-            # Translating the indexes of tokens to the textual
-            # representation of tokens Replacing <BOS> and <EOS>
-            # with empty string
-            tgt_pred_tokens = translate_tokens(tgt_preds_idx[0], target_vocab)
 
             # Getting tokens of the reference and prediction to
             # compute METEOR
