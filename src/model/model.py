@@ -407,10 +407,13 @@ class Model:
         with torch.no_grad():
             with open('../results/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                       '_gpu_' + str(self.gpu_rank) + '.json', 'w') as log:
-                for code, summary, src, tgt, token, statement, data_flow, \
-                        control_flow, ast in tqdm(test_dataloader, desc="Testing"):
+                for code_tokens, summary_tokens, code, summary, src, tgt, \
+                    source_ids, source_mask, token, statement, data_flow, \
+                    control_flow, ast in tqdm(test_dataloader, desc="Testing"):
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)
+                    source_ids = source_ids.to(self.device)
+                    source_mask = source_mask.to(self.device)
                     token = token.to(self.device)
                     statement = statement.to(self.device)
                     data_flow = data_flow.to(self.device)
@@ -418,6 +421,8 @@ class Model:
                     ast = ast.to(self.device)
 
                     metrics = self.translate_evaluate(src,
+                                                      source_ids,
+                                                      source_mask,
                                                       target_vocab,
                                                       token,
                                                       statement,
@@ -815,7 +820,7 @@ class Model:
         self.model = self.get_model()
         map_location = self.get_map_location(gpu_rank)
         try:
-            self.model.load_state_dict(torch.load('../results/model_weights.pth',
+            self.model.load_state_dict(torch.load('../results/model_weights_last.pth',
                                                   map_location=map_location))
         except Exception:
             traceback.print_exc()

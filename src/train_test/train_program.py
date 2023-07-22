@@ -82,7 +82,7 @@ class TrainProgram(Program):
             val_summary_texts, \
             val_summary_tokens = load_dataset_file(self.validation_filename,
                                                    'validation',
-                                                   32)
+                                                   self.debug_max_lines)
 
         train_token_matrices, train_statement_matrices, \
             train_data_flow_matrices, train_control_flow_matrices, \

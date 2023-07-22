@@ -99,6 +99,7 @@ class TestProgram(Program):
                       model_device,
                       gpu_rank,
                       self.init_type,
+                      self.optimizer,
                       self.hyperparameter_hsva,
                       self.hyperparameter_data_flow,
                       self.hyperparameter_control_flow,

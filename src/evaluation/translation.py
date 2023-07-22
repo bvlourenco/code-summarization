@@ -154,12 +154,13 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
         tgt: The predicted code comment token indexes. Shape: `(1, tgt_length)`
     '''
     src_mask = model.generate_src_mask(src)
-    enc_output, _ = model.encode(src, src_mask).to(device)
+    enc_output = model.encode(src, src_mask).to(device)
 
     # Initialize the beam with the start symbol
     beam = [(torch.ones(1, 1).fill_(
         start_symbol_idx).type(torch.long).to(device), 0)]
 
+    dot_symbol_idx = 4
     # Generate tokens using beam search
     for _ in range(max_tgt_len - 2):
         new_beam = []
@@ -167,16 +168,14 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
         # Expand each beam
         for seq, score in beam:
             # If the sequence ends with the end symbol, add it to the new beam as it is
-            if seq[-1].item() == end_symbol_idx:
+            if seq[:, -1].item() == end_symbol_idx:
                 new_beam.append((seq, score))
             else:
                 # Generate probabilities for the next token
                 tgt_mask = model.generate_tgt_mask(seq)
-                dec_output, _, _ = model.decode(src_mask, 
-                                                seq, 
-                                                tgt_mask, 
-                                                enc_output)
-                prob = model.fc(dec_output[-1, :, :])
+                dec_output = model.decode(
+                    src, src_mask, seq, tgt_mask, enc_output)
+                prob = model.fc(dec_output[:, -1])
 
                 # Get the top-k most probable tokens
                 topk_probs, topk_indices = torch.topk(prob, beam_size, dim=1)
@@ -184,7 +183,7 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
                 # Extend the sequences with the top-k tokens and update their scores
                 for i in range(beam_size):
                     new_seq = torch.cat(
-                        (seq, topk_indices[:, i].unsqueeze(1)), dim=0)
+                        (seq, topk_indices[:, i].unsqueeze(1)), dim=1)
                     new_score = score + topk_probs[:, i].item()
                     new_beam.append((new_seq, new_score))
 
@@ -192,8 +191,9 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
         new_beam = sorted(new_beam, key=lambda x: x[1], reverse=True)[
             :beam_size]
 
-        # Check if all beams have reached the end symbol
-        if all(seq[-1].item() == end_symbol_idx for seq, _ in new_beam):
+        # Check if any beams have reached the end symbol
+        if any(seq[:, -1].item() in [end_symbol_idx, dot_symbol_idx] for seq, _ in new_beam):
+            beam = new_beam
             break
 
         beam = new_beam
@@ -201,9 +201,16 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
     # Getting the sequence with highest score
     best_sequence, _ = beam[0]
 
+    # Adding . token
+    if best_sequence[:, -2] != dot_symbol_idx and best_sequence[:, -1] != dot_symbol_idx:
+        best_sequence = torch.cat([best_sequence,
+                                   torch.ones(1, 1).type_as(src.data).fill_(4)], 
+                                   dim=1)
+
     # Adding <EOS> token
-    best_sequence = torch.cat([best_sequence,
-                               torch.ones(1, 1).type_as(src.data).fill_(end_symbol_idx)],
-                              dim=0)
+    if best_sequence[:, -1] != end_symbol_idx:
+        best_sequence = torch.cat([best_sequence,
+                                   torch.ones(1, 1).type_as(src.data).fill_(end_symbol_idx)], 
+                                   dim=1)
 
     return best_sequence

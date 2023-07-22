@@ -8,6 +8,7 @@ FROM: https://github.com/microsoft/CodeBERT/blob/
 # Licensed under the MIT license.
 
 
+import string
 from flow.tree_helpers import tree_to_variable_index, get_node_text_snake_camel
 
 def add_dfg_edges(root_node, index_to_code, states, start, end):
@@ -60,7 +61,9 @@ def DFG_python(root_node, index_to_code, states):
     do_first_statement = ['for_in_clause']
     def_statement = ['default_parameter']
     states = states.copy()
-    if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
+    if root_node.type in string.punctuation:
+        return [], states
+    elif (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
         return process_leaf_node(root_node, index_to_code, states)
     elif root_node.type in def_statement:
         name = root_node.child_by_field_name('name')
@@ -253,7 +256,9 @@ def DFG_java(root_node, index_to_code, states):
     while_statement = ['while_statement']
     do_first_statement = []
     states = states.copy()
-    if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
+    if root_node.type in string.punctuation:
+        return [], states
+    elif (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
         return process_leaf_node(root_node, index_to_code, states)
     elif root_node.type in def_statement:
         name = root_node.child_by_field_name('name')
@@ -430,7 +435,9 @@ def DFG_ruby(root_node, index_to_code, states):
     do_first_statement = []
     def_statement = ['keyword_parameter']
     states = states.copy()
-    if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
+    if root_node.type in string.punctuation:
+        return [], states
+    elif (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
         return process_leaf_node(root_node, index_to_code, states)
     elif root_node.type in def_statement:
         name = root_node.child_by_field_name('name')
@@ -605,7 +612,9 @@ def DFG_go(root_node, index_to_code, states):
     while_statement = []
     do_first_statement = []
     states = states.copy()
-    if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
+    if root_node.type in string.punctuation:
+        return [], states
+    elif (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
         return process_leaf_node(root_node, index_to_code, states)
     elif root_node.type in def_statement:
         name = root_node.child_by_field_name('name')
@@ -745,7 +754,9 @@ def DFG_php(root_node, index_to_code, states):
     while_statement = ['while_statement']
     do_first_statement = []
     states = states.copy()
-    if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
+    if root_node.type in string.punctuation:
+        return [], states
+    elif (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
         return process_leaf_node(root_node, index_to_code, states)
     elif root_node.type in def_statement:
         name = root_node.child_by_field_name('name')
@@ -933,7 +944,9 @@ def DFG_javascript(root_node, index_to_code, states):
     while_statement = ['while_statement']
     do_first_statement = []
     states = states.copy()
-    if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
+    if root_node.type in string.punctuation:
+        return [], states
+    elif (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n':
         return process_leaf_node(root_node, index_to_code, states)
     elif root_node.type in def_statement:
         name = root_node.child_by_field_name('name')

@@ -1,3 +1,4 @@
+import string
 from flow.tree_helpers import get_node_text_snake_camel
 
 
@@ -19,7 +20,11 @@ def add_cfg_edges(index_to_code, instructions_code, dependencies, start, end):
         next_tokens += [instructions_code[dependencies[start[0]]][0][1]]
     elif start[0] in dependencies:
         next_tokens += ['END']
-        next_indexes += [instructions_code[dependencies[start[0]] - 1][-1][0] + 2]
+        if dependencies[start[0]] - 1 in instructions_code:
+            next_indexes += [instructions_code[dependencies[start[0]] - 1][-1][0] + 2]
+        else:
+            key = max(k for k, _ in instructions_code.items())
+            next_indexes += [instructions_code[key][-1][0] + 2]
 
     return [(curr_token, index_to_code[(start, end)][0] + 1, "Next Instruction", next_tokens, next_indexes)]
 
@@ -55,7 +60,9 @@ def process_leaf_node(root, index_to_code, instructions_code, dependencies):
 
 
 def CFG_python(root, index_to_code, instructions_code, dependencies):
-    if (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
+    if root.type in string.punctuation:
+        return []
+    elif (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
         return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
@@ -72,7 +79,9 @@ def CFG_python(root, index_to_code, instructions_code, dependencies):
 
 
 def CFG_java(root, index_to_code, instructions_code, dependencies):
-    if (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
+    if root.type in string.punctuation:
+        return []
+    elif (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
         return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
@@ -93,7 +102,9 @@ def CFG_java(root, index_to_code, instructions_code, dependencies):
 
 
 def CFG_ruby(root, index_to_code, instructions_code, dependencies):
-    if (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
+    if root.type in string.punctuation:
+        return []
+    elif (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
         return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
@@ -114,7 +125,9 @@ def CFG_ruby(root, index_to_code, instructions_code, dependencies):
 
 
 def CFG_go(root, index_to_code, instructions_code, dependencies):
-    if (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
+    if root.type in string.punctuation:
+        return []
+    elif (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
         return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
@@ -137,7 +150,9 @@ def CFG_go(root, index_to_code, instructions_code, dependencies):
 
 
 def CFG_php(root, index_to_code, instructions_code, dependencies):
-    if (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
+    if root.type in string.punctuation:
+        return []
+    elif (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
         return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
@@ -158,7 +173,9 @@ def CFG_php(root, index_to_code, instructions_code, dependencies):
 
 
 def CFG_javascript(root, index_to_code, instructions_code, dependencies):
-    if (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
+    if root.type in string.punctuation:
+        return []
+    elif (len(root.children) == 0 or root.type == 'string') and root.type != 'comment' and root.type != '\n':
         return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []

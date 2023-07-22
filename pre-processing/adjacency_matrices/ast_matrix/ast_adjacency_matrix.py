@@ -3,6 +3,7 @@ FROM: https://github.com/kkcookies99/UAST/blob/
       fff81885aa07901786141a71e5600a08d7cb4868/gen_graph.py#LL1C1-L1C1
 '''
 import re
+import string
 import numpy as np
 from flow.tree_helpers import get_node_text_snake_camel
 
@@ -21,7 +22,9 @@ def structure_based_traversal(root):
     ADAPTED from Deep Code Comment Generation (algorithm 1)
     '''
     seq = ''
-    if len(root.children) == 0:
+    if root.type == '\n' or root.type in string.punctuation:
+        return seq
+    elif len(root.children) == 0:
         node_text_camel_case = get_node_text_snake_camel(root)
         if len(node_text_camel_case) > 1:
             for token in node_text_camel_case:
@@ -69,7 +72,7 @@ def update_AST_entries(root, child, nodes_num, max_len, adj_matrix):
 
 def build_AST_adjacency_matrix(root, nodes_num, max_len=150):
     adj_matrix = np.eye(max_len)
-    if len(root.children) == 0 and root.type != '\n':
+    if len(root.children) == 0 or root.type == '\n' or root.type in string.punctuation:
         return adj_matrix
     else:
         for child in root.children:

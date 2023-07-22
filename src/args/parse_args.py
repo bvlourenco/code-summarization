@@ -233,5 +233,9 @@ def parse_test_args():
                                 a greedy decoding or beam search strategy")
     parser.add_argument('--beam_size', type=int, default=1,
                         help="Number of elements to store during beam search")
+    
+    parser.add_argument("--optimizer", type=str, required=True,
+                        choices=['adam', 'sgd'],
+                        help="Optimizer to use in the model (SGD or Adam)")
 
     return parser.parse_args()

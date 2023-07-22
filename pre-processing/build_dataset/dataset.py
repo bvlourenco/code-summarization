@@ -1,4 +1,5 @@
 import argparse
+import string
 from typing import List
 import code_tokenize as ctok
 import json
@@ -115,7 +116,8 @@ def tokenize_code(code_snippet, language, camel_case=True, snake_case=True):
 
     # Removing some python unwanted tokens representing \n, \t and untabbing.
     code_tokens = [token.__str__() for token in code_tokens
-                   if token.__str__() not in ["#NEWLINE#", "#DEDENT#", "#INDENT#"]]
+                   if token.__str__() not in ["#NEWLINE#", "#DEDENT#", "#INDENT#"] 
+                                      and token.__str__() not in string.punctuation]
 
     if snake_case:
         snake_case_tokenized = []
@@ -133,6 +135,8 @@ def tokenize_code(code_snippet, language, camel_case=True, snake_case=True):
                 camel_case_tokenized.append(token_camel_case)
         code_tokens = camel_case_tokenized
 
+    # Lowercasing here to split camel case words
+    code_tokens = [token.__str__().lower() for token in code_tokens]
     return code_tokens
 
 

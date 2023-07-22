@@ -30,6 +30,9 @@ def objective(trial, args):
                                                  step=0.1)
     args.label_smoothing = trial.suggest_float('label_smoothing', 0.0, 1.0, 
                                                step=0.1)
+    args.hyperparameter_data_flow = trial.suggest_int('hyperparameter_data_flow', 0, 10, step=1)
+    args.hyperparameter_control_flow = trial.suggest_int('hyperparameter_control_flow', 0, 10, step=1)
+    args.hyperparameter_ast = trial.suggest_int('hyperparameter_ast', 0, 10, step=1)
 
     program = TrainProgram(args, trial.number)
     program.start()
@@ -83,7 +86,7 @@ def fine_tune(args):
 
     # Printing statistics about the study
     df = study.trials_dataframe(attrs=('number', 'value', 'params', 'state'))
-    logger.info(df)
-    logger.info("Best trial:", study.best_trial.number)
-    logger.info("Best loss:", study.best_trial.value)
-    logger.info("Best hyperparameters:", study.best_params)
+    logger.info(df.to_string())
+    logger.info("Best trial: {}".format(study.best_trial.number))
+    logger.info("Best loss: {}".format(study.best_trial.value))
+    logger.info("Best hyperparameters: {}".format(study.best_params))

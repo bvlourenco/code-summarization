@@ -31,7 +31,7 @@ function train_and_validate() {
     --num_epochs 200 \
     --gradient_clipping 5.0 \
     --label_smoothing 0 \
-    --init_type xavier \
+    --init_type kaiming \
     --train_filename ../data/python/train_processed.json \
     --validation_filename ../data/python/validation_processed.json \
     --train_token_matrix ../data/python/train_processed_python_in_token.txt \
@@ -48,9 +48,9 @@ function train_and_validate() {
     --hyperparameter_data_flow 5 \
     --hyperparameter_control_flow 5 \
     --hyperparameter_ast 5 \
-    --mode greedy \
+    --mode loss \
     --checkpoint True \
-    --hyperparameter_tuning False \
+    --hyperparameter_tuning True \
     --optimizer adam
 
 }
@@ -66,14 +66,14 @@ function test_model() {
     --tgt_vocab_size 30000 \
     --max_src_length 150 \
     --max_tgt_length 50 \
-    --d_model 512 \
+    --d_model 768 \
     --num_heads 8 \
     --num_layers 6 \
     --d_ff 2048 \
     --dropout 0.2 \
     --learning_rate 0.0001 \
     --label_smoothing 0 \
-    --init_type xavier \
+    --init_type kaiming \
     --batch_size 32 \
     --num_workers 0 \
     --test_filename ../data/python/test_processed.json \
@@ -92,4 +92,4 @@ function test_model() {
 }
 
 train_and_validate
-#test_model
+test_model
