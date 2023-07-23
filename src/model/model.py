@@ -141,6 +141,9 @@ class Model:
         self.device = device
         self.gpu_rank = gpu_rank
 
+        self.tgt_vocab_size = tgt_vocab_size
+        self.max_tgt_length = max_tgt_length
+
     @staticmethod
     def rate(step, model_size, factor, warmup):
         '''
@@ -168,15 +171,13 @@ class Model:
             model_size ** (-0.5) * min(step ** (-0.5), step * warmup ** (-1.5))
         )
 
-    def train_epoch(self, train_dataloader, tgt_vocab_size, grad_clipping,
-                    display_attn=False):
+    def train_epoch(self, train_dataloader, grad_clipping, display_attn=False):
         '''
         Trains the model during one epoch, using the examples of the dataset for training.
         Computes the loss during this epoch.
 
         Args:
             train_dataloader: A Dataloader object that contains the training set.
-            tgt_vocab_size (int): size of the target vocabulary.
             grad_clipping (int): Maximum norm of the gradient.
             display_attn (bool): Tells whether we want to save the attention of
                                  the last layer encoder and decoder 
@@ -233,7 +234,7 @@ class Model:
             # - criterion(prediction_labels, target_labels)
             # - tgt[:, 1:] removes the first token from the target sequence since we are training the
             # model to predict the next word based on previous words.
-            loss = self.criterion(output.contiguous().view(-1, tgt_vocab_size),
+            loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size),
                                   tgt[:, 1:].contiguous().view(-1))
 
             # Computing gradients of loss through backpropagation
@@ -250,14 +251,12 @@ class Model:
 
             losses += loss.item()
 
-        return losses / len(list(train_dataloader))
+        return losses / len(train_dataloader)
 
     def validate(self,
                  val_dataloader,
                  mode,
                  target_vocab,
-                 tgt_vocab_size,
-                 max_tgt_length,
                  num_epoch,
                  beam_size,
                  display_attn=False):
@@ -272,8 +271,6 @@ class Model:
                            (either using greedy decoding or beam search).
                            Can be one of the following: "loss", "greedy" or "beam"
             target_vocab: The vocabulary built from the summaries in training set.
-            tgt_vocab_size (int): size of the target vocabulary.
-            max_tgt_length (int): The maximum length of the summaries.
             num_epoch (int): The current training epoch.
             beam_size (int): Number of elements to store during beam search
                              Only applicable if `mode == 'beam'`
@@ -283,6 +280,7 @@ class Model:
 
         Returns:
             The average loss across all examples during one epoch.
+            The average BLEU metric if mode is "greedy" or "beam".
 
         Source: https://pytorch.org/tutorials/beginner/translation_transformer.html?highlight=transformer
         '''
@@ -327,7 +325,6 @@ class Model:
                                                       data_flow,
                                                       control_flow,
                                                       ast,
-                                                      max_tgt_length,
                                                       code,
                                                       summary,
                                                       log,
@@ -360,7 +357,7 @@ class Model:
                 # - criterion(prediction_labels, target_labels)
                 # - tgt[:, 1:] removes the first token from the target sequence since we are training the
                 # model to predict the next word based on previous words.
-                loss = self.criterion(output.contiguous().view(-1, tgt_vocab_size),
+                loss = self.criterion(output.contiguous().view(-1, self.tgt_vocab_size),
                                       tgt[:, 1:].contiguous().view(-1))
 
                 losses += loss.item()
@@ -368,13 +365,14 @@ class Model:
         if mode in ['beam', 'greedy']:
             log.close()
             Model.compute_avg_metrics(metrics)
-
-        return losses / len(list(val_dataloader))
+            return losses / len(val_dataloader), \
+                   (metrics["sum_bleu"] / metrics["number_examples"]) * 100
+        else:
+            return losses / len(val_dataloader), None
 
     def test(self,
              test_dataloader,
              target_vocab,
-             max_tgt_length,
              mode,
              beam_size):
         '''
@@ -383,7 +381,6 @@ class Model:
         Args:
             test_dataloader: A Dataloader object that contains the testing set.
             target_vocab: The vocabulary built from the summaries in training set.
-            max_tgt_length (int): The maximum length of the summaries.
             mode (string): Indicates what is the strategy to be used in translation.
                            It can either be a greedy decoding strategy or a beam 
                            search strategy.
@@ -429,7 +426,6 @@ class Model:
                                                       data_flow,
                                                       control_flow,
                                                       ast,
-                                                      max_tgt_length,
                                                       code,
                                                       summary,
                                                       log,
@@ -492,7 +488,6 @@ class Model:
                            data_flow,
                            control_flow,
                            ast,
-                           max_tgt_length,
                            code,
                            summary,
                            log,
@@ -518,7 +513,6 @@ class Model:
                           Shape: `(batch_size, max_src_len, max_src_len)`
             ast: The ast adjacency matrices. 
                  Shape: `(batch_size, max_src_len, max_src_len)`
-            max_tgt_length (int): Maximum length of the generated summary.
             code (string): code snippet in textual form.
             summary (string): reference code comment.
             log: file to write the evaluation metrics of the generated summaries.
@@ -546,7 +540,6 @@ class Model:
                                                             data_flow,
                                                             control_flow,
                                                             ast,
-                                                            max_tgt_length,
                                                             code,
                                                             summary,
                                                             log,
@@ -606,7 +599,6 @@ class Model:
                            data_flow,
                            control_flow,
                            ast,
-                           max_tgt_length,
                            code,
                            summary,
                            log,
@@ -630,7 +622,6 @@ class Model:
                           Shape: `(batch_size, max_src_len, max_src_len)`
             ast: The ast adjacency matrices. 
                  Shape: `(batch_size, max_src_len, max_src_len)`
-            max_tgt_length (int): Maximum length of the generated summary.
             code (string): code snippet in textual form.
             summary (string): reference code comment.
             log: file to write the evaluation metrics of the generated summaries.
@@ -665,7 +656,7 @@ class Model:
                                           self.device,
                                           start_symbol_idx,
                                           end_symbol_idx,
-                                          max_tgt_length)
+                                          self.max_tgt_length)
 
         # Translating a batch of source sentences
         for i in range(batch_size):
@@ -684,7 +675,7 @@ class Model:
                                             self.device,
                                             start_symbol_idx,
                                             end_symbol_idx,
-                                            max_tgt_length,
+                                            self.max_tgt_length,
                                             beam_size)
                 
                 tgt_preds_idx = tgt_preds_idx.flatten()
@@ -789,7 +780,7 @@ class Model:
             logger.error("It was not possible to save the model weights.")
             sys.exit(1)
 
-    def save_checkpoint(self, epoch, training_losses, validation_losses):
+    def save_checkpoint(self, epoch, training_losses, validation_losses, best_bleu):
         '''
         Stores a checkpoint of the model, the optimizer state, current epoch and
         training and validation losses from first epoch to current one.
@@ -798,6 +789,7 @@ class Model:
             epoch (int): Current epoch
             training_losses: List of training losses
             validation_losses: List of validation losses
+            best_bleu (int): The best BLEU metric obtained so far in validation set
         '''
         model = self.get_model()
         try:
@@ -806,7 +798,8 @@ class Model:
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': self.optimizer.state_dict(),
                 'training_losses': training_losses,
-                'validation_losses': validation_losses
+                'validation_losses': validation_losses,
+                'best_bleu': best_bleu
             }
             torch.save(params, '../results/model_weights_checkpoint.pth')
         except Exception:
@@ -839,6 +832,7 @@ class Model:
                              to epoch of the checkpoint
             validation_losses: List with the losses during validation from first epoch
                                to epoch of the checkpoint
+            best_bleu (int): The best BLEU metric obtained in validation set
         '''
         self.model = self.get_model()
         map_location = self.get_map_location(gpu_rank)
@@ -850,7 +844,8 @@ class Model:
             training_losses = checkpoint['training_losses']
             validation_losses = checkpoint['validation_losses']
             epoch = checkpoint['epoch']
-            return epoch, training_losses, validation_losses
+            best_bleu = checkpoint['best_bleu']
+            return epoch, training_losses, validation_losses, best_bleu
         except Exception:
             traceback.print_exc()
             logger.error("It was not possible to load the model from the " +

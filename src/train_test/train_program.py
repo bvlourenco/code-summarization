@@ -165,35 +165,17 @@ class TrainProgram(Program):
                       self.hyperparameter_ast)
 
         self.train_validate_model(model,
-                                  self.num_epochs,
                                   train_dataloader,
                                   val_dataloader,
-                                  self.tgt_vocab_size,
-                                  self.gradient_clipping,
-                                  self.mode,
-                                  self.beam_size,
                                   target_vocab,
-                                  self.max_tgt_length,
-                                  self.checkpoint,
-                                  self.device,
-                                  gpu_rank,
-                                  self.trial_number)
+                                  gpu_rank)
 
     def train_validate_model(self,
                              model,
-                             num_epochs,
                              train_dataloader,
                              val_dataloader,
-                             tgt_vocab_size,
-                             gradient_clipping,
-                             mode,
-                             beam_size,
                              target_vocab,
-                             max_tgt_length,
-                             checkpoint,
-                             device,
-                             gpu_rank,
-                             trial_number):
+                             gpu_rank):
         '''
         Performs the model training. In each epoch, it is done an evaluation 
         using the validation set. In the end, it plots a graph with the training 
@@ -201,33 +183,12 @@ class TrainProgram(Program):
 
         Args:
             model: The model (an instance of Transformer). 
-            num_epochs (int): The number of training epochs.
             train_dataloader: A Dataloader object that contains the training set.
             val_dataloader: A Dataloader object that contains the validation set.
-            tgt_vocab_size (int): size of the target vocabulary.
-            gradient_clipping (int): Maximum norm of the gradient.
-            mode (string): Indicates whether we only want to compute validation 
-                           loss or if we also want to translate the source 
-                           sentences in the validation set (either using greedy 
-                           decoding or beam search).
-                           Can be one of the following: "loss", "greedy" or "beam"
-            beam_size (int): Number of elements to store during beam search
-                            Only applicable if `mode == 'beam'`
-            source_vocab: The vocabulary built from the code snippets in training set.
             target_vocab: The vocabulary built from the summaries in training set.
-            max_tgt_length (int): Maximum length of the generated summaries.
-            checkpoint (bool): Flag that tells whether we want to save a 
-                               checkpoint of the model at the end of each epoch 
-                               or not.
-            device: The device where the model and tensors are inserted 
-                    (GPU or CPU).
             gpu_rank (int): The rank of the GPU.
                             It has the value of None if no GPUs are avaiable or
                             only 1 GPU is available.
-            trial_number (int): If we are fine-tuning the parameters of the program, 
-                                it is the number of trial that are we are doing 
-                                using optuna. 
-                                Otherwise, it is None.
 
         Source: https://pytorch.org/tutorials/beginner/translation_transformer.html?highlight=transformer
         '''
@@ -235,16 +196,17 @@ class TrainProgram(Program):
         # Load model checkpoint (loading model parameters and optimizer state)
         # if the checkpoint exists
         if os.path.isfile('../results/model_weights_checkpoint.pth'):
-            start_epoch, train_epoch_loss, val_epoch_loss = model.load_checkpoint(
-                gpu_rank)
+            start_epoch, train_epoch_loss, \
+                val_epoch_loss, best_bleu = model.load_checkpoint(gpu_rank)
             best_val_loss = min(val_epoch_loss)
             start_epoch += 1
         else:
             train_epoch_loss, val_epoch_loss = [], []
             start_epoch = 1
             best_val_loss = float('inf')
+            best_bleu = 0
 
-        for epoch in range(start_epoch, num_epochs + 1):
+        for epoch in range(start_epoch, self.num_epochs + 1):
             model.optimizer.param_groups[0]['lr'] = model.optimizer.param_groups[0]['lr'] * 0.99
 
             logger.info(f"Epoch: {epoch}")
@@ -254,16 +216,12 @@ class TrainProgram(Program):
                 val_dataloader.sampler.set_epoch(epoch)
 
             start_time = timer()
-            train_loss = model.train_epoch(train_dataloader,
-                                           tgt_vocab_size,
-                                           gradient_clipping)
-            val_loss = model.validate(val_dataloader,
-                                      mode,
-                                      target_vocab,
-                                      tgt_vocab_size,
-                                      max_tgt_length,
-                                      epoch,
-                                      beam_size)
+            train_loss = model.train_epoch(train_dataloader, self.gradient_clipping)
+            val_loss, bleu = model.validate(val_dataloader,
+                                            self.mode,
+                                            target_vocab,
+                                            epoch,
+                                            self.beam_size)
             end_time = timer()
 
             logger.info(
@@ -280,27 +238,31 @@ class TrainProgram(Program):
             # the CPU (where gpu_rank is None) or if we're using the GPU and the
             # gpu_rank is 0 (to avoid having multiple processed storing the model
             # when using multiple GPUs)
-            if epoch == num_epochs and gpu_rank in [None, 0]:
-                logger.info(
-                    f"Saving last epoch of model with loss of {val_loss:7.3f}")
+            if epoch == self.num_epochs and gpu_rank in [None, 0]:
+                logger.info(f"Saving last epoch of model with loss of {val_loss:7.3f}")
                 model.save(last_epoch=True)
-            elif val_loss < best_val_loss and gpu_rank in [None, 0]:
+            elif bleu is not None and bleu > best_bleu and gpu_rank in [None, 0]:
+                logger.info(
+                    f"Saving model with BLEU metric of {bleu:7.3f}")
+                best_bleu = bleu
+                model.save()
+            elif bleu is None and val_loss < best_val_loss and gpu_rank in [None, 0]:
                 logger.info(
                     f"Saving model with validation loss of {val_loss:7.3f}")
                 best_val_loss = val_loss
                 model.save()
 
-            if checkpoint and gpu_rank in [None, 0]:
-                model.save_checkpoint(epoch, train_epoch_loss, val_epoch_loss)
+            if self.checkpoint and gpu_rank in [None, 0]:
+                model.save_checkpoint(epoch, train_epoch_loss, val_epoch_loss, best_bleu)
 
         # Only create graph if we're not doing hyperparameter fine-tuning
-        if num_epochs > 1 and trial_number is None:
+        if self.num_epochs > 1 and self.trial_number is None:
             create_loss_plot(train_epoch_loss, val_epoch_loss, gpu_rank)
         else:
             logger.info(f"Training loss of epoch 1: {train_epoch_loss[0]}")
             logger.info(f"Validation loss of epoch 1: {val_epoch_loss[0]}")
 
-        if trial_number is not None:
+        if self.trial_number is not None:
             with open('../results/loss_file', 'a') as loss_file:
-                loss_file.write(str(trial_number) + ' ' +
+                loss_file.write(str(self.trial_number) + ' ' +
                                 str(val_epoch_loss[-1]) + '\n')
