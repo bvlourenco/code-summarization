@@ -89,6 +89,7 @@ class Transformer(nn.Module):
 
         config = RobertaConfig.from_pretrained("microsoft/codebert-base", do_lower_case=False)
         self.code_encoder_layers = RobertaModel.from_pretrained("microsoft/codebert-base", config=config)
+        self.code_encoder_linear_layer = nn.Linear(config.hidden_size, d_model)
 
         self.decoder_layers = nn.ModuleList(
             [DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
@@ -261,8 +262,10 @@ class Transformer(nn.Module):
 
         code_enc_output = self.code_encoder_layers(source_ids, 
                                                    attention_mask=source_mask)
+        # Adjusting the size of code encoder output to match d_model
+        code_enc_linear_output = self.code_encoder_linear_layer(code_enc_output["last_hidden_state"])
 
-        enc_output = 0.5 * structural_enc_output + 0.5 * code_enc_output[0]
+        enc_output = 0.5 * structural_enc_output + 0.5 * code_enc_linear_output
 
         return enc_output, enc_attn
 
