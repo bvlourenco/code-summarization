@@ -1,0 +1,1 @@
+All files inside this folder were taken from: https://github.com/wasiahmad/NeuralCodeSum/tree/master/c2nl/eval

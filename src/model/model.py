@@ -12,6 +12,7 @@ from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
 from tqdm import tqdm
+from evaluation.neuralcodesum.eval import eval_accuracies
 from evaluation.graphs import display_attention
 from evaluation.translation import beam_search, greedy_decode, translate_tokens
 from model.transformer.transformer_model import Transformer
@@ -298,13 +299,15 @@ class Model:
             metrics = {"number_examples": 0,
                        "sum_bleu": 0, "sum_meteor": 0, "sum_rouge_l": 0,
                        "sum_precision": 0, "sum_recall": 0, "sum_f1": 0}
+            hypotheses = {}
+            references = {}
 
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
-            for code_tokens, summary_tokens, code, summary, src, tgt, \
+            for batch_idx, (code_tokens, summary_tokens, code, summary, src, tgt, \
                 source_ids, source_mask, token, statement, data_flow, \
-                control_flow, ast in tqdm(val_dataloader, desc="Validating"):
+                control_flow, ast) in enumerate(tqdm(val_dataloader, desc="Validating")):
                 src = src.to(self.device)
                 tgt = tgt.to(self.device)
                 source_ids = source_ids.to(self.device)
@@ -316,22 +319,25 @@ class Model:
                 ast = ast.to(self.device)
 
                 if mode in ['beam', 'greedy']:
-                    metrics = self.translate_evaluate(src,
-                                                      source_ids,
-                                                      source_mask,
-                                                      target_vocab,
-                                                      token,
-                                                      statement,
-                                                      data_flow,
-                                                      control_flow,
-                                                      ast,
-                                                      code,
-                                                      summary,
-                                                      log,
-                                                      scorer,
-                                                      mode,
-                                                      beam_size,
-                                                      metrics)
+                    metrics, hyps, refs = self.translate_evaluate(src,
+                                                                  source_ids,
+                                                                  source_mask,
+                                                                  target_vocab,
+                                                                  token,
+                                                                  statement,
+                                                                  data_flow,
+                                                                  control_flow,
+                                                                  ast,
+                                                                  code,
+                                                                  summary,
+                                                                  log,
+                                                                  scorer,
+                                                                  mode,
+                                                                  beam_size,
+                                                                  metrics,
+                                                                  batch_idx)
+                    hypotheses.update(hyps)
+                    references.update(refs)
 
                 # Slicing the last element of tgt_data because it is used to
                 # compute the loss.
@@ -364,6 +370,7 @@ class Model:
 
         if mode in ['beam', 'greedy']:
             log.close()
+            metrics["BLEU_N"], metrics["ROUGE-L_N"], metrics["METEOR_N"] = eval_accuracies(hypotheses, references)
             Model.compute_avg_metrics(metrics)
             return losses / len(val_dataloader), \
                    (metrics["sum_bleu"] / metrics["number_examples"]) * 100
@@ -398,15 +405,18 @@ class Model:
         metrics = {"number_examples": 0,
                    "sum_bleu": 0, "sum_meteor": 0, "sum_rouge_l": 0,
                    "sum_precision": 0, "sum_recall": 0, "sum_f1": 0}
+        
+        hypotheses = {}
+        references = {}
 
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
             with open('../results/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                       '_gpu_' + str(self.gpu_rank) + '.json', 'w') as log:
-                for code_tokens, summary_tokens, code, summary, src, tgt, \
+                for batch_idx, (code_tokens, summary_tokens, code, summary, src, tgt, \
                     source_ids, source_mask, token, statement, data_flow, \
-                    control_flow, ast in tqdm(test_dataloader, desc="Testing"):
+                    control_flow, ast) in enumerate(tqdm(test_dataloader, desc="Testing")):
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)
                     source_ids = source_ids.to(self.device)
@@ -417,23 +427,27 @@ class Model:
                     control_flow = control_flow.to(self.device)
                     ast = ast.to(self.device)
 
-                    metrics = self.translate_evaluate(src,
-                                                      source_ids,
-                                                      source_mask,
-                                                      target_vocab,
-                                                      token,
-                                                      statement,
-                                                      data_flow,
-                                                      control_flow,
-                                                      ast,
-                                                      code,
-                                                      summary,
-                                                      log,
-                                                      scorer,
-                                                      mode,
-                                                      beam_size,
-                                                      metrics)
+                    metrics, hyps, refs = self.translate_evaluate(src,
+                                                                  source_ids,
+                                                                  source_mask,
+                                                                  target_vocab,
+                                                                  token,
+                                                                  statement,
+                                                                  data_flow,
+                                                                  control_flow,
+                                                                  ast,
+                                                                  code,
+                                                                  summary,
+                                                                  log,
+                                                                  scorer,
+                                                                  mode,
+                                                                  beam_size,
+                                                                  metrics,
+                                                                  batch_idx)
+                    hypotheses.update(hyps)
+                    references.update(refs)
 
+        metrics["BLEU_N"], metrics["ROUGE-L_N"], metrics["METEOR_N"] = eval_accuracies(hypotheses, references)
         Model.compute_avg_metrics(metrics)
 
     def display_all_attentions(self,
@@ -494,7 +508,8 @@ class Model:
                            scorer,
                            mode,
                            beam_size,
-                           metrics):
+                           metrics,
+                           batch_idx):
         '''
         Translates a code snippet (giving its respective summary) and also
         computes the evaluation metrics for the sentence and adds it to the
@@ -527,25 +542,29 @@ class Model:
             metrics: A dictionary containing the number of pairs 
                      <code snippet, summary> and the sum for each evaluation 
                      metric.
+            batch_idx (int): The batch number, indicating how many batches were
+                             already processed before. Used to give a unique ID
+                             for each predicted and reference summary. 
         '''
         batch_size = src.shape[0]
 
         bleu, meteor, rouge_l, \
-            precision, recall, f1 = self.translate_sentence(src,
-                                                            source_ids,
-                                                            source_mask,
-                                                            target_vocab,
-                                                            token,
-                                                            statement,
-                                                            data_flow,
-                                                            control_flow,
-                                                            ast,
-                                                            code,
-                                                            summary,
-                                                            log,
-                                                            scorer,
-                                                            mode,
-                                                            beam_size)
+            precision, recall, f1, hyps, refs = self.translate_sentence(src,
+                                                                        source_ids,
+                                                                        source_mask,
+                                                                        target_vocab,
+                                                                        token,
+                                                                        statement,
+                                                                        data_flow,
+                                                                        control_flow,
+                                                                        ast,
+                                                                        code,
+                                                                        summary,
+                                                                        log,
+                                                                        scorer,
+                                                                        mode,
+                                                                        beam_size,
+                                                                        batch_idx)
 
         # Performing weighted average of metrics
         metrics["sum_bleu"] += bleu * batch_size
@@ -557,7 +576,7 @@ class Model:
 
         metrics["number_examples"] += batch_size
 
-        return metrics
+        return metrics, hyps, refs
 
     @staticmethod
     def compute_avg_metrics(metrics):
@@ -565,6 +584,9 @@ class Model:
         Given the sum of each evaluation metric (BLEU, METEOR, ROUGE-L, Precision,
         Recall and F1-score), it computes the average for each metric and prints
         it to the logger.
+
+        Also prints the BLEU, METEOR and ROUGE-L used by NeuralCodeSum and 
+        other related works.
 
         Args:
             metrics: A dictionary containing the number of pairs 
@@ -582,12 +604,20 @@ class Model:
                         metrics["number_examples"]) * 100
         final_f1 = (metrics["sum_f1"] / metrics["number_examples"]) * 100
 
+        final_bleu_n = metrics["BLEU_N"]
+        final_rouge_l_n = metrics["ROUGE-L_N"]
+        final_meteor_n = metrics["METEOR_N"]
+
         logger.info(f"Metrics:\nBLEU: {final_bleu:7.3f} | " +
                     f"METEOR: {final_meteor:7.3f} | " +
                     f"ROUGE-L: {final_rouge_l:7.3f} | " +
                     f"Precision: {final_precision:7.3f} | " +
                     f"Recall: {final_recall:7.3f} | " +
                     f"F1: {final_f1:7.3f}")
+        
+        logger.info(f"NeuralCodeSum metrics:\nBLEU_N: {final_bleu_n:7.3f} | " +
+                    f"METEOR_N: {final_meteor_n:7.3f} | " +
+                    f"ROUGE-L_N: {final_rouge_l_n:7.3f}")
 
     def translate_sentence(self,
                            src,
@@ -604,7 +634,8 @@ class Model:
                            log,
                            scorer,
                            mode,
-                           beam_size):
+                           beam_size,
+                           batch_idx):
         '''
         Produces the code comment given a code snippet step by step and evaluates
         the generated comment against the reference summary.
@@ -632,9 +663,17 @@ class Model:
                            Can be one of the following: "loss", "greedy" or "beam"
             beam_size (int): Number of elements to store during beam search
                              Only applicable if `mode == 'beam'`
+            batch_idx (int): The batch number, indicating how many batches were
+                             already processed before. Used to give a unique ID
+                             for each predicted and reference summary. 
         Returns:
             The average BLEU, METEOR, ROUGE-L F-measure, Precision, Recall and 
             F1-score of the predicted sentence relative to the reference. 
+
+            It also returns all predicted summaries and respective references in two 
+            different dictionaries. These dictionaries will be used to compute the 
+            BLEU, METEOR and ROUGE-L according to the libraries used by NeuralCodeSum
+            and related works.
         '''
         start_symbol_idx = target_vocab.token_to_idx['<BOS>']
         end_symbol_idx = target_vocab.token_to_idx['<EOS>']
@@ -642,6 +681,9 @@ class Model:
         sum_bleu, sum_meteor, sum_rouge_l, sum_precision, sum_recall, sum_f1 = 0, 0, 0, 0, 0, 0
 
         batch_size = src.shape[0]
+
+        hyps = {}
+        refs = {}
 
         if mode == 'greedy':
             tgt_preds_idx = greedy_decode(self.model,
@@ -698,6 +740,9 @@ class Model:
             example["reference"] = summary[i]
             example["code"] = code[i]
 
+            hyps[batch_idx*batch_size + i] = [tgt_pred_tokens]
+            refs[batch_idx*batch_size + i] = [summary[i]]
+
             precision_score = precision(reference_set, prediction_set)
             if precision_score is None:
                 precision_score = 0.0
@@ -730,7 +775,7 @@ class Model:
             sum_f1 += example["F1"]
 
         return sum_bleu / batch_size, sum_meteor / batch_size, sum_rouge_l / batch_size, \
-            sum_precision / batch_size, sum_recall / batch_size, sum_f1 / batch_size
+            sum_precision / batch_size, sum_recall / batch_size, sum_f1 / batch_size, hyps, refs
 
     def get_model(self):
         '''

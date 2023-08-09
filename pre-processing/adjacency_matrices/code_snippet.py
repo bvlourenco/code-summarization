@@ -52,8 +52,6 @@ class CodeSnippet(object):
                     camel_case_tokenized.append(token_camel_case)
             code_tokens = camel_case_tokenized
 
-        # Lowercasing here to split camel case words
-        code_tokens = [token.__str__().lower() for token in code_tokens]
         return code_tokens
 
     def build_token_matrix(self):
