@@ -45,7 +45,10 @@ def build_local_matrix(positions, type, max_src_length):
                     start = j
                 if start >= 0 and (position_list[i][j] == 0 or
                                    j == len(position_list[i]) - 1):
-                    end = j + 1
+                    if j == len(position_list[i]) - 1:
+                        end = j + 1
+                    else:
+                        end = j
                     maps[i, start:end, start:end] = 0
                     start = -1
                     end = -1

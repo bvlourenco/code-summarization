@@ -113,7 +113,7 @@ class Transformer(nn.Module):
         self.heads_distribution = []
         for layer_idx, _ in enumerate(self.structural_encoder_layers):
             heads_layer = compute_heads_distribution(self.num_heads,
-                                                     layer_idx,
+                                                     layer_idx + 1,
                                                      self.hyperparameter_hsva)
             self.heads_distribution.append(heads_layer)
 
