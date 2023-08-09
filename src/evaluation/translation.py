@@ -158,12 +158,11 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
     '''
     src_mask = model.generate_src_mask(src)
     enc_output = model.encode(src, src_mask).to(device)
+    length_penalty = 1.0
 
     # Initialize the beam with the start symbol
-    beam = [(torch.ones(1, 1).fill_(
-        start_symbol_idx).type(torch.long).to(device), 0)]
+    beam = [(torch.ones(1, 1).fill_(start_symbol_idx).type(torch.long).to(device), 0)]
 
-    dot_symbol_idx = 4
     # Generate tokens using beam search
     for _ in range(max_tgt_len - 2):
         new_beam = []
@@ -187,7 +186,7 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
                 for i in range(beam_size):
                     new_seq = torch.cat(
                         (seq, topk_indices[:, i].unsqueeze(1)), dim=1)
-                    new_score = score + topk_probs[:, i].item()
+                    new_score = score + (topk_probs[:, i].log() / (len(new_seq)**length_penalty)).item()
                     new_beam.append((new_seq, new_score))
 
         # Select the top-k beams with the highest scores
@@ -195,7 +194,7 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
             :beam_size]
 
         # Check if any beams have reached the end symbol
-        if any(seq[:, -1].item() in [end_symbol_idx, dot_symbol_idx] for seq, _ in new_beam):
+        if all(seq[:, -1].item() == end_symbol_idx for seq, _ in new_beam):
             beam = new_beam
             break
 
@@ -203,12 +202,6 @@ def beam_search(model, src, device, start_symbol_idx, end_symbol_idx, max_tgt_le
 
     # Getting the sequence with highest score
     best_sequence, _ = beam[0]
-
-    # Adding . token
-    if best_sequence[:, -2] != dot_symbol_idx and best_sequence[:, -1] != dot_symbol_idx:
-        best_sequence = torch.cat([best_sequence,
-                                   torch.ones(1, 1).type_as(src.data).fill_(4)], 
-                                   dim=1)
 
     # Adding <EOS> token
     if best_sequence[:, -1] != end_symbol_idx:
