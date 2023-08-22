@@ -1,7 +1,7 @@
 import torch
 from torch.nn.functional import pad
 
-from dataset.build_local_matrices import build_local_matrix
+from dataset.build_local_matrices import get_statement_matrix, get_token_matrix
 
 
 class CustomCollate:
@@ -90,8 +90,8 @@ class CustomCollate:
             torch.stack(code_idxs_batch), \
             torch.stack(summary_idxs_batch), \
             torch.stack(source_ids_batch), torch.stack(source_mask_batch), \
-            build_local_matrix(token_batch, 'token', self.max_src_length), \
-            build_local_matrix(statement_batch, 'statement', self.max_src_length), \
+            get_token_matrix(token_batch, self.max_src_length), \
+            get_statement_matrix(statement_batch, self.max_src_length), \
             torch.stack(data_flow_batch), \
             torch.stack(control_flow_batch), \
             torch.stack(ast_batch)
@@ -140,8 +140,8 @@ class CustomCollate:
         return code_tokens_batch, summary_tokens_batch, \
                torch.stack(code_batch), torch.stack(summary_batch), \
                torch.stack(source_ids_batch), torch.stack(source_mask_batch), \
-               build_local_matrix(token_batch, 'token', self.max_src_length), \
-               build_local_matrix(statement_batch, 'statement', self.max_src_length), \
+               get_token_matrix(token_batch, self.max_src_length), \
+               get_statement_matrix(statement_batch, self.max_src_length), \
                torch.stack(data_flow_batch), \
                torch.stack(control_flow_batch), \
                torch.stack(ast_batch)

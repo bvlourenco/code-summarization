@@ -10,63 +10,106 @@ logger = logging.getLogger('main_logger')
 logger.propagate = False
 
 
-def build_local_matrix(positions, type, max_src_length):
+def get_token_positions(positions):
     '''
-    Builds the token/statement adjacency matrices of a batch (as a tensor) 
+    Transforms the token/statement matrices token positions from strings to 
+    integers.
+
+    Args:
+        positions: A list with size `batch_size` where each element has size 
+                   `max_src_len`. It contains the token/statement matrices of a batch.
+    
+    Returns:
+        position_list: The same list with each number converted to an integer.
+    '''
+    try:
+        position_list = [list(map(int, i)) for i in positions]
+    except:
+        logger.info("An exception occured while building the token/statement matrix")
+        position_list = [[0] * len(positions[0])
+                         for _ in range(len(positions))]
+    return position_list
+
+def get_token_matrix(positions, max_src_length):
+    '''
+    Builds the token adjacency matrix of a batch (as a tensor) 
     given their representation as a bunch of lists.
 
     Args:
         positions: A list with size `batch_size` where each element has size 
-                   `max_src_len`. It contains the token matrices of a batch.
-        type (string): Tells whether we are building the token or the statement
-                       adjacency matrix.
-                       Can be one of the following: "token", "statement"
+                   `max_src_len`. It contains numbers where each number
+                   represents a token. If the number is positive, then the token 
+                   is part of a snake_case or camelCase token. Otherwise the 
+                   number is 0.
         max_src_length (int): Maximum length of the source code.
+    
+    Returns:
+        The token adjacency matrices. 
+        Shape: `(batch_size, max_src_length, max_src_length)`
 
-    From: https://github.com/gszsectan/SG-Trans/blob/2afab8844e4f1e06c06585d80158bda947e0c720/java/c2nl/inputters/vector.py#L5
+    Adapted from: 
+    https://github.com/shuzhenggao/SG-Trans/blob/2afab8844e4f1e06c06585d80158bda947e0c720/python/c2nl/inputters/vector.py#L47
     '''
-    try:
-        # Parsing list of strings with numbers to an int
-        position_list = list(list(map(int, i)) for i in positions)
-    except:
-        logger.info(
-            "An exception occured while building the {} matrix".format(type))
-        position_list = [[0]*len(positions[0]) for _ in range(len(positions))]
+    batch_size = len(positions)
+    position_list = get_token_positions(positions)
+    maps = torch.ones(batch_size, max_src_length, max_src_length)
+    for i, code_positions in enumerate(position_list):
+        start = end = -1
+        for j, token_position in enumerate(code_positions):
+            if j >= max_src_length:
+                break
 
-    maps = torch.ones(len(position_list), max_src_length, max_src_length)
+            maps[i, j, j] = 0
 
-    for i in range(len(position_list)):
-        start = -1
-        end = -1
-        if type == 'token':
-            for j in range(min(max_src_length, len(position_list[i]))):
-                maps[i, j, j] = 0
-                if position_list[i][j] == 1 and start == -1:
+            if token_position != 0 and start == -1:
+                start = j
+
+            if start >= 0 and token_position != code_positions[start]:
+                end = j
+                maps[i, start:end, start:end] = 0
+                if token_position != 0:
                     start = j
-                if start >= 0 and (position_list[i][j] == 0 or
-                                   j == len(position_list[i]) - 1):
-                    if j == len(position_list[i]) - 1:
-                        end = j + 1
-                    else:
-                        end = j
-                    maps[i, start:end, start:end] = 0
-                    start = -1
-                    end = -1
-        elif type == 'statement':
-            instruction_counter = 0
-            start = 0
-            for j in range(min(max_src_length, len(position_list[i]))):
-                maps[i, j, j] = 0
-                if start >= 0 and (j == len(position_list[i]) - 1 or
-                                   (j + 1 < len(position_list[i]) and
-                                   position_list[i][j + 1] != instruction_counter)):
-                    end = j + 1
-                    maps[i, start:end, start:end] = 0
-                    instruction_counter += 1
-                    start = j + 1
-                    end = -1
+                else:
+                    start = end = -1
+            elif start >= 0 and j == len(code_positions) - 1:
+                end = j + 1
+                maps[i, start:end, start:end] = 0
+    return maps
 
-        else:
-            raise ValueError(
-                'Error building token/statement adjacency matrix: Unknown type: ' + type)
+
+def get_statement_matrix(positions, max_src_length):
+    '''
+    Builds the statement adjacency matrices of a batch (as a tensor) 
+    given their representation as a bunch of lists.
+
+    Args:
+        positions: A list with size `batch_size` where each element has size 
+                   `max_src_len`. It contains numbers where each number
+                   represents the instruction number where the token is placed.
+        max_src_length (int): Maximum length of the source code.
+    
+    Returns:
+        The statement adjacency matrices. 
+        Shape: `(batch_size, max_src_length, max_src_length)`
+
+    Adapted from: 
+    https://github.com/shuzhenggao/SG-Trans/blob/2afab8844e4f1e06c06585d80158bda947e0c720/python/c2nl/inputters/vector.py#L71
+    '''
+    batch_size = len(positions)
+    position_list = get_token_positions(positions)
+    maps = torch.ones(batch_size, max_src_length, max_src_length)
+    for i, code_instruction_numbers in enumerate(position_list):
+        start = end = 0
+        for j, token_instruction_number in enumerate(code_instruction_numbers):
+            if j >= max_src_length:
+                break
+
+            maps[i, j, j] = 0
+            if token_instruction_number != code_instruction_numbers[start]:
+                end = j
+                maps[i, start:end, start:end] = 0
+                start = end = j
+            elif j == len(code_instruction_numbers) - 1:
+                end = j + 1
+                maps[i, start:end, start:end] = 0
     return maps

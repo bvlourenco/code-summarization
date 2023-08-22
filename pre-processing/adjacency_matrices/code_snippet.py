@@ -4,7 +4,7 @@ from ast_matrix.ast_adjacency_matrix import get_AST_adjacency_matrix
 from flow.build_flow import build_flow
 from scipy import sparse
 import code_tokenize as ctok
-from tokenization import tokenize_with_snake_case, tokenize_with_camel_case
+from tokenization import tokenize_snake_camel_case, tokenize_with_snake_case, tokenize_with_camel_case
 
 MAX_SRC_LEN = 150
 
@@ -27,14 +27,14 @@ class CodeSnippet(object):
         self.debug = debug
 
     def tokenize_code(self, code_snippet, camel_case=True, snake_case=True):
-        code_tokens = ctok.tokenize(code_snippet, 
-                                    lang=self.language, 
+        code_tokens = ctok.tokenize(code_snippet,
+                                    lang=self.language,
                                     syntax_error="ignore")
 
         # Removing some python unwanted tokens representing \n, \t and untabbing.
         code_tokens = [token.__str__() for token in code_tokens
                        if token.__str__() not in ["#NEWLINE#", "#DEDENT#", "#INDENT#"]
-                                          and token.__str__() not in string.punctuation]
+                       and token.__str__() not in string.punctuation]
 
         if snake_case:
             snake_case_tokenized = []
@@ -59,29 +59,23 @@ class CodeSnippet(object):
                                          camel_case=False,
                                          snake_case=False)
 
-        snake_case_tokenized = []
-        val = 0
-        for token in code_tokens:
-            tokens_snake_case = tokenize_with_snake_case(token)
-            if len(tokens_snake_case) > 1:
-                val = 1
-            else:
-                val = 0
-            for token_snake_case in tokens_snake_case:
-                snake_case_tokenized.append((token_snake_case, val))
-
         camel_snake_case_tokenized = []
-        for token, value in snake_case_tokenized:
-            tokens_snake_camel_case = tokenize_with_camel_case(token)
-            if len(tokens_snake_camel_case) > 1 or value == 1:
-                val = 1
-            else:
+        number_snake_camel_case_tokens = 0
+
+        for token in code_tokens:
+            subtokens = tokenize_snake_camel_case(token)
+
+            if len(subtokens) == 1:
                 val = 0
-            for token_camel_case in tokens_snake_camel_case:
-                camel_snake_case_tokenized.append((token_camel_case, val))
+            else:
+                number_snake_camel_case_tokens += 1
+                val = number_snake_camel_case_tokens
+
+            camel_snake_case_tokenized.extend(
+                (subtoken, val) for subtoken in subtokens)
 
         self.in_token_adjacency_matrix.extend(
-            [el[1] for el in camel_snake_case_tokenized])
+            el[1] for el in camel_snake_case_tokenized)
 
     def build_statement_matrix(self):
         # CodeSearchNet, TL-CodeSum and code-docstring-corpus datasets splits
