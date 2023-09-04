@@ -13,9 +13,13 @@ def add_cfg_edges(index_to_code, instructions_code, dependencies, start, end):
         next_indexes = [token_pos[0] for token_pos in instructions_code[next_instruction]]
 
     # putting control flow edges
-    if start[0] in dependencies and dependencies[start[0]] in instructions_code:
-        next_indexes += [token_pos[0] for token_pos in instructions_code[dependencies[start[0]]]]
-        next_tokens += [token_pos[1] for token_pos in instructions_code[dependencies[start[0]]]]
+    if start[0] in dependencies: 
+        dependency_next_instrs = list(filter(lambda x: x >= dependencies[start[0]], instructions_code.keys()))
+        if len(dependency_next_instrs) > 0:
+            dependency_next_instr = min(dependency_next_instrs)
+
+            next_indexes += [token_pos[0] for token_pos in instructions_code[dependency_next_instr]]
+            next_tokens += [token_pos[1] for token_pos in instructions_code[dependency_next_instr]]
 
     return [(curr_token, index_to_code[(start, end)][0], "Next Instruction", next_tokens, next_indexes)]
 
@@ -76,7 +80,7 @@ def CFG_java(root, index_to_code, instructions_code, dependencies):
         return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
-        if root.type == 'while_statement':
+        if root.type in ['while_statement', 'for_statement', 'enhanced_for_statement']:
             dependencies[root.start_point[0]] = root.end_point[0] + 1
         elif root.type == 'if_statement':
             hasElse = False
@@ -87,8 +91,11 @@ def CFG_java(root, index_to_code, instructions_code, dependencies):
             if not hasElse:
                 dependencies[root.start_point[0]] = root.end_point[0] + 1
 
-        if root.type == 'while_statement':
-            dependencies[root.children[-1].end_point[0]] = root.start_point[0]
+        if root.type in ['while_statement', 'for_statement', 'enhanced_for_statement']:
+            dependency_next_instrs = list(filter(lambda x: x <= root.children[-1].end_point[0], instructions_code.keys()))
+            if len(dependency_next_instrs) > 0:
+                dependency_next_instr = max(dependency_next_instrs)
+                dependencies[dependency_next_instr] = root.start_point[0]
 
         for child in root.children:
             edges += CFG_java(child, index_to_code,
