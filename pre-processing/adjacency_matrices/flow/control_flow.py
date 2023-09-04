@@ -6,9 +6,11 @@ def add_cfg_edges(index_to_code, instructions_code, dependencies, start, end):
     curr_token = index_to_code[(start, end)][1]
     next_tokens, next_indexes = [], []
 
-    if start[0] + 1 in instructions_code:
-        next_tokens = [token_pos[1] for token_pos in instructions_code[start[0] + 1]]
-        next_indexes = [token_pos[0] for token_pos in instructions_code[start[0] + 1]]
+    next_instructions = list(filter(lambda x: x > start[0], instructions_code.keys()))
+    if len(next_instructions) > 0:
+        next_instruction = min(next_instructions)
+        next_tokens = [token_pos[1] for token_pos in instructions_code[next_instruction]]
+        next_indexes = [token_pos[0] for token_pos in instructions_code[next_instruction]]
 
     # putting control flow edges
     if start[0] in dependencies and dependencies[start[0]] in instructions_code:
@@ -77,9 +79,13 @@ def CFG_java(root, index_to_code, instructions_code, dependencies):
         if root.type == 'while_statement':
             dependencies[root.start_point[0]] = root.end_point[0] + 1
         elif root.type == 'if_statement':
+            hasElse = False
             for child in root.children:
                 if child.type == 'else':
+                    hasElse = True
                     dependencies[root.start_point[0]] = child.start_point[0]
+            if not hasElse:
+                dependencies[root.start_point[0]] = root.end_point[0] + 1
 
         if root.type == 'while_statement':
             dependencies[root.children[-1].end_point[0]] = root.start_point[0]

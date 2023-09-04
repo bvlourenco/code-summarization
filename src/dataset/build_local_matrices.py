@@ -57,6 +57,8 @@ def get_token_matrix(positions, max_src_length):
         start = end = -1
         for j, token_position in enumerate(code_positions):
             if j >= max_src_length:
+                end = j
+                maps[i, start:end, start:end] = 0
                 break
 
             maps[i, j, j] = 0
@@ -102,6 +104,8 @@ def get_statement_matrix(positions, max_src_length):
         start = end = 0
         for j, token_instruction_number in enumerate(code_instruction_numbers):
             if j >= max_src_length:
+                end = j
+                maps[i, start:end, start:end] = 0
                 break
 
             maps[i, j, j] = 0

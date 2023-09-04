@@ -58,8 +58,8 @@ def build_flow(codeT, parser, lang, build_flow_graph, type):
         try:
             if type == 'Data flow':
                 graph, _ = build_flow_graph(root_node, index_to_code, {})
-                for edge in graph:
-                    print(edge)
+                # for edge in graph:
+                #     print(edge)
             elif type == 'Control flow':
                 graph = build_flow_graph(root_node, index_to_code, instructions_code, {})
                 # for edge in graph:
