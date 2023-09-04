@@ -11,15 +11,19 @@ FROM: https://github.com/microsoft/CodeBERT/blob/
 import string
 from flow.tree_helpers import tree_to_variable_index, get_node_text_snake_camel
 
-def add_dfg_edges(root_node, index_to_code, states, start, end):
+def add_dfg_edges(root_node, index_to_code, states, start, end, root_node_text):
     idx, code = index_to_code[(start, end)]
     if root_node.type == code:
         return [], states
-    elif code in states:
-        return [(code, idx, 'comesFrom', [code], states[code].copy())], states
+    elif root_node_text in states and idx not in states[root_node_text]:
+        return [(code, idx, 'comesFrom', [code], states[root_node_text].copy())], states
     else:
         if root_node.type == 'identifier':
-            states[code] = [idx]
+            node_text_camel_case = get_node_text_snake_camel(root_node)
+            idxs = []
+            for i in range(len(node_text_camel_case)):
+                idxs.append(idx + i)
+            states[root_node_text] = idxs
         return [(code, idx, 'comesFrom', [], [])], states
 
 def process_leaf_node(root_node, index_to_code, states):
@@ -41,7 +45,7 @@ def process_leaf_node(root_node, index_to_code, states):
                 
                 start = (begin[0], tokens_len)
                 end = (begin[0], tokens_len + len(token))
-                new_edges, states = add_dfg_edges(root_node, index_to_code, states, start, end)
+                new_edges, states = add_dfg_edges(root_node, index_to_code, states, start, end, root_node.text.decode())
                 edges.extend(new_edges)
 
                 tokens_len += len(token)            
@@ -51,7 +55,7 @@ def process_leaf_node(root_node, index_to_code, states):
             print("Returning empty list...")
             return [], states
     else:
-        return add_dfg_edges(root_node, index_to_code, states, root_node.start_point, root_node.end_point)
+        return add_dfg_edges(root_node, index_to_code, states, root_node.start_point, root_node.end_point, root_node.text.decode())
 
 def DFG_python(root_node, index_to_code, states):
     assignment = ['assignment', 'augmented_assignment', 'for_in_clause']
@@ -265,23 +269,29 @@ def DFG_java(root_node, index_to_code, states):
         value = root_node.child_by_field_name('value')
         DFG = []
         if value is None:
-            indexs = tree_to_variable_index(name, index_to_code)
-            for index in indexs:
-                idx, code = index_to_code[index]
-                DFG.append((code, idx, 'comesFrom', [], []))
-                states[code] = [idx]
+            # method name should not have dependencies
+            if root_node.start_point[0] != 0:
+                indexs = tree_to_variable_index(name, index_to_code)
+                all_idxs = []
+                for index in indexs:
+                    idx, code = index_to_code[index]
+                    DFG.append((code, idx, 'comesFrom', [], []))
+                    all_idxs.append(idx)
+                states[name.text.decode()] = all_idxs
             return sorted(DFG, key=lambda x: x[1]), states
         else:
             name_indexs = tree_to_variable_index(name, index_to_code)
             value_indexs = tree_to_variable_index(value, index_to_code)
             temp, states = DFG_java(value, index_to_code, states)
             DFG += temp
+            all_idxs = []
             for index1 in name_indexs:
                 idx1, code1 = index_to_code[index1]
                 for index2 in value_indexs:
                     idx2, code2 = index_to_code[index2]
                     DFG.append((code1, idx1, 'comesFrom', [code2], [idx2]))
-                states[code1] = [idx1]
+                all_idxs.append(idx1)
+            states[name.text.decode()] = all_idxs
             return sorted(DFG, key=lambda x: x[1]), states
     elif root_node.type in assignment:
         left_nodes = root_node.child_by_field_name('left')
@@ -291,22 +301,26 @@ def DFG_java(root_node, index_to_code, states):
         DFG += temp
         name_indexs = tree_to_variable_index(left_nodes, index_to_code)
         value_indexs = tree_to_variable_index(right_nodes, index_to_code)
+        all_idxs = []
         for index1 in name_indexs:
             idx1, code1 = index_to_code[index1]
             for index2 in value_indexs:
                 idx2, code2 = index_to_code[index2]
                 DFG.append((code1, idx1, 'computedFrom', [code2], [idx2]))
-            states[code1] = [idx1]
+            all_idxs.append(idx1)
+            states[right_nodes.text.decode()] = all_idxs
         return sorted(DFG, key=lambda x: x[1]), states
     elif root_node.type in increment_statement:
         DFG = []
         indexs = tree_to_variable_index(root_node, index_to_code)
+        all_idxs = []
         for index1 in indexs:
             idx1, code1 = index_to_code[index1]
             for index2 in indexs:
                 idx2, code2 = index_to_code[index2]
                 DFG.append((code1, idx1, 'computedFrom', [code2], [idx2]))
-            states[code1] = [idx1]
+            all_idxs.append(idx1)
+            states[root_node.text.decode()] = all_idxs
         return sorted(DFG, key=lambda x: x[1]), states
     elif root_node.type in if_statement:
         DFG = []
@@ -375,12 +389,14 @@ def DFG_java(root_node, index_to_code, states):
             DFG += temp
             name_indexs = tree_to_variable_index(name, index_to_code)
             value_indexs = tree_to_variable_index(value, index_to_code)
+            all_idxs = []
             for index1 in name_indexs:
                 idx1, code1 = index_to_code[index1]
                 for index2 in value_indexs:
                     idx2, code2 = index_to_code[index2]
                     DFG.append((code1, idx1, 'computedFrom', [code2], [idx2]))
-                states[code1] = [idx1]
+                all_idxs.append(idx1)
+            states[name.text.decode()] = all_idxs
             temp, states = DFG_java(body, index_to_code, states)
             DFG += temp
         dic = {}
