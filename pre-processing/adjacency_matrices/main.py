@@ -1,9 +1,13 @@
 import argparse
+from datetime import datetime
 import json
 import logging
 import os
 import pickle
+from matplotlib import pyplot as plt
 import numpy as np
+from graph import display_adjacency_matrices
+from matplotlib.backends.backend_pdf import PdfPages
 from tqdm import tqdm
 
 from tree_sitter import Language, Parser
@@ -94,9 +98,12 @@ def read_file(f, must_process, language, parser, log_file, filename):
     ast_adjacency_matrix_file = open(
         'files/ast_adjacency_matrix/' + filename_no_extension + '_' + language + '_ast.pkl', 'wb')
 
-    num_lines = sum(1 for _ in open(filename, 'r'))
+    num_lines = min(10, sum(1 for _ in open(filename, 'r')))
 
-    for line in tqdm(f, total=num_lines, desc="Reading code snippets"):
+    for i, line in enumerate(tqdm(f, total=num_lines, desc="Reading code snippets")):
+        if i >= 10:
+            break
+
         if must_process:
             code = pre_process(json.loads(line)['original_string'])
         else:
@@ -115,7 +122,8 @@ def read_file(f, must_process, language, parser, log_file, filename):
                                  in_statement_file,
                                  data_flow_file,
                                  control_flow_file,
-                                 ast_adjacency_matrix_file)
+                                 ast_adjacency_matrix_file,
+                                 code_snippet.tokens)
 
     in_token_file.close()
     in_statement_file.close()
@@ -144,7 +152,16 @@ def write_matrix_to_file(type, matrix, file):
 
 def store_adjacency_matrices(adjacency_matrices, in_token_file,
                              in_statement_file, data_flow_file,
-                             control_flow_file, ast_adjacency_matrix_file):
+                             control_flow_file, ast_adjacency_matrix_file, tokens):
+    
+    with PdfPages('files/heatmaps/' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.pdf') as pdf:
+        display_adjacency_matrices(tokens, tokens, adjacency_matrices['in_token_adjacency_matrix'], 'in_token', pdf)
+        display_adjacency_matrices(tokens, tokens, adjacency_matrices['in_statement_adjacency_matrix'], 'in_statement', pdf)
+        display_adjacency_matrices(tokens, tokens, adjacency_matrices['data_flow_adjacency_matrix'], 'data_flow', pdf)
+        display_adjacency_matrices(tokens, tokens, adjacency_matrices['control_flow_adjacency_matrix'], 'control_flow', pdf)
+
+        plt.close()
+
     write_matrix_to_file('in_token',
                          adjacency_matrices['in_token_adjacency_matrix'],
                          in_token_file)

@@ -4,29 +4,18 @@ from flow.tree_helpers import get_node_text_snake_camel
 
 def add_cfg_edges(index_to_code, instructions_code, dependencies, start, end):
     curr_token = index_to_code[(start, end)][1]
+    next_tokens, next_indexes = [], []
 
     if start[0] + 1 in instructions_code:
-        next_tokens = [instructions_code[start[0] + 1][0][1]]
-        next_indexes = [
-            instructions_code[start[0] + 1][0][0] + 1]
-    else:
-        next_tokens = ['END']
-        # END token index is last token index + 1 (all indexes of tokens are shifted by 1)
-        next_indexes = [instructions_code[start[0]][-1][0] + 2]
+        next_tokens = [token_pos[1] for token_pos in instructions_code[start[0] + 1]]
+        next_indexes = [token_pos[0] for token_pos in instructions_code[start[0] + 1]]
 
     # putting control flow edges
     if start[0] in dependencies and dependencies[start[0]] in instructions_code:
-        next_indexes += [instructions_code[dependencies[start[0]]][0][0] + 1]
-        next_tokens += [instructions_code[dependencies[start[0]]][0][1]]
-    elif start[0] in dependencies:
-        next_tokens += ['END']
-        if dependencies[start[0]] - 1 in instructions_code:
-            next_indexes += [instructions_code[dependencies[start[0]] - 1][-1][0] + 2]
-        else:
-            key = max(k for k, _ in instructions_code.items())
-            next_indexes += [instructions_code[key][-1][0] + 2]
+        next_indexes += [token_pos[0] for token_pos in instructions_code[dependencies[start[0]]]]
+        next_tokens += [token_pos[1] for token_pos in instructions_code[dependencies[start[0]]]]
 
-    return [(curr_token, index_to_code[(start, end)][0] + 1, "Next Instruction", next_tokens, next_indexes)]
+    return [(curr_token, index_to_code[(start, end)][0], "Next Instruction", next_tokens, next_indexes)]
 
 def process_leaf_node(root, index_to_code, instructions_code, dependencies):
     if (root.start_point, root.end_point) in index_to_code:

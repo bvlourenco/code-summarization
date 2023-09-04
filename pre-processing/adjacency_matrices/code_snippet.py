@@ -25,6 +25,7 @@ class CodeSnippet(object):
         self.ast_adjacency_matrix = np.eye(MAX_SRC_LEN)
         self.log_file = log_file
         self.debug = debug
+        self.tokens = self.tokenize_code(self.code_snippet)
 
     def tokenize_code(self, code_snippet, camel_case=True, snake_case=True):
         code_tokens = ctok.tokenize(code_snippet,
