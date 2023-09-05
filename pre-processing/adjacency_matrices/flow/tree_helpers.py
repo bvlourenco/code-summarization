@@ -3,7 +3,8 @@ from tokenization import tokenize_with_camel_case, tokenize_with_snake_case
 
 
 def tree_to_token_index(root_node):
-    if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' and root_node.type != '\n' and root_node.type not in string.punctuation:
+    if (len(root_node.children) == 0 or root_node.type == 'string') and root_node.type != 'comment' \
+        and root_node.type != '\n' and root_node.type not in string.punctuation and root_node.text.decode() not in string.punctuation:
         node_text_camel_case = get_node_text_snake_camel(root_node)
         if len(node_text_camel_case) > 1:
             token_idxs = []

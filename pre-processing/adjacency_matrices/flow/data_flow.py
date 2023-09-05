@@ -51,8 +51,6 @@ def process_leaf_node(root_node, index_to_code, states):
                 tokens_len += len(token)            
             return edges, states
         else:
-            # This case should not happen
-            print("Returning empty list...")
             return [], states
     else:
         return add_dfg_edges(root_node, index_to_code, states, root_node.start_point, root_node.end_point, root_node.text.decode())

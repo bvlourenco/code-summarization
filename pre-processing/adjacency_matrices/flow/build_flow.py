@@ -9,11 +9,12 @@ def build_flow(codeT, parser, lang, build_flow_graph, type):
           eb1c6e5dc40d996665504173244d274484b2f7e9/GraphCodeBERT/translation/run.py#L74
     '''
     # remove comments
-    try:
-        code = remove_comments_and_docstrings(codeT, lang)
-    except Exception as e:
-        traceback.print_exc()
-        sys.exit(1)
+    # try:
+    #     code = remove_comments_and_docstrings(codeT, lang)
+    # except Exception as e:
+    #     traceback.print_exc()
+    #     sys.exit(1)
+    code = codeT
     # obtain dataflow
     if lang == "php":
         code = "<?php"+code+"?>"

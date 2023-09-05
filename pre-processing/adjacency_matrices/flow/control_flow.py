@@ -6,6 +6,7 @@ def add_cfg_edges(index_to_code, instructions_code, dependencies, start, end):
     curr_token = index_to_code[(start, end)][1]
     next_tokens, next_indexes = [], []
 
+    # start[0] + 1 might not be the next instruction because it might be only a } for instance
     next_instructions = list(filter(lambda x: x > start[0], instructions_code.keys()))
     if len(next_instructions) > 0:
         next_instruction = min(next_instructions)
@@ -13,13 +14,15 @@ def add_cfg_edges(index_to_code, instructions_code, dependencies, start, end):
         next_indexes = [token_pos[0] for token_pos in instructions_code[next_instruction]]
 
     # putting control flow edges
-    if start[0] in dependencies: 
-        dependency_next_instrs = list(filter(lambda x: x >= dependencies[start[0]], instructions_code.keys()))
-        if len(dependency_next_instrs) > 0:
-            dependency_next_instr = min(dependency_next_instrs)
+    if start[0] in dependencies:
+        for dep in dependencies[start[0]]:
+            # dependencies[start[0]] + 1 might not be the next instruction because it might be only a } for instance
+            dependency_next_instrs = list(filter(lambda x: x >= dep, instructions_code.keys()))
+            if len(dependency_next_instrs) > 0:
+                dependency_next_instr = min(dependency_next_instrs)
 
-            next_indexes += [token_pos[0] for token_pos in instructions_code[dependency_next_instr]]
-            next_tokens += [token_pos[1] for token_pos in instructions_code[dependency_next_instr]]
+                next_indexes += [token_pos[0] for token_pos in instructions_code[dependency_next_instr]]
+                next_tokens += [token_pos[1] for token_pos in instructions_code[dependency_next_instr]]
 
     return [(curr_token, index_to_code[(start, end)][0], "Next Instruction", next_tokens, next_indexes)]
 
@@ -49,10 +52,13 @@ def process_leaf_node(root, index_to_code, instructions_code, dependencies):
                 tokens_len += len(token)            
             return edges
         else:
-            # This case should not happen
-            print("Returning empty list...")
             return []
 
+def add_dependency(dependencies, key, value):
+    if key not in dependencies:
+        dependencies[key] = []
+    dependencies[key].append(value)
+    return dependencies
 
 def CFG_python(root, index_to_code, instructions_code, dependencies):
     if root.type in string.punctuation:
@@ -61,11 +67,30 @@ def CFG_python(root, index_to_code, instructions_code, dependencies):
         return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
-        if root.type == 'while_statement' or root.type == 'if_statement':
-            dependencies[root.start_point[0]] = root.end_point[0] + 1
+        if root.type in ['while_statement', 'for_statement', 'for_in_clause']:
+            dependencies = add_dependency(dependencies, root.start_point[0], root.end_point[0] + 1)
+        elif root.type == 'if_statement':
+            hasElse = False
+            hasElif = False
+            start = root.start_point[0]
+            for child in root.children:
+                if child.type == 'elif_clause':
+                    hasElif = True
+                    dependencies = add_dependency(dependencies, start, child.start_point[0])
+                    start = child.start_point[0]
+                elif child.type == 'else_clause':
+                    hasElse = True
+                    dependencies = add_dependency(dependencies, start, child.start_point[0])
+                    dependencies = add_dependency(dependencies, child.start_point[0], root.end_point[0] + 1)
+                    break
+            if not hasElse and not hasElif:
+                dependencies = add_dependency(dependencies, root.start_point[0], root.end_point[0] + 1)
 
-        if root.type == 'while_statement':
-            dependencies[root.children[-1].end_point[0]] = root.start_point[0]
+        if root.type in ['while_statement', 'for_statement', 'for_in_clause']:
+            dependency_next_instrs = list(filter(lambda x: x <= root.children[-1].end_point[0], instructions_code.keys()))
+            if len(dependency_next_instrs) > 0:
+                dependency_next_instr = max(dependency_next_instrs)
+                dependencies = add_dependency(dependencies, dependency_next_instr, root.start_point[0])
 
         for child in root.children:
             edges += CFG_python(child, index_to_code,
@@ -81,21 +106,30 @@ def CFG_java(root, index_to_code, instructions_code, dependencies):
     else:
         edges = []
         if root.type in ['while_statement', 'for_statement', 'enhanced_for_statement']:
-            dependencies[root.start_point[0]] = root.end_point[0] + 1
+            dependencies = add_dependency(dependencies, root.start_point[0], root.end_point[0] + 1)
         elif root.type == 'if_statement':
             hasElse = False
-            for child in root.children:
-                if child.type == 'else':
+            hasElif = False
+            start = root.start_point[0]
+            for idx, child in enumerate(root.children):
+                # elif statement 
+                if child.type == 'else' and idx + 1 < len(root.children) and root.children[idx + 1].type == 'if_statement':
+                    hasElif = True
+                    dependencies = add_dependency(dependencies, start, child.start_point[0])
+                    start = child.start_point[0]
+                elif child.type == 'else':
                     hasElse = True
-                    dependencies[root.start_point[0]] = child.start_point[0]
-            if not hasElse:
-                dependencies[root.start_point[0]] = root.end_point[0] + 1
+                    dependencies = add_dependency(dependencies, start, child.start_point[0])
+                    dependencies = add_dependency(dependencies, child.start_point[0], root.end_point[0] + 1)
+                    break
+            if not hasElse and not hasElif:
+                dependencies = add_dependency(dependencies, root.start_point[0], root.end_point[0] + 1)
 
         if root.type in ['while_statement', 'for_statement', 'enhanced_for_statement']:
             dependency_next_instrs = list(filter(lambda x: x <= root.children[-1].end_point[0], instructions_code.keys()))
             if len(dependency_next_instrs) > 0:
                 dependency_next_instr = max(dependency_next_instrs)
-                dependencies[dependency_next_instr] = root.start_point[0]
+                dependencies = add_dependency(dependencies, dependency_next_instr, root.start_point[0])
 
         for child in root.children:
             edges += CFG_java(child, index_to_code,
@@ -110,15 +144,23 @@ def CFG_ruby(root, index_to_code, instructions_code, dependencies):
         return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
-        if root.type == 'while':
-            dependencies[root.start_point[0]] = root.end_point[0] + 1
+        if root.type in ['while_modifier', 'for']:
+            dependencies = add_dependency(dependencies, root.start_point[0], root.end_point[0] + 1)
         elif root.type == 'if':
+            hasElse = False
             for child in root.children:
                 if child.type == 'else':
-                    dependencies[root.start_point[0]] = child.start_point[0]
+                    hasElse = True
+                    dependencies = add_dependency(dependencies, root.start_point[0], child.start_point[0])
+                    dependencies = add_dependency(dependencies, child.start_point[0], root.end_point[0] + 1)
+            if not hasElse:
+                dependencies = add_dependency(dependencies, root.start_point[0], root.end_point[0] + 1)
 
-        if root.type == 'while':
-            dependencies[root.children[-1].end_point[0]] = root.start_point[0]
+        if root.type in ['while_modifier', 'for']:
+            dependency_next_instrs = list(filter(lambda x: x <= root.children[-1].end_point[0], instructions_code.keys()))
+            if len(dependency_next_instrs) > 0:
+                dependency_next_instr = max(dependency_next_instrs)
+                dependencies = add_dependency(dependencies, dependency_next_instr, root.start_point[0])
 
         for child in root.children:
             edges += CFG_ruby(child, index_to_code,
@@ -134,14 +176,22 @@ def CFG_go(root, index_to_code, instructions_code, dependencies):
     else:
         edges = []
         if root.type == 'for_statement':
-            dependencies[root.start_point[0]] = root.end_point[0] + 1
+            dependencies = add_dependency(dependencies, root.start_point[0], root.end_point[0] + 1)
         elif root.type == 'if_statement':
+            hasElse = False
             for child in root.children:
                 if child.type == 'else':
-                    dependencies[root.start_point[0]] = child.start_point[0]
+                    hasElse = True
+                    dependencies = add_dependency(dependencies, root.start_point[0], child.start_point[0])
+                    dependencies = add_dependency(dependencies, child.start_point[0], root.end_point[0] + 1)
+            if not hasElse:
+                dependencies = add_dependency(dependencies, root.start_point[0], root.end_point[0] + 1)
 
         if root.type == 'for_statement':
-            dependencies[root.children[-1].end_point[0]] = root.start_point[0]
+            dependency_next_instrs = list(filter(lambda x: x <= root.children[-1].end_point[0], instructions_code.keys()))
+            if len(dependency_next_instrs) > 0:
+                dependency_next_instr = max(dependency_next_instrs)
+                dependencies = add_dependency(dependencies, dependency_next_instr, root.start_point[0])
 
         for child in root.children:
             if child.type == '\n':
@@ -158,15 +208,23 @@ def CFG_php(root, index_to_code, instructions_code, dependencies):
         return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
-        if root.type == 'while_statement':
-            dependencies[root.start_point[0]] = root.end_point[0] + 1
+        if root.type in ['while_statement', 'for_statement', 'foreach_statement']:
+            dependencies = add_dependency(dependencies, root.start_point[0], root.end_point[0] + 1)
         elif root.type == 'if_statement':
+            hasElse = False
             for child in root.children:
                 if child.type == 'else_clause':
-                    dependencies[root.start_point[0]] = child.start_point[0]
+                    hasElse = True
+                    dependencies = add_dependency(dependencies, root.start_point[0], child.start_point[0])
+                    dependencies = add_dependency(dependencies, child.start_point[0], root.end_point[0] + 1)
+            if not hasElse:
+                dependencies = add_dependency(dependencies, root.start_point[0], root.end_point[0] + 1)
 
-        if root.type == 'while_statement':
-            dependencies[root.children[-1].end_point[0]] = root.start_point[0]
+        if root.type in ['while_statement', 'for_statement', 'foreach_statement']:
+            dependency_next_instrs = list(filter(lambda x: x <= root.children[-1].end_point[0], instructions_code.keys()))
+            if len(dependency_next_instrs) > 0:
+                dependency_next_instr = max(dependency_next_instrs)
+                dependencies = add_dependency(dependencies, dependency_next_instr, root.start_point[0])
 
         for child in root.children:
             edges += CFG_php(child, index_to_code,
@@ -181,15 +239,23 @@ def CFG_javascript(root, index_to_code, instructions_code, dependencies):
         return process_leaf_node(root, index_to_code, instructions_code, dependencies)
     else:
         edges = []
-        if root.type == 'while_statement':
-            dependencies[root.start_point[0]] = root.end_point[0] + 1
+        if root.type in ['while_statement', 'for_statement']:
+            dependencies = add_dependency(dependencies, root.start_point[0], root.end_point[0] + 1)
         elif root.type == 'if_statement':
+            hasElse = False
             for child in root.children:
                 if child.type == 'else_clause':
-                    dependencies[root.start_point[0]] = child.start_point[0]
+                    hasElse = True
+                    dependencies = add_dependency(dependencies, root.start_point[0], child.start_point[0])
+                    dependencies = add_dependency(dependencies, child.start_point[0], root.end_point[0] + 1)
+            if not hasElse:
+                dependencies = add_dependency(dependencies, root.start_point[0], root.end_point[0] + 1)
 
-        if root.type == 'while_statement':
-            dependencies[root.children[-1].end_point[0]] = root.start_point[0]
+        if root.type in ['while_statement', 'for_statement']:
+            dependency_next_instrs = list(filter(lambda x: x <= root.children[-1].end_point[0], instructions_code.keys()))
+            if len(dependency_next_instrs) > 0:
+                dependency_next_instr = max(dependency_next_instrs)
+                dependencies = add_dependency(dependencies, dependency_next_instr, root.start_point[0])
 
         for child in root.children:
             edges += CFG_javascript(child, index_to_code,
