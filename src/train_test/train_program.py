@@ -35,7 +35,6 @@ class TrainProgram(Program):
         '''
         super(TrainProgram, self).__init__(args)
         self.num_epochs = args.num_epochs
-        self.gradient_clipping = args.gradient_clipping
         self.freq_threshold = args.freq_threshold
         self.train_filename = args.train_filename
         self.validation_filename = args.validation_filename
@@ -45,13 +44,11 @@ class TrainProgram(Program):
         self.train_statement_matrix = args.train_statement_matrix
         self.train_data_flow_matrix = args.train_data_flow_matrix
         self.train_control_flow_matrix = args.train_control_flow_matrix
-        self.train_ast_matrix = args.train_ast_matrix
 
         self.validation_token_matrix = args.validation_token_matrix
         self.validation_statement_matrix = args.validation_statement_matrix
         self.validation_data_flow_matrix = args.validation_data_flow_matrix
         self.validation_control_flow_matrix = args.validation_control_flow_matrix
-        self.validation_ast_matrix = args.validation_ast_matrix
 
         self.trial_number = trial_number
 
@@ -82,27 +79,25 @@ class TrainProgram(Program):
             val_summary_texts, \
             val_summary_tokens = load_dataset_file(self.validation_filename,
                                                    'validation',
-                                                   self.debug_max_lines)
+                                                   32)
 
         train_token_matrices, train_statement_matrices, \
-            train_data_flow_matrices, train_control_flow_matrices, \
-            train_ast_matrices = load_matrices(self.train_token_matrix,
-                                               self.train_statement_matrix,
-                                               self.train_data_flow_matrix,
-                                               self.train_control_flow_matrix,
-                                               self.train_ast_matrix,
-                                               'train',
-                                               self.debug_max_lines)
+            train_data_flow_matrices, train_control_flow_matrices \
+                 = load_matrices(self.train_token_matrix,
+                                 self.train_statement_matrix,
+                                 self.train_data_flow_matrix,
+                                 self.train_control_flow_matrix,
+                                 'train',
+                                 self.debug_max_lines)
 
         val_token_matrices, val_statement_matrices, \
             val_data_flow_matrices, val_control_flow_matrices, \
-            val_ast_matrices = load_matrices(self.validation_token_matrix,
-                                             self.validation_statement_matrix,
-                                             self.validation_data_flow_matrix,
-                                             self.validation_control_flow_matrix,
-                                             self.validation_ast_matrix,
-                                             'validation',
-                                             self.debug_max_lines)
+             = load_matrices(self.validation_token_matrix,
+                             self.validation_statement_matrix,
+                             self.validation_data_flow_matrix,
+                             self.validation_control_flow_matrix,
+                             'validation',
+                             self.debug_max_lines)
 
         source_vocab, target_vocab = create_vocabulary(train_code_tokens,
                                                        train_summary_tokens,
@@ -118,7 +113,6 @@ class TrainProgram(Program):
                                                               train_statement_matrices,
                                                               train_data_flow_matrices,
                                                               train_control_flow_matrices,
-                                                              train_ast_matrices,
                                                               val_code_texts,
                                                               val_code_tokens,
                                                               val_summary_texts,
@@ -127,7 +121,6 @@ class TrainProgram(Program):
                                                               val_statement_matrices,
                                                               val_data_flow_matrices,
                                                               val_control_flow_matrices,
-                                                              val_ast_matrices,
                                                               source_vocab,
                                                               target_vocab,
                                                               self.batch_size,
@@ -161,8 +154,7 @@ class TrainProgram(Program):
                       self.optimizer,
                       self.hyperparameter_hsva,
                       self.hyperparameter_data_flow,
-                      self.hyperparameter_control_flow,
-                      self.hyperparameter_ast)
+                      self.hyperparameter_control_flow)
 
         self.train_validate_model(model,
                                   train_dataloader,
@@ -207,8 +199,6 @@ class TrainProgram(Program):
             best_bleu = 0
 
         for epoch in range(start_epoch, self.num_epochs + 1):
-            model.optimizer.param_groups[0]['lr'] = model.optimizer.param_groups[0]['lr'] * 0.99
-
             logger.info(f"Epoch: {epoch}")
 
             if gpu_rank is not None:
@@ -216,7 +206,7 @@ class TrainProgram(Program):
                 val_dataloader.sampler.set_epoch(epoch)
 
             start_time = timer()
-            train_loss = model.train_epoch(train_dataloader, self.gradient_clipping)
+            train_loss = model.train_epoch(train_dataloader)
             val_loss, bleu = model.validate(val_dataloader,
                                             self.mode,
                                             target_vocab,

@@ -82,7 +82,6 @@ def create_dataloaders(source_code_texts,
                        train_statement_matrices,
                        train_data_flow_matrices,
                        train_control_flow_matrices,
-                       train_ast_matrices,
                        val_code_texts,
                        val_code_tokens,
                        val_summary_texts,
@@ -91,7 +90,6 @@ def create_dataloaders(source_code_texts,
                        val_statement_matrices,
                        val_data_flow_matrices,
                        val_control_flow_matrices,
-                       val_ast_matrices,
                        source_vocab,
                        target_vocab,
                        batch_size,
@@ -120,8 +118,6 @@ def create_dataloaders(source_code_texts,
         train_control_flow_matrices: A list with size of training set containing the 
                                      control flow adjacency matrices for the training 
                                      code snippets.
-        train_ast_matrices: A list with size of training set containing the 
-                            ast adjacency matrices for the training code snippets.
         val_code_texts: A list with size of validation set containing code snippets.
         val_code_tokens: Contains the tokens of the code snippets in validation set.
         val_summary_texts: A list with size of validation set containing summaries.
@@ -137,8 +133,6 @@ def create_dataloaders(source_code_texts,
         val_control_flow_matrices: A list with size of validation set containing the 
                                    control flow adjacency matrices for the 
                                    validation code snippets.
-        val_ast_matrices: A list with size of validation set containing the 
-                          ast adjacency matrices for the validation code snippets.
         source_vocab: The vocabulary built from the code snippets in training set.
         target_vocab: The vocabulary built from the summaries in training set.
         batch_size (int): how many samples per batch to load
@@ -166,7 +160,6 @@ def create_dataloaders(source_code_texts,
                                   train_statement_matrices,
                                   train_data_flow_matrices,
                                   train_control_flow_matrices,
-                                  train_ast_matrices,
                                   source_vocab,
                                   target_vocab,
                                   'train')
@@ -190,7 +183,6 @@ def create_dataloaders(source_code_texts,
                                                 val_statement_matrices,
                                                 val_data_flow_matrices,
                                                 val_control_flow_matrices,
-                                                val_ast_matrices,
                                                 source_vocab,
                                                 target_vocab,
                                                 batch_size,
@@ -211,7 +203,6 @@ def load_evaluation_dataloader(code_texts,
                                statement_matrices,
                                data_flow_matrices,
                                control_flow_matrices,
-                               ast_matrices,
                                source_vocab,
                                target_vocab,
                                batch_size,
@@ -241,9 +232,6 @@ def load_evaluation_dataloader(code_texts,
         control_flow_matrices: A list with size of validation/testing set 
                                containing the control flow adjacency matrices 
                                for the validation/testing code snippets.
-        ast_matrices: A list with size of validation/testing set containing the 
-                      ast adjacency matrices for the validation/testing code 
-                      snippets.
         source_vocab: The vocabulary built from the code snippets in training set.
         target_vocab: The vocabulary built from the summaries in training set.
         batch_size (int): how many samples per batch to load
@@ -269,7 +257,6 @@ def load_evaluation_dataloader(code_texts,
                                        statement_matrices,
                                        data_flow_matrices,
                                        control_flow_matrices,
-                                       ast_matrices,
                                        source_vocab,
                                        target_vocab,
                                        'evaluation')

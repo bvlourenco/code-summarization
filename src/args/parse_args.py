@@ -58,8 +58,6 @@ def parse_arguments():
                         help='Number of subprocesses used for data loading')
     parser.add_argument('--num_epochs', type=int, required=True,
                         help='Number of epochs')
-    parser.add_argument('--gradient_clipping', type=float, required=True,
-                        help='Value of maximum norm of the gradients')
     parser.add_argument('--label_smoothing', type=float, required=True,
                         help='Value of label smoothing in range [0.0, 1.0] \
                               to be applied in loss function.')
@@ -91,9 +89,6 @@ def parse_arguments():
     parser.add_argument('--train_control_flow_matrix', type=str, required=True,
                         help='Filename of the training set with the \
                             control flow adjacency matrices.')
-    parser.add_argument('--train_ast_matrix', type=str, required=True,
-                        help='Filename of the training set with the \
-                            AST adjacency matrices.')
     parser.add_argument('--validation_token_matrix', type=str, required=True,
                         help='Filename of the validation set with the \
                             token adjacency matrices (represented as a \
@@ -108,9 +103,6 @@ def parse_arguments():
     parser.add_argument('--validation_control_flow_matrix', type=str, required=True,
                         help='Filename of the validation set with the \
                             control flow adjacency matrices.')
-    parser.add_argument('--validation_ast_matrix', type=str, required=True,
-                        help='Filename of the validation set with the \
-                            AST adjacency matrices.')
     
     parser.add_argument('--hyperparameter_hsva', type=int, required=True,
                         help='Hyperparameter used in HSVA (Hierarchical \
@@ -122,9 +114,6 @@ def parse_arguments():
     parser.add_argument('--hyperparameter_control_flow', type=int, required=True,
                         help='Hyperparameter used to adjust the weight of the \
                               control flow adjacency matrix in the self-attention')
-    parser.add_argument('--hyperparameter_ast', type=int, required=True,
-                        help='Hyperparameter used to adjust the weight of the \
-                              AST adjacency matrix in the self-attention')
 
     parser.add_argument('--mode', type=str, required=True,
                         choices=['beam', 'greedy', 'loss'],
@@ -184,9 +173,6 @@ def parse_test_args():
     parser.add_argument('--test_control_flow_matrix', type=str, required=True,
                         help='Filename of the testing set with the \
                             control flow adjacency matrices.')
-    parser.add_argument('--test_ast_matrix', type=str, required=True,
-                        help='Filename of the testing set with the \
-                            AST adjacency matrices.')
     
     parser.add_argument('--hyperparameter_hsva', type=int, required=True,
                         help='Hyperparameter used in HSVA (Hierarchical \
@@ -198,9 +184,6 @@ def parse_test_args():
     parser.add_argument('--hyperparameter_control_flow', type=int, required=True,
                         help='Hyperparameter used to adjust the weight of the \
                               control flow adjacency matrix in the self-attention')
-    parser.add_argument('--hyperparameter_ast', type=int, required=True,
-                        help='Hyperparameter used to adjust the weight of the \
-                              AST adjacency matrix in the self-attention')
 
     parser.add_argument('--d_model', type=int, required=True,
                         help='Dimensionality of the model')

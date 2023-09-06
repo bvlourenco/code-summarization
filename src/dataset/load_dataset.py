@@ -123,10 +123,10 @@ def load_local_matrices(matrix_filename, type, debug_max_lines):
 
 def load_global_matrices(matrix_filename, type, debug_max_lines):
     '''
-    Given a filename, it loads the data flow/control flow/ast adjacency matrices 
+    Given a filename, it loads the data flow/control flow adjacency matrices 
     (they represent the global structure of the code).
 
-    Each code snippet has a data flow, control flow and ast adjacency matrix.
+    Each code snippet has a data flow and control flow adjacency matrix.
 
     The data flow adjacency matrix tells whether two tokens have a data dependency
     or not.
@@ -134,23 +134,19 @@ def load_global_matrices(matrix_filename, type, debug_max_lines):
     The control flow adjacency matrix tells whether a given token can be executed
     next to the current one (models the control dependencies).
 
-    The ast adjacency matrix models the AST in an adjacency matrix. It models
-    the direct relationships among tokens (it's 1 if the token j is the child of
-    token i).
-
     Args:
-        matrix_filename (string): The filename of the data flow/control flow/ast 
+        matrix_filename (string): The filename of the data flow/control flow 
                                   matrix.
         type (string): Indicates whether we are loading the training set, the
                        validation set or the testing set from the files.
                        Can be one of the following: "train/validation/test 
-                       data flow/control flow/ast", 
+                       data flow/control flow", 
         debug_max_lines (int): Represents the number of examples we want to read
                                from the dataset. If we pass a non-positive value, 
                                the whole dataset will be read.
 
     Returns:
-        A list of data flow/control flow/ast matrices, each one corresponding 
+        A list of data flow/control flow matrices, each one corresponding 
         to a code snippet.
     '''
     if (not os.path.exists(matrix_filename)):
@@ -179,11 +175,10 @@ def load_matrices(token_filename,
                   statement_filename,
                   data_flow_filename,
                   control_flow_filename,
-                  ast_filename,
                   type,
                   debug_max_lines):
     '''
-    Loads the token, statement, data flow, control flow and AST adjacency matrices
+    Loads the token, statement, data flow and control flow adjacency matrices
     from the training/validation/testing set.
 
     Args:
@@ -191,7 +186,6 @@ def load_matrices(token_filename,
         statement_filename (string): The filename of the statement matrix.
         data_flow_filename (string): The filename of the data flow matrix.
         control_flow_filename (string): The filename of the control flow matrix.
-        ast_filename (string): The filename of the AST matrix.
         type (string): Indicates whether we are loading the training set, the
                        validation set or the testing set from the files.
                        Can be one of the following: "train", "validation", "test"
@@ -200,7 +194,7 @@ def load_matrices(token_filename,
                                the whole dataset will be read.
 
     Returns:
-        The token, statement, data flow, control flow and AST adjacency matrices. 
+        The token, statement, data flow and control flow adjacency matrices. 
     '''
     token_matrices = load_local_matrices(token_filename,
                                          type + ' token',
@@ -218,9 +212,5 @@ def load_matrices(token_filename,
                                                  type + ' control flow',
                                                  debug_max_lines)
 
-    ast_matrices = load_global_matrices(ast_filename,
-                                        type + ' ast',
-                                        debug_max_lines)
-
     return token_matrices, statement_matrices, data_flow_matrices, \
-        control_flow_matrices, ast_matrices
+        control_flow_matrices

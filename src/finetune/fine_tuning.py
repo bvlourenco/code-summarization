@@ -26,13 +26,10 @@ def objective(trial, args):
         args: The arguments given as input to the program.
     '''
     args.dropout = trial.suggest_float('dropout', 0.0, 1.0, step=0.1)
-    args.gradient_clipping = trial.suggest_float('gradient_clipping', 0.0, 10.0, 
-                                                 step=0.1)
     args.label_smoothing = trial.suggest_float('label_smoothing', 0.0, 1.0, 
                                                step=0.1)
     args.hyperparameter_data_flow = trial.suggest_int('hyperparameter_data_flow', 0, 10, step=1)
     args.hyperparameter_control_flow = trial.suggest_int('hyperparameter_control_flow', 0, 10, step=1)
-    args.hyperparameter_ast = trial.suggest_int('hyperparameter_ast', 0, 10, step=1)
 
     program = TrainProgram(args, trial.number)
     program.start()

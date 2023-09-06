@@ -23,7 +23,6 @@ class TestProgram(Program):
         self.test_statement_matrix = args.test_statement_matrix
         self.test_data_flow_matrix = args.test_data_flow_matrix
         self.test_control_flow_matrix = args.test_control_flow_matrix
-        self.test_ast_matrix = args.test_ast_matrix
 
     def execute_operation(self, gpu_rank=None):
         '''
@@ -49,13 +48,12 @@ class TestProgram(Program):
 
         test_token_matrices, test_statement_matrices, \
             test_data_flow_matrices, test_control_flow_matrices, \
-            test_ast_matrices = load_matrices(self.test_token_matrix,
-                                              self.test_statement_matrix,
-                                              self.test_data_flow_matrix,
-                                              self.test_control_flow_matrix,
-                                              self.test_ast_matrix,
-                                              'test',
-                                              self.debug_max_lines)
+            = load_matrices(self.test_token_matrix,
+                            self.test_statement_matrix,
+                            self.test_data_flow_matrix,
+                            self.test_control_flow_matrix,
+                            'test',
+                            self.debug_max_lines)
 
         source_vocab, target_vocab = load_vocab('../results/src_vocab.pkl',
                                                 '../results/tgt_vocab.pkl')
@@ -68,7 +66,6 @@ class TestProgram(Program):
                                                      test_statement_matrices,
                                                      test_data_flow_matrices,
                                                      test_control_flow_matrices,
-                                                     test_ast_matrices,
                                                      source_vocab,
                                                      target_vocab,
                                                      self.batch_size,
@@ -102,8 +99,7 @@ class TestProgram(Program):
                       self.optimizer,
                       self.hyperparameter_hsva,
                       self.hyperparameter_data_flow,
-                      self.hyperparameter_control_flow,
-                      self.hyperparameter_ast)
+                      self.hyperparameter_control_flow)
 
         model.load(gpu_rank)
         model.test(test_dataloader,

@@ -53,8 +53,7 @@ class Model:
                  optimizer,
                  hyperparameter_hsva,
                  hyperparameter_data_flow,
-                 hyperparameter_control_flow,
-                 hyperparameter_ast):
+                 hyperparameter_control_flow):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -86,9 +85,6 @@ class Model:
             hyperparameter_control_flow (int): Hyperparameter used to adjust the 
                                                weight of the control flow adjacency 
                                                matrix in the self-attention.
-            hyperparameter_ast (int): Hyperparameter used to adjust the 
-                                      weight of the ast adjacency matrix in the 
-                                      self-attention.
         '''
         self.model = Transformer(src_vocab_size,
                                  tgt_vocab_size,
@@ -103,8 +99,7 @@ class Model:
                                  init_type,
                                  hyperparameter_hsva,
                                  hyperparameter_data_flow,
-                                 hyperparameter_control_flow,
-                                 hyperparameter_ast)
+                                 hyperparameter_control_flow)
 
         self.num_heads = num_heads
 
@@ -132,12 +127,12 @@ class Model:
 
         # Adjusts the learning rate during training
         # Implements the "Noam" learning rate scheduler, used in vanilla Transformer
-        # self.scheduler = LambdaLR(
-        #     optimizer=self.optimizer,
-        #     lr_lambda=lambda step: Model.rate(
-        #         step, model_size=d_model, factor=1.0, warmup=400
-        #     ),
-        # )
+        self.scheduler = LambdaLR(
+            optimizer=self.optimizer,
+            lr_lambda=lambda step: Model.rate(
+                step, model_size=d_model, factor=1.0, warmup=32000
+            ),
+        )
 
         self.device = device
         self.gpu_rank = gpu_rank
@@ -172,14 +167,13 @@ class Model:
             model_size ** (-0.5) * min(step ** (-0.5), step * warmup ** (-1.5))
         )
 
-    def train_epoch(self, train_dataloader, grad_clipping, display_attn=False):
+    def train_epoch(self, train_dataloader, display_attn=False):
         '''
         Trains the model during one epoch, using the examples of the dataset for training.
         Computes the loss during this epoch.
 
         Args:
             train_dataloader: A Dataloader object that contains the training set.
-            grad_clipping (int): Maximum norm of the gradient.
             display_attn (bool): Tells whether we want to save the attention of
                                  the last layer encoder and decoder 
                                  multi-head attentions.
@@ -195,7 +189,7 @@ class Model:
         losses = 0
 
         for src_tokens, tgt_tokens, src, tgt, source_ids, source_mask, token, \
-                statement, data_flow, control_flow, ast in \
+                statement, data_flow, control_flow in \
                                         tqdm(train_dataloader, desc="Training"):
             # Passing vectors to GPU if it's available
             src = src.to(self.device)
@@ -206,7 +200,6 @@ class Model:
             statement = statement.to(self.device)
             data_flow = data_flow.to(self.device)
             control_flow = control_flow.to(self.device)
-            ast = ast.to(self.device)
 
             # Zeroing the gradients of transformer parameters
             self.optimizer.zero_grad()
@@ -220,8 +213,7 @@ class Model:
                                                                          token,
                                                                          statement,
                                                                          data_flow,
-                                                                         control_flow,
-                                                                         ast)
+                                                                         control_flow)
 
             if display_attn:
                 self.display_all_attentions(src_tokens,
@@ -241,14 +233,11 @@ class Model:
             # Computing gradients of loss through backpropagation
             loss.backward()
 
-            # clip the weights
-            clip_grad_norm_(self.model.parameters(), grad_clipping)
-
             # Update the model's parameters based on the computed gradients
             self.optimizer.step()
 
             # Adjust learning rate
-            # self.scheduler.step()
+            self.scheduler.step()
 
             losses += loss.item()
 
@@ -307,7 +296,7 @@ class Model:
         with torch.no_grad():
             for batch_idx, (code_tokens, summary_tokens, code, summary, src, tgt, \
                 source_ids, source_mask, token, statement, data_flow, \
-                control_flow, ast) in enumerate(tqdm(val_dataloader, desc="Validating")):
+                control_flow) in enumerate(tqdm(val_dataloader, desc="Validating")):
                 src = src.to(self.device)
                 tgt = tgt.to(self.device)
                 source_ids = source_ids.to(self.device)
@@ -316,7 +305,6 @@ class Model:
                 statement = statement.to(self.device)
                 data_flow = data_flow.to(self.device)
                 control_flow = control_flow.to(self.device)
-                ast = ast.to(self.device)
 
                 if mode in ['beam', 'greedy']:
                     metrics, hyps, refs = self.translate_evaluate(src,
@@ -327,7 +315,6 @@ class Model:
                                                                   statement,
                                                                   data_flow,
                                                                   control_flow,
-                                                                  ast,
                                                                   code,
                                                                   summary,
                                                                   log,
@@ -348,8 +335,7 @@ class Model:
                                                                              token,
                                                                              statement,
                                                                              data_flow,
-                                                                             control_flow,
-                                                                             ast)
+                                                                             control_flow)
 
                 if display_attn:
                     self.display_all_attentions(code_tokens,
@@ -370,8 +356,8 @@ class Model:
 
         if mode in ['beam', 'greedy']:
             log.close()
-            metrics["BLEU_N"], metrics["ROUGE-L_N"], metrics["METEOR_N"] = eval_accuracies(hypotheses, references)
-            Model.compute_avg_metrics(metrics)
+            # metrics["BLEU_N"], metrics["ROUGE-L_N"], metrics["METEOR_N"] = eval_accuracies(hypotheses, references)
+            Model.compute_avg_metrics(metrics, neuralcodesum_metrics=False)
             return losses / len(val_dataloader), \
                    (metrics["sum_bleu"] / metrics["number_examples"]) * 100
         else:
@@ -416,7 +402,7 @@ class Model:
                       '_gpu_' + str(self.gpu_rank) + '.json', 'w') as log:
                 for batch_idx, (code_tokens, summary_tokens, code, summary, src, tgt, \
                     source_ids, source_mask, token, statement, data_flow, \
-                    control_flow, ast) in enumerate(tqdm(test_dataloader, desc="Testing")):
+                    control_flow) in enumerate(tqdm(test_dataloader, desc="Testing")):
                     src = src.to(self.device)
                     tgt = tgt.to(self.device)
                     source_ids = source_ids.to(self.device)
@@ -425,7 +411,6 @@ class Model:
                     statement = statement.to(self.device)
                     data_flow = data_flow.to(self.device)
                     control_flow = control_flow.to(self.device)
-                    ast = ast.to(self.device)
 
                     metrics, hyps, refs = self.translate_evaluate(src,
                                                                   source_ids,
@@ -435,7 +420,6 @@ class Model:
                                                                   statement,
                                                                   data_flow,
                                                                   control_flow,
-                                                                  ast,
                                                                   code,
                                                                   summary,
                                                                   log,
@@ -501,7 +485,6 @@ class Model:
                            statement,
                            data_flow,
                            control_flow,
-                           ast,
                            code,
                            summary,
                            log,
@@ -526,8 +509,6 @@ class Model:
                        Shape: `(batch_size, max_src_len, max_src_len)`
             control_flow: The control flow adjacency matrices. 
                           Shape: `(batch_size, max_src_len, max_src_len)`
-            ast: The ast adjacency matrices. 
-                 Shape: `(batch_size, max_src_len, max_src_len)`
             code (string): code snippet in textual form.
             summary (string): reference code comment.
             log: file to write the evaluation metrics of the generated summaries.
@@ -557,7 +538,6 @@ class Model:
                                                                         statement,
                                                                         data_flow,
                                                                         control_flow,
-                                                                        ast,
                                                                         code,
                                                                         summary,
                                                                         log,
@@ -579,7 +559,7 @@ class Model:
         return metrics, hyps, refs
 
     @staticmethod
-    def compute_avg_metrics(metrics):
+    def compute_avg_metrics(metrics, neuralcodesum_metrics=True):
         '''
         Given the sum of each evaluation metric (BLEU, METEOR, ROUGE-L, Precision,
         Recall and F1-score), it computes the average for each metric and prints
@@ -604,9 +584,14 @@ class Model:
                         metrics["number_examples"]) * 100
         final_f1 = (metrics["sum_f1"] / metrics["number_examples"]) * 100
 
-        final_bleu_n = metrics["BLEU_N"]
-        final_rouge_l_n = metrics["ROUGE-L_N"]
-        final_meteor_n = metrics["METEOR_N"]
+        if neuralcodesum_metrics:
+            final_bleu_n = metrics["BLEU_N"]
+            final_rouge_l_n = metrics["ROUGE-L_N"]
+            final_meteor_n = metrics["METEOR_N"]
+
+            logger.info(f"NeuralCodeSum metrics:\nBLEU_N: {final_bleu_n:7.3f} | " +
+                    f"METEOR_N: {final_meteor_n:7.3f} | " +
+                    f"ROUGE-L_N: {final_rouge_l_n:7.3f}")
 
         logger.info(f"Metrics:\nBLEU: {final_bleu:7.3f} | " +
                     f"METEOR: {final_meteor:7.3f} | " +
@@ -614,10 +599,6 @@ class Model:
                     f"Precision: {final_precision:7.3f} | " +
                     f"Recall: {final_recall:7.3f} | " +
                     f"F1: {final_f1:7.3f}")
-        
-        logger.info(f"NeuralCodeSum metrics:\nBLEU_N: {final_bleu_n:7.3f} | " +
-                    f"METEOR_N: {final_meteor_n:7.3f} | " +
-                    f"ROUGE-L_N: {final_rouge_l_n:7.3f}")
 
     def translate_sentence(self,
                            src,
@@ -628,7 +609,6 @@ class Model:
                            statement,
                            data_flow,
                            control_flow,
-                           ast,
                            code,
                            summary,
                            log,
@@ -651,8 +631,6 @@ class Model:
                        Shape: `(batch_size, max_src_len, max_src_len)`
             control_flow: The control flow adjacency matrices. 
                           Shape: `(batch_size, max_src_len, max_src_len)`
-            ast: The ast adjacency matrices. 
-                 Shape: `(batch_size, max_src_len, max_src_len)`
             code (string): code snippet in textual form.
             summary (string): reference code comment.
             log: file to write the evaluation metrics of the generated summaries.
@@ -694,7 +672,6 @@ class Model:
                                           statement,
                                           data_flow,
                                           control_flow,
-                                          ast,
                                           self.device,
                                           start_symbol_idx,
                                           end_symbol_idx,
@@ -711,7 +688,7 @@ class Model:
                 # src[i] has shape (max_src_length, )
                 # Performing an unsqueeze on src[i] will make its shape (1, max_src_length)
                 # which is the correct shape since batch_size = 1 in this case
-                # The same happens with token, statement, data flow, control flow and ast
+                # The same happens with token, statement, data flow and control flow
                 tgt_preds_idx = beam_search(self.model,
                                             src[i].unsqueeze(0),
                                             self.device,

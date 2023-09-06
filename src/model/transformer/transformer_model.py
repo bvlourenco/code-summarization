@@ -41,8 +41,7 @@ class Transformer(nn.Module):
                  init_type,
                  hyperparameter_hsva,
                  hyperparameter_data_flow,
-                 hyperparameter_control_flow,
-                 hyperparameter_ast):
+                 hyperparameter_control_flow):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -67,9 +66,6 @@ class Transformer(nn.Module):
             hyperparameter_control_flow (int): Hyperparameter used to adjust the 
                                                weight of the control flow adjacency 
                                                matrix in the self-attention.
-            hyperparameter_ast (int): Hyperparameter used to adjust the 
-                                      weight of the ast adjacency matrix in the 
-                                      self-attention.
 
         Note: The log-softmax function is not applied here due to the later use 
               of CrossEntropyLoss, which requires the inputs to be unnormalized 
@@ -89,7 +85,8 @@ class Transformer(nn.Module):
 
         config = RobertaConfig.from_pretrained("microsoft/codebert-base", do_lower_case=False)
         self.code_encoder_layers = RobertaModel.from_pretrained("microsoft/codebert-base", config=config)
-        self.code_encoder_linear_layer = nn.Linear(config.hidden_size, d_model)
+        enc_output_size = config.hidden_size + d_model
+        self.encoder_linear_layer = nn.Linear(enc_output_size, d_model)
 
         self.decoder_layers = nn.ModuleList(
             [DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
@@ -109,7 +106,6 @@ class Transformer(nn.Module):
         self.hyperparameter_hsva = hyperparameter_hsva
         self.hyperparameter_data_flow = hyperparameter_data_flow
         self.hyperparameter_control_flow = hyperparameter_control_flow
-        self.hyperparameter_ast = hyperparameter_ast
 
         self.heads_distribution = []
         for layer_idx, _ in enumerate(self.structural_encoder_layers):
@@ -220,8 +216,7 @@ class Transformer(nn.Module):
                token,
                statement,
                data_flow,
-               control_flow,
-               ast):
+               control_flow):
         '''
         Encodes the input and returns the result of the last encoder layer.
 
@@ -233,7 +228,6 @@ class Transformer(nn.Module):
             statement: The statement adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
             data_flow: The data flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
             control_flow: The control flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
-            ast: The ast adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
 
         Returns:
             The resulting encoding from the last layer and the encoder self-attention.
@@ -250,22 +244,22 @@ class Transformer(nn.Module):
 
         for layer_idx, enc_layer in enumerate(self.structural_encoder_layers):
             enc_output, enc_attn = enc_layer(enc_output, token, statement,
-                                             data_flow, control_flow, ast,
+                                             data_flow, control_flow,
                                              zero_matrix,
                                              self.heads_distribution[layer_idx],
                                              self.hyperparameter_data_flow,
                                              self.hyperparameter_control_flow,
-                                             self.hyperparameter_ast,
                                              src_mask)
         # Final encoder layer normalization according to Pre-LN
         structural_enc_output = self.norm1(enc_output)
 
         code_enc_output = self.code_encoder_layers(source_ids, 
                                                    attention_mask=source_mask)
-        # Adjusting the size of code encoder output to match d_model
-        code_enc_linear_output = self.code_encoder_linear_layer(code_enc_output["last_hidden_state"])
+        
+        enc_output = torch.cat([code_enc_output["last_hidden_state"], structural_enc_output], dim=-1)
 
-        enc_output = 0.5 * structural_enc_output + 0.5 * code_enc_linear_output
+        # Adjusting the size of encoder output to match d_model
+        enc_output = self.encoder_linear_layer(enc_output)
 
         return enc_output, enc_attn
 
@@ -303,7 +297,7 @@ class Transformer(nn.Module):
         return dec_output, dec_self_attn, dec_cross_attn
 
     def forward(self, src, source_ids, source_mask, tgt, token, statement, 
-                data_flow, control_flow, ast):
+                data_flow, control_flow):
         '''
         Args:
             src: The encoder input. Shape: `(batch_size, max_src_len)`
@@ -312,7 +306,6 @@ class Transformer(nn.Module):
             statement: The statement adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
             data_flow: The data flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
             control_flow: The control flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
-            ast: The ast adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
 
         Returns:
             output: The output of the Transformer model, the encoder self-attention,
@@ -332,8 +325,7 @@ class Transformer(nn.Module):
                                            token,
                                            statement,
                                            data_flow,
-                                           control_flow,
-                                           ast)
+                                           control_flow)
 
         dec_output, dec_self_attn, dec_cross_attn = self.decode(src_mask,
                                                                 tgt,

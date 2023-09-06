@@ -47,7 +47,6 @@ def greedy_decode(model,
                   statement,
                   data_flow,
                   control_flow,
-                  ast,
                   device,
                   start_symbol_idx,
                   end_symbol_idx,
@@ -68,8 +67,6 @@ def greedy_decode(model,
                    Shape: `(1, max_src_len, max_src_len)`
         control_flow: The control flow adjacency matrices. 
                       Shape: `(1, max_src_len, max_src_len)`
-        ast: The ast adjacency matrices. 
-             Shape: `(1, max_src_len, max_src_len)`
         device: The device where the model and tensors are inserted (GPU or CPU). 
         start_symbol_idx: The vocabulary start symbol index (<BOS> index)
         end_symbol_idx: The vocabulary end symbol index (<EOS> index)
@@ -88,8 +85,7 @@ def greedy_decode(model,
                                  token,
                                  statement,
                                  data_flow,
-                                 control_flow,
-                                 ast)
+                                 control_flow)
     enc_output = enc_output.to(device)
     batch_size = src.shape[0]
 

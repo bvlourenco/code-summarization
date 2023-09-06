@@ -18,15 +18,15 @@ def compute_heads_distribution(num_heads, layer_index, hyperparameter_hsva):
 
     number_token_heads = number_statement_heads = 
                                             floor(h * ( (k - l) / (2*k - l) ) )
-    number_data_flow_heads = number_control_flow_heads = number_AST_heads = 
-                                            floor((h * ( l / (2*k - l) )) / 3)
+    number_data_flow_heads = number_control_flow_heads = 
+                                            floor((h * ( l / (2*k - l) )) / 2)
 
     k = hyper-parameter
     l = index of the encoder layer
     h = number of heads
 
     We have token heads, statement heads, data-flow heads, control-flow heads, 
-    AST heads and standard heads. Each head corresponds to each adjacency matrix
+    and standard heads. Each head corresponds to each adjacency matrix
     that we receive as input.
 
     Args:
@@ -39,13 +39,12 @@ def compute_heads_distribution(num_heads, layer_index, hyperparameter_hsva):
 
     Returns:
         A list containing the number of token, statement, data flow, control
-        flow, AST and standard head attentions in the following format:
+        flow and standard head attentions in the following format:
         [
          num_token_head_attentions,
          num_statement_head_attentions, 
          num_data_flow_head_attentions,
          num_control_flow_head_attentions,
-         num_AST_head_attentions,
          num_standard_head_attentions
         ]
 
@@ -62,23 +61,20 @@ def compute_heads_distribution(num_heads, layer_index, hyperparameter_hsva):
         data_flow_heads = math.floor((num_heads *
                                       (layer_index /
                                        (2 * hyperparameter_hsva - layer_index)))
-                                     / 3)
+                                     / 2)
     control_flow_heads = data_flow_heads
-    ast_heads = data_flow_heads
     standard_heads = num_heads - (token_heads + statement_heads + data_flow_heads
-                                  + control_flow_heads + ast_heads)
+                                  + control_flow_heads)
     
     logger.info(f"Heads distribution of layer {layer_index}:\n" + 
                 f"Token Heads: {token_heads} | " +
                 f"Statement Heads: {statement_heads} | " +
                 f"Data flow Heads: {data_flow_heads} | " +
                 f"Control flow Heads: {control_flow_heads} | " +
-                f"AST Heads: {ast_heads} | " +
                 f"Standard Heads: {standard_heads}")
 
     return [token_heads,
             statement_heads,
             data_flow_heads,
             control_flow_heads,
-            ast_heads,
             standard_heads]

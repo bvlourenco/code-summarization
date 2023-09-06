@@ -22,7 +22,6 @@ class CustomDataset(Dataset):
                  statement_matrices,
                  data_flow_matrices,
                  control_flow_matrices,
-                 ast_matrices,
                  source_vocab,
                  target_vocab,
                  type):
@@ -41,8 +40,6 @@ class CustomDataset(Dataset):
                                 the code snippets passed as argument.
             control_flow_matrices: A list with the control flow adjacency matrices 
                                    for the code snippets passed as argument.
-            ast_matrices: A list with the ast adjacency matrices for the code 
-                          snippets passed as argument.
             source_vocab: The vocabulary built from the code snippets in training set.
             target_vocab: The vocabulary built from the summaries in training set.
             type (string): Indicates whether we are loading the training set or the
@@ -69,7 +66,6 @@ class CustomDataset(Dataset):
         self.statement_matrices = statement_matrices
         self.data_flow_matrices = data_flow_matrices
         self.control_flow_matrices = control_flow_matrices
-        self.ast_matrices = ast_matrices
 
         self.max_src_length = max_src_length
 
@@ -107,7 +103,6 @@ class CustomDataset(Dataset):
         statement_matrix = self.statement_matrices[index]
         data_flow_matrix = self.data_flow_matrices[index]
         control_flow_matrix = self.control_flow_matrices[index]
-        ast_matrix = self.ast_matrices[index]
 
         # numericalize texts ['<BOS>','cat', 'in', 'a', 'bag','<EOS>'] -> [1,12,2,9,24,2]
         numericalized_source = [self.source_vocab.token_to_idx["<BOS>"]]
@@ -120,7 +115,6 @@ class CustomDataset(Dataset):
 
         df_tensor = build_tensor_from_sparse_matrix(data_flow_matrix, self.max_src_length)
         cf_tensor = build_tensor_from_sparse_matrix(control_flow_matrix, self.max_src_length)
-        ast_tensor = build_tensor_from_sparse_matrix(ast_matrix, self.max_src_length)
 
         # Getting the code split into tokens and numericalized for CodeBERT encoder
         source_tokens = self.codebert_tokenizer.tokenize(source_text)[:self.max_src_length - 2]
@@ -144,8 +138,7 @@ class CustomDataset(Dataset):
                 token_matrix.strip().split(), \
                 statement_matrix.strip().split(), \
                 df_tensor, \
-                cf_tensor, \
-                ast_tensor
+                cf_tensor
         elif self.type == 'evaluation':
             return code_tokens, \
                 summary_tokens, \
@@ -158,8 +151,7 @@ class CustomDataset(Dataset):
                 token_matrix.strip().split(), \
                 statement_matrix.strip().split(), \
                 df_tensor, \
-                cf_tensor, \
-                ast_tensor
+                cf_tensor
         else:
             raise ValueError("Invalid type: " + self.type +
                              ". It can only be: train, evaluation.")

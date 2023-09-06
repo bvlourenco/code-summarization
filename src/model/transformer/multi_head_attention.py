@@ -39,12 +39,10 @@ class MultiHeadAttention(nn.Module):
                                      statement,
                                      data_flow,
                                      control_flow,
-                                     ast,
                                      zero_matrix,
                                      heads_distribution,
                                      hyperparameter_data_flow,
                                      hyperparameter_control_flow,
-                                     hyperparameter_ast,
                                      mask=None):
         '''
         Computes the attention score for multiple heads using the following formula: 
@@ -66,8 +64,6 @@ class MultiHeadAttention(nn.Module):
                        Only used for the self-attention of the encoder layer.
             control_flow: The control flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
                           Only used for the self-attention of the encoder layer.
-            ast: The ast adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
-                 Only used for the self-attention of the encoder layer.
             zero_matrix: A matrix of zeros used in multi-head attention to denote we're using a
                          standard head attention. Shape: `(batch_size, max_src_len, max_src_len)`
                          Only used for the self-attention of the encoder layer.
@@ -76,7 +72,7 @@ class MultiHeadAttention(nn.Module):
                                 numbers give us the number of heads.
                                 The number of heads of each type is the following:
                                 [TOKEN_HEADS, STATEMENT_HEADS, DATA_FLOW_HEADS, 
-                                 CONTROL_FLOW_HEADS, AST_HEADS, STANDARD_HEADS]
+                                 CONTROL_FLOW_HEADS, STANDARD_HEADS]
                                 Only used for the self-attention of the encoder layer.
             hyperparameter_data_flow (int): Hyperparameter used to adjust the 
                                             weight of the data flow adjacency 
@@ -88,11 +84,6 @@ class MultiHeadAttention(nn.Module):
                                                matrix in the self-attention.
                                                Only used for the self-attention of 
                                                the encoder layer.
-            hyperparameter_ast (int): Hyperparameter used to adjust the 
-                                      weight of the ast adjacency matrix in the 
-                                      self-attention.
-                                      Only used for the self-attention of 
-                                      the encoder layer.
 
             mask: A batch of matrices with 0/1 indicating which keys have zero
             or non-zero attention. Shape: `(batch_size, query_len, key_len)`
@@ -127,15 +118,13 @@ class MultiHeadAttention(nn.Module):
                                          [statement for _ in range(heads_distribution[1])] +
                                          [zero_matrix for _ in range(heads_distribution[2])] +
                                          [zero_matrix for _ in range(heads_distribution[3])] +
-                                         [zero_matrix for _ in range(heads_distribution[4])] +
-                                         [zero_matrix for _ in range(heads_distribution[5])], 1)
+                                         [zero_matrix for _ in range(heads_distribution[4])], 1)
 
             global_enhance_map = torch.stack([zero_matrix for _ in range(heads_distribution[0])] +
                                              [zero_matrix for _ in range(heads_distribution[1])] +
                                              [hyperparameter_data_flow * data_flow for _ in range(heads_distribution[2])] +
                                              [hyperparameter_control_flow * control_flow for _ in range(heads_distribution[3])] +
-                                             [hyperparameter_ast * ast for _ in range(heads_distribution[4])] +
-                                             [zero_matrix for _ in range(heads_distribution[5])], 1)
+                                             [zero_matrix for _ in range(heads_distribution[4])], 1)
 
             global_enhance_map = global_enhance_map.mul(attn_scores)
             attn_scores = attn_scores + local_mask_map + global_enhance_map
@@ -198,12 +187,10 @@ class MultiHeadAttention(nn.Module):
                 statement=None,
                 data_flow=None,
                 control_flow=None,
-                ast=None,
                 zero_matrix=None,
                 heads_distribution=None,
                 hyperparameter_data_flow=None,
                 hyperparameter_control_flow=None,
-                hyperparameter_ast=None,
                 mask=None):
         '''
         Computes the attention score for each head using the following formula: 
@@ -227,8 +214,6 @@ class MultiHeadAttention(nn.Module):
                        Only used for the self-attention of the encoder layer.
             control_flow: The control flow adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
                           Only used for the self-attention of the encoder layer.
-            ast: The ast adjacency matrices. Shape: `(batch_size, max_src_len, max_src_len)`
-                 Only used for the self-attention of the encoder layer.
             zero_matrix: A matrix of zeros used in multi-head attention to denote we're using a
                          standard head attention. Shape: `(batch_size, max_src_len, max_src_len)`
                          Only used for the self-attention of the encoder layer.
@@ -237,7 +222,7 @@ class MultiHeadAttention(nn.Module):
                                 numbers give us the number of heads.
                                 The number of heads of each type is the following:
                                 [TOKEN_HEADS, STATEMENT_HEADS, DATA_FLOW_HEADS, 
-                                 CONTROL_FLOW_HEADS, AST_HEADS, STANDARD_HEADS]
+                                 CONTROL_FLOW_HEADS, STANDARD_HEADS]
                                 Only used for the self-attention of the encoder layer.
             hyperparameter_data_flow (int): Hyperparameter used to adjust the 
                                             weight of the data flow adjacency 
@@ -249,11 +234,6 @@ class MultiHeadAttention(nn.Module):
                                                matrix in the self-attention.
                                                Only used for the self-attention of 
                                                the encoder layer.
-            hyperparameter_ast (int): Hyperparameter used to adjust the 
-                                      weight of the ast adjacency matrix in the 
-                                      self-attention.
-                                      Only used for the self-attention of 
-                                      the encoder layer.
 
             mask: A batch of matrices with 0/1 indicating which keys have zero
                   or non-zero attention. Shape: `(batch, query_len, key_len)`
@@ -272,12 +252,10 @@ class MultiHeadAttention(nn.Module):
                                                                     statement,
                                                                     data_flow,
                                                                     control_flow,
-                                                                    ast,
                                                                     zero_matrix,
                                                                     heads_distribution,
                                                                     hyperparameter_data_flow,
                                                                     hyperparameter_control_flow,
-                                                                    hyperparameter_ast,
                                                                     mask)
         output = self.W_o(self.combine_heads(attn_output))
         return output, attn_probs
