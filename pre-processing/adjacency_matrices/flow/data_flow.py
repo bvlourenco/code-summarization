@@ -13,8 +13,6 @@ from flow.tree_helpers import tree_to_variable_index, get_node_text_snake_camel
 
 def add_dfg_edges(root_node, index_to_code, states, start, end, root_node_text, snake_camel_case=False):
     idx, code = index_to_code[(start, end)]
-    if code == 'print':
-        print("HI")
     if root_node.type == code:
         return [], states
     elif root_node_text in states and idx not in states[root_node_text]:

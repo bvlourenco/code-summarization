@@ -98,12 +98,9 @@ def read_file(f, must_process, language, parser, log_file, filename):
     # ast_adjacency_matrix_file = open(
     #     'files/ast_adjacency_matrix/' + filename_no_extension + '_' + language + '_ast.pkl', 'wb')
 
-    num_lines = min(10, sum(1 for _ in open(filename, 'r')))
+    num_lines = sum(1 for _ in open(filename, 'r'))
 
-    for i, line in enumerate(tqdm(f, total=num_lines, desc="Reading code snippets")):
-        if i >= 10:
-            break
-
+    for line in tqdm(f, total=num_lines, desc="Reading code snippets"):
         if must_process:
             code = pre_process(json.loads(line)['original_string'])
         else:
@@ -121,9 +118,9 @@ def read_file(f, must_process, language, parser, log_file, filename):
                                  in_token_file,
                                  in_statement_file,
                                  data_flow_file,
-                                 control_flow_file,
+                                 control_flow_file)
                                 #  ast_adjacency_matrix_file,
-                                 code_snippet.tokens)
+                                #  code_snippet.tokens)
 
     in_token_file.close()
     in_statement_file.close()

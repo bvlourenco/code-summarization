@@ -88,8 +88,6 @@ class CodeSnippet(object):
             self.in_statement_adjacency_matrix.extend(
                 [i for _ in range(num_tokens)])
 
-        return self.in_statement_adjacency_matrix
-
     def update_flow_matrix(self, type, i, j):
         if type == 'Data flow':
             self.data_flow_adjacency_matrix[i, j] = 1
