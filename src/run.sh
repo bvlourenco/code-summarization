@@ -28,7 +28,7 @@ function train_and_validate() {
     --learning_rate 1.0 \
     --batch_size 128 \
     --num_workers 0 \
-    --num_epochs 2 \
+    --num_epochs 200 \
     --label_smoothing 0.1 \
     --init_type kaiming \
     --train_filename /tmp/u021328/data/python/train_processed.json \
@@ -47,8 +47,7 @@ function train_and_validate() {
     --mode greedy \
     --checkpoint True \
     --hyperparameter_tuning False \
-    --optimizer adam \
-    --debug_max_lines 32
+    --optimizer adam
 
 }
 
@@ -82,8 +81,7 @@ function test_model() {
     --hyperparameter_data_flow 5 \
     --hyperparameter_control_flow 5 \
     --mode greedy \
-    --optimizer adam \
-    --debug_max_lines 32
+    --optimizer adam
 
 }
 
