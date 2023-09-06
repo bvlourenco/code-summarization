@@ -95,8 +95,8 @@ def read_file(f, must_process, language, parser, log_file, filename):
                           filename_no_extension + '_' + language + '_data_flow.pkl', 'wb')
     control_flow_file = open('files/control_flow/' +
                              filename_no_extension + '_' + language + '_control_flow.pkl', 'wb')
-    ast_adjacency_matrix_file = open(
-        'files/ast_adjacency_matrix/' + filename_no_extension + '_' + language + '_ast.pkl', 'wb')
+    # ast_adjacency_matrix_file = open(
+    #     'files/ast_adjacency_matrix/' + filename_no_extension + '_' + language + '_ast.pkl', 'wb')
 
     num_lines = min(10, sum(1 for _ in open(filename, 'r')))
 
@@ -122,14 +122,14 @@ def read_file(f, must_process, language, parser, log_file, filename):
                                  in_statement_file,
                                  data_flow_file,
                                  control_flow_file,
-                                 ast_adjacency_matrix_file,
+                                #  ast_adjacency_matrix_file,
                                  code_snippet.tokens)
 
     in_token_file.close()
     in_statement_file.close()
     data_flow_file.close()
     control_flow_file.close()
-    ast_adjacency_matrix_file.close()
+    # ast_adjacency_matrix_file.close()
 
 
 def read_code_snippets(filename, must_process, language, parser, log_file):
@@ -144,7 +144,8 @@ def write_matrix_to_file(type, matrix, file):
         for element in matrix:
             file.write(str(element) + ' ')
         file.write('\n')
-    elif type in ['data_flow', 'control_flow', 'ast_adjacency_matrix']:
+    # elif type in ['data_flow', 'control_flow', 'ast_adjacency_matrix']:
+    elif type in ['data_flow', 'control_flow']:
         pickle.dump(matrix, file, pickle.DEFAULT_PROTOCOL)
     else:
         raise ValueError('Unrecognized type to store as adjacency matrix')
@@ -152,15 +153,17 @@ def write_matrix_to_file(type, matrix, file):
 
 def store_adjacency_matrices(adjacency_matrices, in_token_file,
                              in_statement_file, data_flow_file,
-                             control_flow_file, ast_adjacency_matrix_file, tokens):
+                             control_flow_file):
+                             #ast_adjacency_matrix_file, tokens):
     
-    with PdfPages('files/heatmaps/' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.pdf') as pdf:
-        display_adjacency_matrices(tokens, tokens, adjacency_matrices['in_token_adjacency_matrix'], 'in_token', pdf)
-        display_adjacency_matrices(tokens, tokens, adjacency_matrices['in_statement_adjacency_matrix'], 'in_statement', pdf)
-        display_adjacency_matrices(tokens, tokens, adjacency_matrices['data_flow_adjacency_matrix'], 'data_flow', pdf)
-        display_adjacency_matrices(tokens, tokens, adjacency_matrices['control_flow_adjacency_matrix'], 'control_flow', pdf)
+    # To display heatmaps of adjacency matrices
+    # with PdfPages('files/heatmaps/' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.pdf') as pdf:
+    #     display_adjacency_matrices(tokens, tokens, adjacency_matrices['in_token_adjacency_matrix'], 'in_token', pdf)
+    #     display_adjacency_matrices(tokens, tokens, adjacency_matrices['in_statement_adjacency_matrix'], 'in_statement', pdf)
+    #     display_adjacency_matrices(tokens, tokens, adjacency_matrices['data_flow_adjacency_matrix'], 'data_flow', pdf)
+    #     display_adjacency_matrices(tokens, tokens, adjacency_matrices['control_flow_adjacency_matrix'], 'control_flow', pdf)
 
-        plt.close()
+    #     plt.close()
 
     write_matrix_to_file('in_token',
                          adjacency_matrices['in_token_adjacency_matrix'],
@@ -174,9 +177,9 @@ def store_adjacency_matrices(adjacency_matrices, in_token_file,
     write_matrix_to_file('control_flow',
                          adjacency_matrices['control_flow_adjacency_matrix'],
                          control_flow_file)
-    write_matrix_to_file('ast_adjacency_matrix',
-                         adjacency_matrices['ast_adjacency_matrix'],
-                         ast_adjacency_matrix_file)
+    # write_matrix_to_file('ast_adjacency_matrix',
+    #                      adjacency_matrices['ast_adjacency_matrix'],
+    #                      ast_adjacency_matrix_file)
 
 
 def main():

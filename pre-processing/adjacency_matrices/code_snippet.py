@@ -1,6 +1,6 @@
 import string
 import numpy as np
-from ast_matrix.ast_adjacency_matrix import get_AST_adjacency_matrix
+# from ast_matrix.ast_adjacency_matrix import get_AST_adjacency_matrix
 from flow.build_flow import build_flow
 from scipy import sparse
 import code_tokenize as ctok
@@ -22,7 +22,7 @@ class CodeSnippet(object):
         self.data_flow_adjacency_matrix = np.zeros((MAX_SRC_LEN, MAX_SRC_LEN))
         self.control_flow_adjacency_matrix = np.zeros(
             (MAX_SRC_LEN, MAX_SRC_LEN))
-        self.ast_adjacency_matrix = np.eye(MAX_SRC_LEN)
+        # self.ast_adjacency_matrix = np.eye(MAX_SRC_LEN)
         self.log_file = log_file
         self.debug = debug
         self.tokens = self.tokenize_code(self.code_snippet)
@@ -133,27 +133,27 @@ class CodeSnippet(object):
             self.log_file.write(type + " edges:\n" + edges.__str__() + "\n\n")
             self.print_flow_matrix(type)
 
-    def build_ast_matrix(self):
-        tree = self.parser.parse(bytes(self.code_snippet, "utf8"))
-        self.ast_adjacency_matrix = get_AST_adjacency_matrix(tree)
+    # def build_ast_matrix(self):
+    #     tree = self.parser.parse(bytes(self.code_snippet, "utf8"))
+    #     self.ast_adjacency_matrix = get_AST_adjacency_matrix(tree)
 
-        if self.debug:
-            self.log_file.write("\n\n\n" + self.code_snippet + "\n\n")
-            self.log_file.write("AST adjacency matrix:\n" +
-                                self.ast_adjacency_matrix.__str__() + "\n\n")
-            self.log_file.write("AST:\n" + tree.root_node.sexp() + "\n\n\n")
+    #     if self.debug:
+    #         self.log_file.write("\n\n\n" + self.code_snippet + "\n\n")
+    #         self.log_file.write("AST adjacency matrix:\n" +
+    #                             self.ast_adjacency_matrix.__str__() + "\n\n")
+    #         self.log_file.write("AST:\n" + tree.root_node.sexp() + "\n\n\n")
 
     def get_adjacency_matrices(self):
         self.build_token_matrix()
         self.build_statement_matrix()
         self.build_data_or_control_flow_matrix('Data flow')
         self.build_data_or_control_flow_matrix('Control flow')
-        self.build_ast_matrix()
+        # self.build_ast_matrix()
 
         return {
             "in_token_adjacency_matrix": self.in_token_adjacency_matrix,
             "in_statement_adjacency_matrix": self.in_statement_adjacency_matrix,
             "data_flow_adjacency_matrix": sparse.csr_matrix(self.data_flow_adjacency_matrix),
             "control_flow_adjacency_matrix": sparse.csr_matrix(self.control_flow_adjacency_matrix),
-            "ast_adjacency_matrix": sparse.csr_matrix(self.ast_adjacency_matrix),
+            # "ast_adjacency_matrix": sparse.csr_matrix(self.ast_adjacency_matrix),
         }
