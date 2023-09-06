@@ -1,4 +1,3 @@
-
 import logging
 import math
 
@@ -51,22 +50,22 @@ def compute_heads_distribution(num_heads, layer_index, hyperparameter_hsva):
     According to the SG-Trans paper, k = L (hyper-parameter k is equal to 
                                             number of encoder layers)
     '''
-    token_heads = math.floor(num_heads *
-                             ((hyperparameter_hsva - layer_index) /
-                              (2 * hyperparameter_hsva - layer_index)))
+    token_heads = max(0, math.floor(num_heads *
+                                    ((hyperparameter_hsva - layer_index) /
+                                     (2 * hyperparameter_hsva - layer_index))))
     statement_heads = token_heads
-    if token_heads <= 0:
+    if token_heads == 0:
         data_flow_heads = 0
     else:
-        data_flow_heads = math.floor((num_heads *
-                                      (layer_index /
-                                       (2 * hyperparameter_hsva - layer_index)))
-                                     / 2)
+        data_flow_heads = max(0, math.floor((num_heads *
+                                             (layer_index /
+                                              (2 * hyperparameter_hsva - layer_index)))
+                                            / 2))
     control_flow_heads = data_flow_heads
     standard_heads = num_heads - (token_heads + statement_heads + data_flow_heads
                                   + control_flow_heads)
-    
-    logger.info(f"Heads distribution of layer {layer_index}:\n" + 
+
+    logger.info(f"Heads distribution of layer {layer_index}:\n" +
                 f"Token Heads: {token_heads} | " +
                 f"Statement Heads: {statement_heads} | " +
                 f"Data flow Heads: {data_flow_heads} | " +

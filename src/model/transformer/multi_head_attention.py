@@ -126,7 +126,7 @@ class MultiHeadAttention(nn.Module):
                                              [hyperparameter_control_flow * control_flow for _ in range(heads_distribution[3])] +
                                              [zero_matrix for _ in range(heads_distribution[4])], 1)
 
-            global_enhance_map = global_enhance_map.mul(attn_scores)
+            global_enhance_map = torch.abs(global_enhance_map.mul(attn_scores))
             attn_scores = attn_scores + local_mask_map + global_enhance_map
 
         if mask is not None:
