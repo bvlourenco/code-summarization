@@ -70,7 +70,7 @@ class CustomDataset(Dataset):
         self.max_src_length = max_src_length
 
         self.codebert_tokenizer = RobertaTokenizer.from_pretrained("microsoft/codebert-base", 
-                                                                   do_lower_case=False)
+                                                                   do_lower_case=True)
 
     def __len__(self):
         '''

@@ -83,7 +83,7 @@ class Transformer(nn.Module):
             [EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
         self.norm1 = nn.LayerNorm(d_model)
 
-        config = RobertaConfig.from_pretrained("microsoft/codebert-base", do_lower_case=False)
+        config = RobertaConfig.from_pretrained("microsoft/codebert-base", do_lower_case=True)
         self.code_encoder_layers = RobertaModel.from_pretrained("microsoft/codebert-base", config=config)
         enc_output_size = config.hidden_size + d_model
         self.encoder_linear_layer = nn.Linear(enc_output_size, d_model)
