@@ -6,6 +6,7 @@ import os
 import pickle
 from matplotlib import pyplot as plt
 import numpy as np
+from flow.utils import remove_comments_and_docstrings
 from graph import display_adjacency_matrices
 from matplotlib.backends.backend_pdf import PdfPages
 from tqdm import tqdm
@@ -105,6 +106,11 @@ def read_file(f, must_process, language, parser, log_file, filename):
             code = pre_process(json.loads(line)['original_string'])
         else:
             code = json.loads(line)['original_string']
+
+        if code.startswith("def add_hypernode"):
+            print("Detected code snippet with wrong identation. Skipping comment removal.")
+        else:
+            code = remove_comments_and_docstrings(code, language)
 
         code_snippet = CodeSnippet(code,
                                    language,

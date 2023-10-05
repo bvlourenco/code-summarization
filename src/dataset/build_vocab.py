@@ -7,7 +7,8 @@ def create_vocabulary(source_code_tokens,
                       summary_tokens, 
                       freq_threshold, 
                       src_vocab_size, 
-                      tgt_vocab_size):
+                      tgt_vocab_size,
+                      dir_iteration):
     '''
     Creates the vocabulary for the code snippets and for the summaries.
 
@@ -30,13 +31,13 @@ def create_vocabulary(source_code_tokens,
     target_vocab = Vocabulary(freq_threshold, tgt_vocab_size)
     target_vocab.build_vocabulary(summary_tokens, "summary")
 
-    pickle.dump(source_vocab, open('../results/src_vocab.pkl', 'wb'))
-    pickle.dump(target_vocab, open('../results/tgt_vocab.pkl', 'wb'))
+    pickle.dump(source_vocab, open('../results/' + dir_iteration + '/src_vocab.pkl', 'wb'))
+    pickle.dump(target_vocab, open('../results/' + dir_iteration + '/tgt_vocab.pkl', 'wb'))
 
     return source_vocab, target_vocab
 
 
-def load_vocab(src_filename, tgt_filename):
+def load_vocab(src_filename, tgt_filename, dir_iteration):
     '''
     Loads the source and target vocabulary from the given filename
 
@@ -45,8 +46,8 @@ def load_vocab(src_filename, tgt_filename):
         tgt_filename: The name of file with the target vocabulary
     '''
     if os.path.isfile(src_filename) and os.path.isfile(tgt_filename):
-        return pickle.load(open('../results/src_vocab.pkl', 'rb')), \
-            pickle.load(open('../results/tgt_vocab.pkl', 'rb'))
+        return pickle.load(open('../results/' + dir_iteration + '/src_vocab.pkl', 'rb')), \
+            pickle.load(open('../results/' + dir_iteration + '/tgt_vocab.pkl', 'rb'))
     else:
         raise ValueError("Either " + src_filename + " or " +
                          tgt_filename + " are not files")

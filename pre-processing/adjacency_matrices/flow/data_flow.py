@@ -58,9 +58,10 @@ def process_leaf_node(root_node, index_to_code, states):
                 
                 start = (begin[0], tokens_len)
                 end = (begin[0], tokens_len + len(token))
-                new_edges, states = add_dfg_edges(root_node, index_to_code, states, start, end, root_node.text.decode(), snake_camel_case)
-                snake_camel_case = True
-                edges.extend(new_edges)
+                if (start, end) in index_to_code:
+                    new_edges, states = add_dfg_edges(root_node, index_to_code, states, start, end, root_node.text.decode(), snake_camel_case)
+                    snake_camel_case = True
+                    edges.extend(new_edges)
 
                 tokens_len += len(token)            
             return edges, states
@@ -326,7 +327,7 @@ def DFG_java(root_node, index_to_code, states):
                 idx2, code2 = index_to_code[index2]
                 DFG.append((code1, idx1, 'computedFrom', [code2], [idx2]))
             all_idxs.append(idx1)
-        states[right_nodes.text.decode()] = all_idxs
+        states[left_nodes.text.decode()] = all_idxs
         return sorted(DFG, key=lambda x: x[1]), states
     elif root_node.type in increment_statement:
         DFG = []
@@ -700,11 +701,12 @@ def DFG_go(root_node, index_to_code, states):
                 idx2, code2 = index_to_code[index2]
                 DFG.append((code1, idx1, 'computedFrom', [code2], [idx2]))
             all_idxs.append(idx1)
-        states[name.text.decode()] = all_idxs
+        states[left_nodes.text.decode()] = all_idxs
         return sorted(DFG, key=lambda x: x[1]), states
     elif root_node.type in increment_statement:
         DFG = []
         indexs = tree_to_variable_index(root_node, index_to_code)
+        all_idxs = []
         for index1 in indexs:
             idx1, code1 = index_to_code[index1]
             for index2 in indexs:
@@ -849,7 +851,7 @@ def DFG_php(root_node, index_to_code, states):
                 idx2, code2 = index_to_code[index2]
                 DFG.append((code1, idx1, 'computedFrom', [code2], [idx2]))
             all_idxs.append(idx1)
-        states[name.text.decode()] = all_idxs
+        states[left_nodes.text.decode()] = all_idxs
         return sorted(DFG, key=lambda x: x[1]), states
     elif root_node.type in increment_statement:
         DFG = []
@@ -935,10 +937,14 @@ def DFG_php(root_node, index_to_code, states):
         body = root_node.child_by_field_name('body')
         DFG = []
         for i in range(2):
-            temp, states = DFG_php(value, index_to_code, states)
-            DFG += temp
-            name_indexs = tree_to_variable_index(name, index_to_code)
-            value_indexs = tree_to_variable_index(value, index_to_code)
+            if value is not None:
+                temp, states = DFG_php(value, index_to_code, states)
+                DFG += temp
+            name_indexs, value_indexs = [], []
+            if name is not None:
+                name_indexs = tree_to_variable_index(name, index_to_code)
+            if value is not None:
+                value_indexs = tree_to_variable_index(value, index_to_code)
             all_idxs = []
             for index1 in name_indexs:
                 idx1, code1 = index_to_code[index1]
@@ -946,7 +952,8 @@ def DFG_php(root_node, index_to_code, states):
                     idx2, code2 = index_to_code[index2]
                     DFG.append((code1, idx1, 'computedFrom', [code2], [idx2]))
                 all_idxs.append(idx1)
-            states[name.text.decode()] = all_idxs
+            if name is not None:
+                states[name.text.decode()] = all_idxs
             temp, states = DFG_php(body, index_to_code, states)
             DFG += temp
         dic = {}
@@ -1060,7 +1067,6 @@ def DFG_javascript(root_node, index_to_code, states):
             for index2 in indexs:
                 idx2, code2 = index_to_code[index2]
                 DFG.append((code1, idx1, 'computedFrom', [code2], [idx2]))
-            states[code1] = [idx1]
             all_idxs.append(idx1)
         states[root_node.text.decode()] = all_idxs
         return sorted(DFG, key=lambda x: x[1]), states

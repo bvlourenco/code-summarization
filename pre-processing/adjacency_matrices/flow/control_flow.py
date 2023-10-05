@@ -47,7 +47,8 @@ def process_leaf_node(root, index_to_code, instructions_code, dependencies):
                 
                 start = (begin[0], tokens_len)
                 end = (begin[0], tokens_len + len(token))
-                edges += add_cfg_edges(index_to_code, instructions_code, dependencies, start, end)
+                if (start, end) in index_to_code:
+                    edges += add_cfg_edges(index_to_code, instructions_code, dependencies, start, end)
 
                 tokens_len += len(token)            
             return edges

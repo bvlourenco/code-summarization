@@ -16,7 +16,8 @@ def display_attention(input,
                       output,
                       attention,
                       label,
-                      n_heads):
+                      n_heads,
+                      dir_iteration):
     '''
     Display the attention matrix for each head of a sequence.
 
@@ -38,7 +39,7 @@ def display_attention(input,
     # Create the PdfPages object to which we will save the pages:
     # The with statement makes sure that the PdfPages object is closed properly at
     # the end of the block, even if an Exception occurs.
-    with PdfPages('../results/' + label + "_" +
+    with PdfPages('../results/' + dir_iteration + '/' + label + "_" +
                   datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + '.pdf') as pdf:
 
         for i in range(n_heads):
@@ -87,7 +88,7 @@ def display_attention(input,
             plt.close()
 
 
-def create_loss_plot(train_epoch_loss, val_epoch_loss, gpu_rank):
+def create_loss_plot(train_epoch_loss, val_epoch_loss, gpu_rank, dir_iteration):
     '''
     Plots the training and validation loss.
 
@@ -120,5 +121,5 @@ def create_loss_plot(train_epoch_loss, val_epoch_loss, gpu_rank):
     # Add the legend of line in plot
     plt.legend(loc='best')
 
-    plt.savefig("../results/" + "train_val_loss" + "_" + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
+    plt.savefig("../results/" + dir_iteration + "/train_val_loss" + "_" + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                 '_' + str(gpu_rank) + '.png')

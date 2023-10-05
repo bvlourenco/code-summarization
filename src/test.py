@@ -19,7 +19,7 @@ def main():
     '''
     args = parse_test_args()
 
-    configure_logger(logger)
+    configure_logger(logger, args.dir_iteration)
 
     torch.manual_seed(0)
     program = TestProgram(args)

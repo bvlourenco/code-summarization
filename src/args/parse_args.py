@@ -131,6 +131,10 @@ def parse_arguments():
     parser.add_argument("--optimizer", type=str, required=True,
                         choices=['adam', 'sgd'],
                         help="Optimizer to use in the model (SGD or Adam)")
+    
+    parser.add_argument("--dir_iteration", type=str, required=True,
+                        help="Directory inside results folder to store the \
+                              files of current iteration")
 
     return parser.parse_args()
 
@@ -220,5 +224,9 @@ def parse_test_args():
     parser.add_argument("--optimizer", type=str, required=True,
                         choices=['adam', 'sgd'],
                         help="Optimizer to use in the model (SGD or Adam)")
+    
+    parser.add_argument("--dir_iteration", type=str, required=True,
+                        help="Directory inside results folder to store the \
+                              files of current iteration")
 
     return parser.parse_args()

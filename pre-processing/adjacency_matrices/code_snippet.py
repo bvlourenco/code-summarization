@@ -84,6 +84,9 @@ class CodeSnippet(object):
         # such as ;, { and } in Java (and other languages)
         instructions = self.code_snippet.split('\n')
         for i in range(len(instructions)):
+            if len(instructions[i].strip()) == 0:
+                continue
+
             num_tokens = len(self.tokenize_code(instructions[i]))
             self.in_statement_adjacency_matrix.extend(
                 [i for _ in range(num_tokens)])

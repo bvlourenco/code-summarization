@@ -31,23 +31,24 @@ function train_and_validate() {
     --num_epochs 200 \
     --label_smoothing 0.1 \
     --init_type kaiming \
-    --train_filename /tmp/u021328/data/python/train_processed.json \
-    --validation_filename /tmp/u021328/data/python/validation_processed.json \
-    --train_token_matrix /tmp/u021328/data/python/train_processed_python_in_token.txt \
-    --train_statement_matrix /tmp/u021328/data/python/train_processed_python_in_statement.txt \
-    --train_data_flow_matrix /tmp/u021328/data/python/train_processed_python_data_flow.pkl \
-    --train_control_flow_matrix /tmp/u021328/data/python/train_processed_python_control_flow.pkl \
-    --validation_token_matrix /tmp/u021328/data/python/validation_processed_python_in_token.txt \
-    --validation_statement_matrix /tmp/u021328/data/python/validation_processed_python_in_statement.txt \
-    --validation_data_flow_matrix /tmp/u021328/data/python/validation_processed_python_data_flow.pkl \
-    --validation_control_flow_matrix /tmp/u021328/data/python/validation_processed_python_control_flow.pkl \
+    --train_filename ../data/python/train_processed.json \
+    --validation_filename ../data/python/validation_processed.json \
+    --train_token_matrix ../data/python/train_processed_python_in_token.txt \
+    --train_statement_matrix ../data/python/train_processed_python_in_statement.txt \
+    --train_data_flow_matrix ../data/python/train_processed_python_data_flow.pkl \
+    --train_control_flow_matrix ../data/python/train_processed_python_control_flow.pkl \
+    --validation_token_matrix ../data/python/validation_processed_python_in_token.txt \
+    --validation_statement_matrix ../data/python/validation_processed_python_in_statement.txt \
+    --validation_data_flow_matrix ../data/python/validation_processed_python_data_flow.pkl \
+    --validation_control_flow_matrix ../data/python/validation_processed_python_control_flow.pkl \
     --hyperparameter_hsva 6 \
     --hyperparameter_data_flow 5 \
     --hyperparameter_control_flow 5 \
     --mode greedy \
     --checkpoint True \
     --hyperparameter_tuning False \
-    --optimizer adam
+    --optimizer adam \
+    --dir_iteration $1
 
 }
 
@@ -72,18 +73,19 @@ function test_model() {
     --init_type kaiming \
     --batch_size 128 \
     --num_workers 0 \
-    --test_filename /tmp/u021328/data/python/test_processed.json \
-    --test_token_matrix /tmp/u021328/data/python/test_processed_python_in_token.txt \
-    --test_statement_matrix /tmp/u021328/data/python/test_processed_python_in_statement.txt \
-    --test_data_flow_matrix /tmp/u021328/data/python/test_processed_python_data_flow.pkl \
-    --test_control_flow_matrix /tmp/u021328/data/python/test_processed_python_control_flow.pkl \
+    --test_filename ../data/python/test_processed.json \
+    --test_token_matrix ../data/python/test_processed_python_in_token.txt \
+    --test_statement_matrix ../data/python/test_processed_python_in_statement.txt \
+    --test_data_flow_matrix ../data/python/test_processed_python_data_flow.pkl \
+    --test_control_flow_matrix ../data/python/test_processed_python_control_flow.pkl \
     --hyperparameter_hsva 6 \
     --hyperparameter_data_flow 5 \
     --hyperparameter_control_flow 5 \
     --mode greedy \
-    --optimizer adam
+    --optimizer adam \
+    --dir_iteration $1
 
 }
 
-train_and_validate
-test_model
+train_and_validate test_2
+test_model test_2

@@ -3,7 +3,7 @@ import logging
 import os
 
 
-def configure_logger(logger):
+def configure_logger(logger, dir_iteration):
     '''
     Configures the logger to write to both file and console.
 
@@ -17,11 +17,14 @@ def configure_logger(logger):
     console.setFormatter(fmt)
     logger.addHandler(console)
 
-    if os.path.exists("../results/log.txt"):
+    if not os.path.exists("../results/" + dir_iteration):
+        os.makedirs("../results/" + dir_iteration)
+
+    if os.path.exists("../results/" + dir_iteration + "/log.txt"):
         mode = 'a'
     else:
         mode = 'w'
-    logfile = logging.FileHandler("../results/log_" +
+    logfile = logging.FileHandler("../results/" + dir_iteration + "/log_" +
                                   datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                                   ".txt", mode)
     logfile.setFormatter(fmt)

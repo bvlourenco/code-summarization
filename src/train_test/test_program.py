@@ -55,8 +55,9 @@ class TestProgram(Program):
                             'test',
                             self.debug_max_lines)
 
-        source_vocab, target_vocab = load_vocab('../results/src_vocab.pkl',
-                                                '../results/tgt_vocab.pkl')
+        source_vocab, target_vocab = load_vocab('../results/' + self.dir_iteration + '/src_vocab.pkl',
+                                                '../results/' + self.dir_iteration + '/tgt_vocab.pkl',
+                                                self.dir_iteration)
 
         test_dataloader = load_evaluation_dataloader(test_code_texts,
                                                      test_code_tokens,
@@ -99,7 +100,8 @@ class TestProgram(Program):
                       self.optimizer,
                       self.hyperparameter_hsva,
                       self.hyperparameter_data_flow,
-                      self.hyperparameter_control_flow)
+                      self.hyperparameter_control_flow,
+                      self.dir_iteration)
 
         model.load(gpu_rank)
         model.test(test_dataloader,

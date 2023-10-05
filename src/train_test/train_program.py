@@ -103,7 +103,8 @@ class TrainProgram(Program):
                                                        train_summary_tokens,
                                                        self.freq_threshold,
                                                        self.src_vocab_size,
-                                                       self.tgt_vocab_size)
+                                                       self.tgt_vocab_size,
+                                                       self.dir_iteration)
 
         train_dataloader, val_dataloader = create_dataloaders(train_code_texts,
                                                               train_code_tokens,
@@ -154,7 +155,8 @@ class TrainProgram(Program):
                       self.optimizer,
                       self.hyperparameter_hsva,
                       self.hyperparameter_data_flow,
-                      self.hyperparameter_control_flow)
+                      self.hyperparameter_control_flow,
+                      self.dir_iteration)
 
         self.train_validate_model(model,
                                   train_dataloader,
@@ -187,7 +189,7 @@ class TrainProgram(Program):
 
         # Load model checkpoint (loading model parameters and optimizer state)
         # if the checkpoint exists
-        if os.path.isfile('../results/model_weights_checkpoint.pth'):
+        if os.path.isfile('../results/' + self.dir_iteration + '/model_weights_checkpoint.pth'):
             start_epoch, train_epoch_loss, \
                 val_epoch_loss, best_bleu = model.load_checkpoint(gpu_rank)
             best_val_loss = min(val_epoch_loss)
@@ -247,12 +249,12 @@ class TrainProgram(Program):
 
         # Only create graph if we're not doing hyperparameter fine-tuning
         if self.num_epochs > 1 and self.trial_number is None:
-            create_loss_plot(train_epoch_loss, val_epoch_loss, gpu_rank)
+            create_loss_plot(train_epoch_loss, val_epoch_loss, gpu_rank, self.dir_iteration)
         else:
             logger.info(f"Training loss of epoch 1: {train_epoch_loss[0]}")
             logger.info(f"Validation loss of epoch 1: {val_epoch_loss[0]}")
 
         if self.trial_number is not None:
-            with open('../results/loss_file', 'a') as loss_file:
+            with open('../results/' + self.dir_iteration + '/loss_file', 'a') as loss_file:
                 loss_file.write(str(self.trial_number) + ' ' +
                                 str(val_epoch_loss[-1]) + '\n')

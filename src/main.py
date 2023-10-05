@@ -21,7 +21,7 @@ def main():
     '''
     args = parse_arguments()
 
-    configure_logger(logger)
+    configure_logger(logger, args.dir_iteration)
 
     torch.manual_seed(0)
     if args.hyperparameter_tuning:

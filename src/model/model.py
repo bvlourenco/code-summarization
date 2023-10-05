@@ -53,7 +53,8 @@ class Model:
                  optimizer,
                  hyperparameter_hsva,
                  hyperparameter_data_flow,
-                 hyperparameter_control_flow):
+                 hyperparameter_control_flow,
+                 dir_iteration):
         '''
         Args:
             src_vocab_size (int): size of the source vocabulary.
@@ -139,6 +140,7 @@ class Model:
 
         self.tgt_vocab_size = tgt_vocab_size
         self.max_tgt_length = max_tgt_length
+        self.dir_iteration = dir_iteration
 
     @staticmethod
     def rate(step, model_size, factor, warmup):
@@ -283,8 +285,8 @@ class Model:
 
         # Writing the translation results to a file
         if mode in ['beam', 'greedy']:
-            log = open('../results/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
-                       '_gpu_' + str(self.gpu_rank) + '_epoch' + str(num_epoch) + '.json', 'w')
+            # log = open('../results/' + self.dir_iteration + '/validation_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
+            #            '_gpu_' + str(self.gpu_rank) + '_epoch' + str(num_epoch) + '.json', 'w')
             metrics = {"number_examples": 0,
                        "sum_bleu": 0, "sum_meteor": 0, "sum_rouge_l": 0,
                        "sum_precision": 0, "sum_recall": 0, "sum_f1": 0}
@@ -317,7 +319,7 @@ class Model:
                                                                   control_flow,
                                                                   code,
                                                                   summary,
-                                                                  log,
+                                                                  None,
                                                                   scorer,
                                                                   mode,
                                                                   beam_size,
@@ -355,7 +357,7 @@ class Model:
                 losses += loss.item()
 
         if mode in ['beam', 'greedy']:
-            log.close()
+            # log.close()
             # metrics["BLEU_N"], metrics["ROUGE-L_N"], metrics["METEOR_N"] = eval_accuracies(hypotheses, references)
             Model.compute_avg_metrics(metrics, neuralcodesum_metrics=False)
             return losses / len(val_dataloader), \
@@ -398,7 +400,7 @@ class Model:
         # evaluate without updating gradients
         # Tells pytorch to not calculate the gradients
         with torch.no_grad():
-            with open('../results/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
+            with open('../results/' + self.dir_iteration + '/test_' + datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
                       '_gpu_' + str(self.gpu_rank) + '.json', 'w') as log:
                 for batch_idx, (code_tokens, summary_tokens, code, summary, src, tgt, \
                     source_ids, source_mask, token, statement, data_flow, \
@@ -462,19 +464,22 @@ class Model:
                           src_tokens[0],
                           enc_attn[0],
                           "encoder_self_attn",
-                          self.num_heads)
+                          self.num_heads,
+                          self.dir_iteration)
 
         display_attention(tgt_tokens[0],
                           tgt_tokens[0],
                           dec_self_attn[0],
                           "decoder_self_attn",
-                          self.num_heads)
+                          self.num_heads,
+                          self.dir_iteration)
 
         display_attention(src_tokens[0],
                           tgt_tokens[0],
                           dec_cross_attn[0],
                           "decoder_cross_attn",
-                          self.num_heads)
+                          self.num_heads,
+                          self.dir_iteration)
 
     def translate_evaluate(self,
                            src,
@@ -742,7 +747,8 @@ class Model:
             example["Recall"] = recall(reference_set, prediction_set)
             example["F1"] = f_score
 
-            log.write(json.dumps(example, indent=4) + ',\n')
+            if log is not None:
+                log.write(json.dumps(example, indent=4) + ',\n')
 
             sum_bleu += example["BLEU"]
             sum_meteor += example["METEOR"]
@@ -793,9 +799,9 @@ class Model:
         model = self.get_model()
         try:
             if last_epoch:
-                filename = '../results/model_weights_last.pth'
+                filename = '../results/' + self.dir_iteration + '/model_weights_last.pth'
             else:
-                filename = '../results/model_weights.pth'
+                filename = '../results/' + self.dir_iteration + '/model_weights.pth'
             torch.save(model.state_dict(), filename)
         except Exception:
             traceback.print_exc()
@@ -823,7 +829,7 @@ class Model:
                 'validation_losses': validation_losses,
                 'best_bleu': best_bleu
             }
-            torch.save(params, '../results/model_weights_checkpoint.pth')
+            torch.save(params, '../results/' + self.dir_iteration + '/model_weights_checkpoint.pth')
         except Exception:
             traceback.print_exc()
             logger.error("It was not possible to save a model checkpoint.")
@@ -836,7 +842,7 @@ class Model:
         self.model = self.get_model()
         map_location = self.get_map_location(gpu_rank)
         try:
-            self.model.load_state_dict(torch.load('../results/model_weights_last.pth',
+            self.model.load_state_dict(torch.load('../results/' + self.dir_iteration + '/model_weights_last.pth',
                                                   map_location=map_location))
         except Exception:
             traceback.print_exc()
@@ -859,7 +865,7 @@ class Model:
         self.model = self.get_model()
         map_location = self.get_map_location(gpu_rank)
         try:
-            checkpoint = torch.load('../results/model_weights_checkpoint.pth',
+            checkpoint = torch.load('../results/' + self.dir_iteration + '/model_weights_checkpoint.pth',
                                     map_location=map_location)
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

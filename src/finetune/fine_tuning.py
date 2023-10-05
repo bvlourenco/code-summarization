@@ -34,7 +34,7 @@ def objective(trial, args):
     program = TrainProgram(args, trial.number)
     program.start()
 
-    with open('../results/loss_file', 'r') as loss_file:
+    with open('../results/' + args.dir_iteration + '/loss_file', 'r') as loss_file:
         for line in loss_file:
             # Each line of the loss_file has the following format:
             # <trial number> <validation loss> (example: 1 4.56421)
@@ -53,6 +53,7 @@ def save_optuna_study(study: optuna.study.Study, trial: optuna.trial.FrozenTrial
         study: The optuna study (stores the best trial and hyper-parameters)
         trial: An optuna trial.
     '''
+    # FIXME: Store in correct directory
     joblib.dump(study, "../results/study.pkl")
 
 
@@ -70,8 +71,8 @@ def fine_tune(args):
                              'validation loss per epoch')
     '''
     # Loading optuna study if there's a study stored
-    if os.path.exists("../results/study.pkl"):
-        study = joblib.load("../results/study.pkl")
+    if os.path.exists("../results/" + args.dir_iteration + "/study.pkl"):
+        study = joblib.load("../results/" + args.dir_iteration + "/study.pkl")
     else:
         study = optuna.create_study(study_name="finetune",
                                     direction="minimize")
